@@ -41,9 +41,13 @@ public class AdminPlaceMapQueryRepository {
             AND mp.location IS NOT NULL AND NOT ST_IsEmpty(mp.location)
             AND ST_X(mp.location) = mp.longitude AND ST_Y(mp.location) = mp.latitude
             """;
+    // bbox는 인덱스로 후보를 좁히고, 숫자 경계로 bbox 반올림에 따른 화면 밖 후보를 제외한다.
     private static final String VIEWPORT = """
             mp.location && ST_MakeEnvelope(:west, :south, :east, :north, 4326)
+            AND mp.longitude BETWEEN :west AND :east
+            AND mp.latitude BETWEEN :south AND :north
             """;
+    private static final String VIEWPORT_FILTER = FILTER + " AND " + VALID + " AND " + VIEWPORT;
     private static final String UNKNOWN_REGION = """
             AND NOT EXISTS (SELECT 1 FROM place_administrative_region r WHERE r.region_code = mp.region_code)
             """;
@@ -65,8 +69,16 @@ public class AdminPlaceMapQueryRepository {
     }
 
     public long countViewport(AdminPlaceMapCondition c) {
-        return jdbc.queryForObject("SELECT COUNT(*) FROM map_place mp WHERE " + FILTER + " AND " + VALID
-                + " AND " + VIEWPORT, params(c), Long.class);
+        return jdbc.queryForObject("SELECT COUNT(*) FROM map_place mp WHERE " + VIEWPORT_FILTER, params(c), Long.class);
+    }
+
+    /** 동일 스냅샷의 영역 집계가 표시 한도 이하일 때만 호출하며 순위·페이지 제한 없이 모두 반환한다. */
+    public List<Marker> findViewportMarkers(AdminPlaceMapCondition c) {
+        return jdbc.query("""
+                SELECT mp.map_place_id, mp.place_name, mp.latitude, mp.longitude,
+                       mp.category, mp.discovery_status, mp.operating_status
+                FROM map_place mp WHERE
+                """ + VIEWPORT_FILTER + " ORDER BY mp.map_place_id", params(c), (rs, row) -> marker(rs));
     }
 
     public List<Region> findRegions(AdminPlaceMapCondition c, String level, int limit) {
@@ -108,14 +120,14 @@ public class AdminPlaceMapQueryRepository {
         String sql = points(unknownOnly) + """
                 SELECT FLOOR(ST_X(ST_Transform(location, 3857)) / :cell)::bigint AS grid_x,
                        FLOOR(ST_Y(ST_Transform(location, 3857)) / :cell)::bigint AS grid_y,
-                       COUNT(*) AS place_count, MIN(map_place_id) AS single_id,
+                       COUNT(*) AS place_count, MIN(map_place_id) AS representative_id,
                        AVG(latitude) AS latitude, AVG(longitude) AS longitude,
                        MIN(longitude) AS west, MIN(latitude) AS south,
                        MAX(longitude) AS east, MAX(latitude) AS north,
                 """ + FINGERPRINT + " AS fingerprint FROM points GROUP BY grid_x, grid_y ORDER BY grid_y, grid_x LIMIT :limit";
         return jdbc.query(sql, params(c).addValue("cell", cellSize).addValue("limit", limit),
                 (rs, row) -> new Cell(rs.getLong("grid_x"), rs.getLong("grid_y"), rs.getLong("place_count"),
-                        rs.getLong("single_id"), rs.getDouble("latitude"), rs.getDouble("longitude"),
+                        rs.getLong("representative_id"), rs.getDouble("latitude"), rs.getDouble("longitude"),
                         bounds(rs), rs.getString("fingerprint")));
     }
 
@@ -165,7 +177,7 @@ public class AdminPlaceMapQueryRepository {
                 rs.getString("discovery_status"), rs.getString("operating_status"));
     }
 
-    public record Cell(long x, long y, long count, long singleId, double latitude, double longitude,
+    public record Cell(long x, long y, long count, long representativeId, double latitude, double longitude,
                        Bounds bounds, String fingerprint) {}
     public record GroupState(long count, String fingerprint) {}
 }

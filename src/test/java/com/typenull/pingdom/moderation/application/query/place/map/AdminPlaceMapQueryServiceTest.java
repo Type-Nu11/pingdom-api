@@ -5,72 +5,119 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.typenull.pingdom.moderation.api.dto.place.map.AdminPlaceMapRequest;
-import com.typenull.pingdom.moderation.api.dto.place.map.AdminPlaceMapResponse.*;
+import com.typenull.pingdom.moderation.api.dto.place.map.AdminPlaceMapResponse.DisplayStatus;
+import com.typenull.pingdom.moderation.api.dto.place.map.AdminPlaceMapResponse.Marker;
+import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
+import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
+import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.AdminPlaceMapQueryRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.place.AdminPlaceMapQueryRepository.Cell;
 import com.typenull.pingdom.place.infrastructure.persistence.place.AdminPlaceMapQueryRepository.GroupState;
+import java.sql.SQLException;
 import java.util.List;
-import org.junit.jupiter.api.BeforeEach;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.QueryTimeoutException;
 
 class AdminPlaceMapQueryServiceTest {
     private final AdminPlaceMapQueryRepository repository = mock(AdminPlaceMapQueryRepository.class);
     private final AdminPlaceMapClusterToken tokens = mock(AdminPlaceMapClusterToken.class);
-    private final AdminPlaceMapQueryService service = new AdminPlaceMapQueryService(repository, tokens, new AdminPlaceMapProperties(200));
-    private final Bounds bounds = new Bounds(128.6, 35.87, 128.6, 35.87);
+    private final AdminPlaceMapQueryService service = new AdminPlaceMapQueryService(repository, tokens, new AdminPlaceMapProperties(100));
 
     private AdminPlaceMapRequest request(int zoom) {
         return new AdminPlaceMapRequest(128.5, 35.8, 128.7, 35.95, zoom, 1200, 800, null, null, null, null);
     }
 
-    @BeforeEach
-    void setUp() { when(repository.countViewport(any())).thenReturn(25L); }
+    @ParameterizedTest
+    @CsvSource({"0,0", "0,1", "0,99", "0,100", "7,100", "10,100", "13,100",
+            "20,0", "20,1", "20,99", "20,100"})
+    void returnsEveryMarkerAtOrBelowLimitRegardlessOfZoom(int zoom, int count) {
+        var condition = AdminPlaceMapCondition.from(request(zoom));
+        var markers = IntStream.rangeClosed(1, count)
+                .mapToObj(id -> new Marker(id, "카페", 35.87, 128.6, "CAFE", "HIDDEN", "OPERATING")).toList();
+        when(repository.countViewport(condition)).thenReturn((long) count);
+        when(repository.findViewportMarkers(condition)).thenReturn(markers);
 
-    @Test
-    void reclustersInsteadOfSilentlyTruncatingAndPreservesMixedResults() {
-        var excess = java.util.Collections.nCopies(201, new Cell(1, 1, 2, 1, 35.87, 128.6, bounds, "a"));
-        var group = new Cell(1, 1, 24, 1, 35.87, 128.6, bounds, "fingerprint");
-        var single = new Cell(2, 2, 1, 25, 35.88, 128.61, bounds, "single");
-        when(repository.findCells(any(), anyDouble(), eq(false), anyInt())).thenReturn(excess, List.of(group, single));
-        when(tokens.issue(any(), anyDouble(), eq(1L), eq(1L), eq(false), eq("fingerprint"))).thenReturn("token");
-        when(repository.markers(List.of(25L))).thenReturn(List.of(new Marker(25, "카페", 35.88, 128.61, "CAFE", "HIDDEN", "OPERATING")));
-        var response = service.find(request(14));
-        assertThat(response.complete()).isTrue();
-        assertThat(response.clusters()).singleElement().satisfies(c -> {
-            assertThat(c.count()).isEqualTo(24);
-            assertThat(c.action()).isEqualTo("LIST");
-        });
-        assertThat(response.markers()).hasSize(1);
-        assertThat(response.viewportPlaceCount()).isEqualTo(25);
-        var sizes = org.mockito.ArgumentCaptor.forClass(Double.class);
-        verify(repository, times(2)).findCells(any(), sizes.capture(), eq(false), anyInt());
-        assertThat(sizes.getAllValues().get(1)).isEqualTo(sizes.getAllValues().get(0) * 2);
-    }
+        var result = service.find(request(zoom));
 
-    @Test
-    void regionalTotalsAreNotAddedToViewportAndUnknownRegionsUseSpatialFallback() {
-        var region = new Region("SIGUNGU", "27260", "수성구", 320, "REGION", 35.87, 128.6, bounds, "PLACE_EXTENT", "EXPAND", 12);
-        when(repository.findRegions(any(), eq("SIGUNGU"), anyInt())).thenReturn(List.of(region));
-        when(repository.findCells(any(), anyDouble(), eq(true), anyInt())).thenReturn(List.of());
-        when(repository.markers(List.of())).thenReturn(List.of());
-        var response = service.find(request(10));
-        assertThat(response.regions()).containsExactly(region);
-        assertThat(response.viewportPlaceCount()).isEqualTo(25);
-        verify(repository).findCells(any(), anyDouble(), eq(true), anyInt());
-    }
-
-    @Test
-    void boundedReaggregationReturnsExplicitFailureWithoutPartialArrays() {
-        when(repository.findCells(any(), anyDouble(), anyBoolean(), anyInt())).thenReturn(
-                java.util.Collections.nCopies(201, new Cell(1, 1, 2, 1, 35.87, 128.6, bounds, "a")));
-        var response = service.find(request(20));
-        assertThat(response.complete()).isFalse();
-        assertThat(response.clusters()).isEmpty();
-        assertThat(response.incompleteReason()).isEqualTo("RESULT_BUDGET_EXCEEDED");
-        verify(repository, times(24)).findCells(any(), anyDouble(), anyBoolean(), anyInt());
+        assertThat(result.mode()).isEqualTo("SPATIAL");
+        assertThat(result.zoom()).isEqualTo(zoom);
+        assertThat(result.displayStatus()).isEqualTo(DisplayStatus.MARKERS);
+        assertThat(result.displayLimit()).isEqualTo(100);
+        assertThat(result.viewportPlaceCount()).isEqualTo(count);
+        assertThat(result.markers()).containsExactlyElementsOf(markers);
+        assertThat(result.markers()).extracting(Marker::id).doesNotHaveDuplicates();
+        assertThat(result.regions()).isEmpty();
+        assertThat(result.clusters()).isEmpty();
+        assertThat(result.complete()).isTrue();
+        assertThat(result.incompleteReason()).isNull();
+        assertThat(result.recoveryAction()).isNull();
+        verify(repository).setQueryTimeout();
+        verify(repository).countViewport(condition);
+        if (count > 0) verify(repository).findViewportMarkers(condition);
+        verifyNoMoreInteractions(repository);
         verifyNoInteractions(tokens);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"0,101", "7,101", "10,101", "13,101", "20,101", "0,10000", "20,10000"})
+    void returnsExactCountAndZoomHintWithoutLoadingMarkersOrGroups(int zoom, long count) {
+        var condition = AdminPlaceMapCondition.from(request(zoom));
+        when(repository.countViewport(condition)).thenReturn(count);
+
+        var result = service.find(request(zoom));
+
+        assertThat(result.displayStatus()).isEqualTo(DisplayStatus.ZOOM_REQUIRED);
+        assertThat(result.displayLimit()).isEqualTo(100);
+        assertThat(result.viewportPlaceCount()).isEqualTo(count);
+        assertThat(result.markers()).isEmpty();
+        assertThat(result.regions()).isEmpty();
+        assertThat(result.clusters()).isEmpty();
+        assertThat(result.complete()).isFalse();
+        assertThat(result.incompleteReason()).isEqualTo("RESULT_BUDGET_EXCEEDED");
+        assertThat(result.recoveryAction()).isEqualTo("ZOOM_IN");
+        verify(repository).setQueryTimeout();
+        verify(repository).countViewport(condition);
+        verifyNoMoreInteractions(repository);
+        verifyNoInteractions(tokens);
+    }
+
+    @Test
+    void preservesAllFiltersAndIgnoresCssSizeForDisplayDecision() {
+        var request = new AdminPlaceMapRequest(128.5, 35.8, 128.7, 35.95, 0, 64, 64,
+                " 카페 ", "커피", PlaceDiscoveryStatus.HIDDEN, PlaceOperatingStatus.PERMANENTLY_CLOSED);
+        var condition = AdminPlaceMapCondition.from(request);
+        when(repository.countViewport(condition)).thenReturn(100L);
+        var markers = IntStream.rangeClosed(1, 100)
+                .mapToObj(id -> new Marker(id, "카페", 35.87, 128.6, "CAFE", "HIDDEN", "PERMANENTLY_CLOSED")).toList();
+        when(repository.findViewportMarkers(condition)).thenReturn(markers);
+
+        var result = service.find(request);
+
+        assertThat(result.markers()).hasSize(100);
+        assertThat(condition.keyword()).isEqualTo("카페");
+        assertThat(condition.category()).isEqualTo("CAFE");
+        var order = inOrder(repository);
+        order.verify(repository).setQueryTimeout();
+        order.verify(repository).countViewport(condition);
+        order.verify(repository).findViewportMarkers(condition);
+        verifyNoMoreInteractions(repository);
+        verifyNoInteractions(tokens);
+    }
+
+    @Test
+    void reportsAndAppliesTheServerConfiguredLimit() {
+        var limited = new AdminPlaceMapQueryService(repository, tokens, new AdminPlaceMapProperties(80));
+        when(repository.countViewport(any())).thenReturn(81L);
+
+        var result = limited.find(request(20));
+
+        assertThat(result.displayLimit()).isEqualTo(80);
+        assertThat(result.displayStatus()).isEqualTo(DisplayStatus.ZOOM_REQUIRED);
+        verify(repository, never()).findViewportMarkers(any());
     }
 
     @Test
@@ -96,19 +143,19 @@ class AdminPlaceMapQueryServiceTest {
     }
 
     @Test
-    void queryTimeoutUsesDomainError() {
+    void countTimeoutUsesDomainError() {
         when(repository.countViewport(any())).thenThrow(new QueryTimeoutException("cancel"));
-        assertThatThrownBy(() -> service.find(request(14))).isInstanceOf(AdminException.class).hasMessageContaining("초과");
+        assertThatThrownBy(() -> service.find(request(14))).isInstanceOfSatisfying(AdminException.class,
+                e -> assertThat(e.getErrorCode()).isEqualTo(AdminErrorCode.ADMIN_PLACE_MAP_QUERY_TIMEOUT));
+        verify(repository, never()).findViewportMarkers(any());
     }
 
     @Test
-    void emptyViewportKeepsModeAndReturnsEmptyArrays() {
-        when(repository.countViewport(any())).thenReturn(0L);
-        var result = service.find(request(7));
-        assertThat(result.mode()).isEqualTo("SIDO");
-        assertThat(result.regions()).isEmpty();
-        assertThat(result.clusters()).isEmpty();
-        assertThat(result.markers()).isEmpty();
-        assertThat(result.complete()).isTrue();
+    void markerQueryCancellationUsesDomainError() {
+        when(repository.countViewport(any())).thenReturn(1L);
+        when(repository.findViewportMarkers(any())).thenThrow(new DataAccessResourceFailureException(
+                "cancel", new SQLException("statement timeout", "57014")));
+        assertThatThrownBy(() -> service.find(request(14))).isInstanceOfSatisfying(AdminException.class,
+                e -> assertThat(e.getErrorCode()).isEqualTo(AdminErrorCode.ADMIN_PLACE_MAP_QUERY_TIMEOUT));
     }
 }
