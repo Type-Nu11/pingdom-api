@@ -108,14 +108,14 @@ public class AdminPlaceMapQueryRepository {
         String sql = points(unknownOnly) + """
                 SELECT FLOOR(ST_X(ST_Transform(location, 3857)) / :cell)::bigint AS grid_x,
                        FLOOR(ST_Y(ST_Transform(location, 3857)) / :cell)::bigint AS grid_y,
-                       COUNT(*) AS place_count, MIN(map_place_id) AS single_id,
+                       COUNT(*) AS place_count, MIN(map_place_id) AS representative_id,
                        AVG(latitude) AS latitude, AVG(longitude) AS longitude,
                        MIN(longitude) AS west, MIN(latitude) AS south,
                        MAX(longitude) AS east, MAX(latitude) AS north,
                 """ + FINGERPRINT + " AS fingerprint FROM points GROUP BY grid_x, grid_y ORDER BY grid_y, grid_x LIMIT :limit";
         return jdbc.query(sql, params(c).addValue("cell", cellSize).addValue("limit", limit),
                 (rs, row) -> new Cell(rs.getLong("grid_x"), rs.getLong("grid_y"), rs.getLong("place_count"),
-                        rs.getLong("single_id"), rs.getDouble("latitude"), rs.getDouble("longitude"),
+                        rs.getLong("representative_id"), rs.getDouble("latitude"), rs.getDouble("longitude"),
                         bounds(rs), rs.getString("fingerprint")));
     }
 
@@ -165,7 +165,7 @@ public class AdminPlaceMapQueryRepository {
                 rs.getString("discovery_status"), rs.getString("operating_status"));
     }
 
-    public record Cell(long x, long y, long count, long singleId, double latitude, double longitude,
+    public record Cell(long x, long y, long count, long representativeId, double latitude, double longitude,
                        Bounds bounds, String fingerprint) {}
     public record GroupState(long count, String fingerprint) {}
 }
