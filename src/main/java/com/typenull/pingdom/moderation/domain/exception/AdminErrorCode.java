@@ -8,6 +8,9 @@ import org.springframework.http.HttpStatus;
 @Getter
 @RequiredArgsConstructor
 public enum AdminErrorCode implements ErrorCode {
+    ADMIN_PLACE_MAP_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "관리자 지도 조회 조건이 올바르지 않습니다."),
+    ADMIN_PLACE_MAP_CLUSTER_INVALID(HttpStatus.CONFLICT, "지도 그룹이 만료되었거나 변경되었습니다. 지도를 다시 조회해주세요."),
+    ADMIN_PLACE_MAP_QUERY_TIMEOUT(HttpStatus.SERVICE_UNAVAILABLE, "지도 조회 시간이 초과되었습니다. 잠시 후 다시 조회해주세요."),
     ADMIN_ROLE_ASSIGNMENT_INVALID(HttpStatus.BAD_REQUEST, "관리자 역할 할당 요청이 올바르지 않습니다."),
     ADMIN_PERMISSION_REQUIRED(HttpStatus.FORBIDDEN, "요청을 처리할 관리자 권한이 없습니다."),
     ADMIN_ROLE_ASSIGNMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "관리자 역할 할당을 찾을 수 없습니다."),
