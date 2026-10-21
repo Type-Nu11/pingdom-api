@@ -464,7 +464,7 @@ verification:
     cleanup-delay: PT24H
     cleanup-initial-delay: PT1H
 
-# 관리자 지도 표시 상한. 쿼리 timeout과 별개이며 실측 후 조정한다.
+# 관리자 지도 전체 마커 표시 한도. 쿼리 timeout과 별개이며 초기 정책값은 100이다.
 admin:
   place-map:
-    max-items: ${ADMIN_PLACE_MAP_MAX_ITEMS:200}
+    display-limit: ${ADMIN_PLACE_MAP_DISPLAY_LIMIT:100}
