@@ -3156,6 +3156,40 @@ class AdminMapPlaceControllerTest {
         assertEquals(1L, placeSimilaritySnapshotRepository.count());
     }
 
+    /** 신규 지도/그룹 경로도 실제 Security 체인의 인증과 관리자 권한 검사를 거친다. */
+    @Test
+    void adminMapRequiresAuthenticationAndAdminRole() throws Exception {
+        mockMvc.perform(get("/admin/places/map"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/admin/places/map/clusters/token/places"))
+                .andExpect(status().isUnauthorized());
+        String token = createUserAndLogin("mapUser" + ADMIN_SEQUENCE.incrementAndGet(), UserRole.USER);
+        mockMvc.perform(get("/admin/places/map")
+                        .param("west", "128.5").param("south", "35.8").param("east", "128.7")
+                        .param("north", "35.95").param("zoom", "13").param("width", "1200").param("height", "800")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/admin/places/map/clusters/token/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
+    /** H2 환경에서도 관리자 인증 후 요청 검증은 PostGIS SQL보다 먼저 수행된다. */
+    @Test
+    void adminMapValidatesBeforeExecutingSpatialSql() throws Exception {
+        String token = createAdminAndLogin();
+        mockMvc.perform(get("/admin/places/map")
+                        .param("west", "129").param("south", "35.8").param("east", "128")
+                        .param("north", "35.95").param("zoom", "13").param("width", "1200").param("height", "800")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("ADMIN_PLACE_MAP_INVALID_REQUEST"));
+        mockMvc.perform(get("/admin/places/map/clusters/expired/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ADMIN_PLACE_MAP_CLUSTER_INVALID"));
+    }
+
     /** 증가하는 이름의 관리자 계정을 생성하고 실제 로그인 API로 access token을 발급받음. */
     private String createAdminAndLogin() throws Exception {
         String username = "adminPlaceTester" + ADMIN_SEQUENCE.incrementAndGet();
