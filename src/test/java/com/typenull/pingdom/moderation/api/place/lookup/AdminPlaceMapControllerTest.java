@@ -48,6 +48,21 @@ class AdminPlaceMapControllerTest {
     }
 
     @Test
+    void returnsRepresentativeObjectAlongsideExistingClusterContract() throws Exception {
+        var representative = new AdminPlaceMapResponse.Marker(10,"대표 카페",35.87,128.6,"CAFE","VISIBLE","OPERATING");
+        var cluster = new AdminPlaceMapResponse.Cluster("key","token",24,representative,35.88,128.61,
+                new AdminPlaceMapResponse.Bounds(128.5,35.8,128.7,35.95),"VIEWPORT","EXPAND",14);
+        when(service.find(any())).thenReturn(new AdminPlaceMapResponse("SPATIAL",13,List.of(),List.of(cluster),List.of(),24,true,null,null));
+        mvc.perform(request()).andExpect(status().isOk())
+                .andExpect(jsonPath("$.clusters[0].representative.id").value(10))
+                .andExpect(jsonPath("$.clusters[0].representative.longitude").value(128.6))
+                .andExpect(jsonPath("$.clusters[0].count").value(24))
+                .andExpect(jsonPath("$.clusters[0].longitude").value(128.61))
+                .andExpect(jsonPath("$.clusters[0].nextZoom").value(14))
+                .andExpect(jsonPath("$.markers").isEmpty());
+    }
+
+    @Test
     void missingRequiredInputAndInvalidEnumsAreBadRequests() throws Exception {
         mvc.perform(get("/admin/places/map")).andExpect(status().isBadRequest());
         mvc.perform(request().param("discoveryStatus","UNKNOWN")).andExpect(status().isBadRequest());

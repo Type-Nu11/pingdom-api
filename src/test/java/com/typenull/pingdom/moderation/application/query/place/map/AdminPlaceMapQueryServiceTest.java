@@ -35,14 +35,15 @@ class AdminPlaceMapQueryServiceTest {
         var single = new Cell(2, 2, 1, 25, 35.88, 128.61, bounds, "single");
         when(repository.findCells(any(), anyDouble(), eq(false), anyInt())).thenReturn(excess, List.of(group, single));
         when(tokens.issue(any(), anyDouble(), eq(1L), eq(1L), eq(false), eq("fingerprint"))).thenReturn("token");
-        when(repository.markers(List.of(25L))).thenReturn(List.of(new Marker(25, "카페", 35.88, 128.61, "CAFE", "HIDDEN", "OPERATING")));
+        when(repository.markers(List.of(1L, 25L))).thenReturn(List.of(new Marker(1, "대표 카페", 35.87, 128.6, "CAFE", "HIDDEN", "OPERATING"), new Marker(25, "카페", 35.88, 128.61, "CAFE", "HIDDEN", "OPERATING")));
         var response = service.find(request(14));
         assertThat(response.complete()).isTrue();
         assertThat(response.clusters()).singleElement().satisfies(c -> {
             assertThat(c.count()).isEqualTo(24);
+            assertThat(c.representative().id()).isEqualTo(1);
             assertThat(c.action()).isEqualTo("LIST");
         });
-        assertThat(response.markers()).hasSize(1);
+        assertThat(response.markers()).extracting(Marker::id).containsExactly(25L);
         assertThat(response.viewportPlaceCount()).isEqualTo(25);
         var sizes = org.mockito.ArgumentCaptor.forClass(Double.class);
         verify(repository, times(2)).findCells(any(), sizes.capture(), eq(false), anyInt());

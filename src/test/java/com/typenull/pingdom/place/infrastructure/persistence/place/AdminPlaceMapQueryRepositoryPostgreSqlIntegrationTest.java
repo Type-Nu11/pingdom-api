@@ -206,6 +206,51 @@ class AdminPlaceMapQueryRepositoryPostgreSqlIntegrationTest {
                 .isInstanceOf(AdminException.class).hasMessageContaining("초과");
     }
 
+    /** 같은 부모 셀을 2분할해도 최소 ID가 속한 자식 그룹은 그 대표를 유지한다. */
+    @Test
+    void representativeRespectsViewportFilterAndSurvivesZoomSubdivisionWithoutMarkerDuplicates() {
+        double cell = 40075016.68557849 / Math.scalb(1d, 12) / 4;
+        double origin = Math.floor((128.6 / 360 * 40075016.68557849) / cell) * cell;
+        double first = (origin + cell * 0.2) / 40075016.68557849 * 360;
+        double second = (origin + cell * 0.3) / 40075016.68557849 * 360;
+        double third = (origin + cell * 0.8) / 40075016.68557849 * 360;
+        place(1,129.2,35.87,null,"VISIBLE"); // 최소 ID라도 현재 화면 밖이면 대표 후보가 아니다.
+        place(2,first,35.87,null,"HIDDEN");
+        place(3,first,35.87,null,"HIDDEN");
+        place(10,first,35.87,null,"VISIBLE");
+        place(20,second,35.87,null,"VISIBLE");
+        place(30,third,35.87,null,"VISIBLE");
+        var parent = tx.execute(s -> service.find(request(12,PlaceDiscoveryStatus.VISIBLE)));
+        assertThat(parent.clusters()).hasSize(1);
+        var group = parent.clusters().getFirst();
+        assertThat(group.count()).isEqualTo(3);
+        assertThat(group.representative().id()).isEqualTo(10);
+        assertThat(group.representative().longitude()).isEqualTo(first);
+        assertThat(group.longitude()).isNotEqualTo(first); // 아이콘 좌표는 기존 그룹 평균과 다르다.
+        assertThat(parent.markers()).isEmpty();
+        var repeated = tx.execute(s -> service.find(request(12,PlaceDiscoveryStatus.VISIBLE)));
+        assertThat(repeated.clusters().getFirst().representative()).isEqualTo(group.representative());
+        var child = tx.execute(s -> service.find(request(13,PlaceDiscoveryStatus.VISIBLE)));
+        assertThat(child.clusters()).singleElement().satisfies(c -> {
+            assertThat(c.count()).isEqualTo(2);
+            assertThat(c.representative().id()).isEqualTo(10);
+        });
+        assertThat(child.markers()).extracting(m -> m.id()).containsExactly(30L);
+        var list = tx.execute(s -> service.groupPlaces(group.clusterId(),1,20));
+        assertThat(list.places().getFirst().id()).isEqualTo(10);
+        var hidden = tx.execute(s -> service.find(request(12,PlaceDiscoveryStatus.HIDDEN)));
+        assertThat(hidden.clusters().getFirst().representative().id()).isEqualTo(2);
+        var pannedRequest = new AdminPlaceMapRequest((first+second)/2,35.8,128.7,35.95,12,1200,800,
+                null,null,PlaceDiscoveryStatus.VISIBLE,null);
+        var panned = tx.execute(s -> service.find(pannedRequest));
+        assertThat(panned.clusters().getFirst().representative().id()).isEqualTo(20);
+        jdbc.update("DELETE FROM map_place WHERE map_place_id=10");
+        var updated = tx.execute(s -> service.find(request(12,PlaceDiscoveryStatus.VISIBLE)));
+        assertThat(updated.clusters().getFirst().representative().id()).isEqualTo(20);
+        assertThatThrownBy(() -> tx.execute(s -> service.groupPlaces(group.clusterId(),1,20)))
+                .isInstanceOf(AdminException.class);
+    }
+
     private static class RecordingJdbc extends NamedParameterJdbcTemplate {
         String spatialSql;
         org.springframework.jdbc.core.namedparam.SqlParameterSource spatialParams;

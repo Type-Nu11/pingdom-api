@@ -58,21 +58,29 @@ public class AdminPlaceMapQueryService {
                 return new AdminPlaceMapResponse(mode, request.zoom(), List.of(), List.of(), List.of(),
                         viewportCount, false, "RESULT_BUDGET_EXCEEDED", "ZOOM_IN");
             }
+            // MIN(id)는 모든 그룹에 대해 한 번에 조회한다. 하위 셀은 부모 셀의 부분집합이므로
+            // 기존 최소 ID가 남아 있는 하위 그룹에서는 같은 장소가 계속 대표가 된다.
+            var representatives = repository.markers(cells.stream().map(Cell::representativeId).toList());
+            var byId = representatives.stream().collect(java.util.stream.Collectors.toMap(
+                    AdminPlaceMapResponse.Marker::id, java.util.function.Function.identity()));
             var clusters = new ArrayList<Cluster>();
             var singleIds = new ArrayList<Long>();
             for (Cell cell : cells) {
                 if (cell.count() == 1) {
-                    singleIds.add(cell.singleId());
+                    singleIds.add(cell.representativeId());
                 } else {
                     boolean sameCoordinate = cell.bounds().west() == cell.bounds().east()
                             && cell.bounds().south() == cell.bounds().north();
                     String token = tokens.issue(condition, cellSize, cell.x(), cell.y(), unknownOnly, cell.fingerprint());
-                    clusters.add(new Cluster(tokens.displayKey(condition, cellSize, cell.x(), cell.y(), unknownOnly), token, cell.count(), cell.latitude(), cell.longitude(), cell.bounds(),
+                    clusters.add(new Cluster(tokens.displayKey(condition, cellSize, cell.x(), cell.y(), unknownOnly), token, cell.count(), java.util.Objects.requireNonNull(byId.get(cell.representativeId()), "그룹 대표 장소 누락"), cell.latitude(), cell.longitude(), cell.bounds(),
                             "VIEWPORT", request.zoom() == 20 || sameCoordinate ? "LIST" : "EXPAND",
                             request.zoom() == 20 || sameCoordinate ? null : request.zoom() + 1));
                 }
             }
-            return response(mode, request.zoom(), regions, clusters, repository.markers(singleIds), viewportCount);
+            // 대표는 그룹 안에만 반환하며 단일 장소 셀만 최상위 markers에 포함한다.
+            var singleIdSet = new java.util.HashSet<>(singleIds);
+            return response(mode, request.zoom(), regions, clusters,
+                    representatives.stream().filter(marker -> singleIdSet.contains(marker.id())).toList(), viewportCount);
         } catch (DataAccessException e) {
             throw queryFailure(e);
         }

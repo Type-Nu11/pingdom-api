@@ -39,14 +39,17 @@ public class AdminPlaceMapController {
     @Operation(summary = "관리자 지도 지역 집계 및 공간 그룹 조회", description = "zoom 0~8 SIDO, 9~11 SIGUNGU, 12~20 SPATIAL. "
             + "지역은 화면 안 장소 기준으로 선택하며 count는 동일 필터의 지역 전체 수입니다. "
             + "bounds는 행정 경계가 아닌 PLACE_EXTENT입니다. 지역 미연결 장소는 공간 그룹/마커로 반환합니다. "
-            + "viewportPlaceCount와 지역 count는 합산하지 않습니다. 초기 상한 200개(설정 가능)이며 초과 시 재집계합니다. EXPAND는 nextZoom 이상 확대합니다. clusterKey는 표시용 고정 키입니다. "
+            + "viewportPlaceCount와 지역 count는 합산하지 않습니다. 초기 상한 200개(설정 가능)이며 초과 시 재집계합니다. EXPAND는 nextZoom 이상 확대합니다. clusterKey는 표시용 고정 키입니다. representative는 그룹 내 최소 ID 장소이며 아이콘은 대표 장소 좌표에 표시합니다. count는 대표를 포함하며 +N은 count-1입니다. "
             + "안전 한도 초과는 complete=false, RESULT_BUDGET_EXCEEDED, ZOOM_IN으로 안내합니다. "
             + "정상 0건은 빈 배열, viewportPlaceCount=0, complete=true입니다.")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "지역/공간 혼합 또는 빈 결과",
             content = @Content(schema = @Schema(implementation = AdminPlaceMapResponse.class), examples = {
                 @ExampleObject(name = "spatial", summary = "공간 그룹과 개별 장소", value = """
                     {"mode":"SPATIAL","zoom":13,"regions":[],
-                     "clusters":[{"clusterKey":"v1:filterHash:resolution:x:y","clusterId":"opaque-token","count":24,"latitude":35.871,"longitude":128.601,
+                     "clusters":[{"clusterKey":"v1:filterHash:resolution:x:y","clusterId":"opaque-token","count":24,
+                       "representative":{"id":1810,"name":"대표 카페","latitude":35.872,"longitude":128.602,
+                         "category":"CAFE","discoveryStatus":"VISIBLE","operatingStatus":"OPERATING"},
+                       "latitude":35.871,"longitude":128.601,
                        "bounds":{"west":128.600,"south":35.870,"east":128.603,"north":35.873},
                        "countScope":"VIEWPORT","action":"EXPAND","nextZoom":14}],
                      "markers":[{"id":1820,"name":"예시 카페","latitude":35.875,"longitude":128.610,

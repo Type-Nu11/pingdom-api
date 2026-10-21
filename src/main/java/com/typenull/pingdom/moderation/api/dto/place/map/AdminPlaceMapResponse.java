@@ -20,7 +20,10 @@ public record AdminPlaceMapResponse(
                          @Schema(allowableValues = {"PLACE_EXTENT"}) String boundsSource,
                          @Schema(allowableValues = {"EXPAND"}) String action, int nextZoom) {}
     @Schema(name = "AdminPlaceMapCluster")
-    public record Cluster(String clusterKey, String clusterId, long count, double latitude, double longitude,
+    public record Cluster(String clusterKey, String clusterId, long count,
+                          @Schema(description = "현재 영역·필터에 맞는 그룹 내 최소 ID 장소. 아이콘은 이 장소 좌표에 표시합니다. count는 대표를 포함하며 +N은 count-1입니다.",
+                                  requiredMode = Schema.RequiredMode.REQUIRED) Marker representative,
+                          double latitude, double longitude,
                           Bounds bounds, String countScope,
                           @Schema(allowableValues = {"EXPAND", "LIST"}) String action, Integer nextZoom) {}
     @Schema(name = "AdminPlaceMapMarker")
