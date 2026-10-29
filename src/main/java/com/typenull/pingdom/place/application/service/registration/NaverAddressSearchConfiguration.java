@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.application.service.registration;
 
+import com.typenull.pingdom.shared.config.proxy.OiletProxyProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -14,10 +15,11 @@ class NaverAddressSearchConfiguration {
      * 인증값은 이 Bean에 보관하지 않고 요청을 보낼 때만 헤더로 전달합니다.
      */
     @Bean
-    RestClient naverAddressSearchRestClient(NaverAddressSearchClient.Properties properties) {
+    RestClient naverAddressSearchRestClient(NaverAddressSearchClient.Properties properties, OiletProxyProperties oiletProxy) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(properties.connectTimeout());
         factory.setReadTimeout(properties.readTimeout());
-        return RestClient.builder().baseUrl(properties.baseUrl()).requestFactory(factory).build();
+        oiletProxy.applyTo(factory);
+        return RestClient.builder().baseUrl(oiletProxy.targetUrl(properties.baseUrl())).requestFactory(factory).build();
     }
 }

@@ -3,6 +3,7 @@ package com.typenull.pingdom.analysis.infrastructure.ai;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisClient;
 import com.typenull.pingdom.analysis.infrastructure.mcp.McpAnalysisProperties;
+import com.typenull.pingdom.shared.config.proxy.OiletProxyProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -31,13 +32,15 @@ public class AiAnalysisClientConfig {
     public AiAnalysisClient geminiAiAnalysisClient(
             AiAnalysisProperties properties,
             ObjectMapper objectMapper,
-            McpAnalysisProperties mcpProperties
+            McpAnalysisProperties mcpProperties,
+            OiletProxyProperties oiletProxy
     ) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(properties.connectTimeout());
         requestFactory.setReadTimeout(properties.readTimeout());
+        oiletProxy.applyTo(requestFactory);
         RestClient restClient = RestClient.builder()
-                .baseUrl(withTrailingSlash(properties.baseUrl()))
+                .baseUrl(withTrailingSlash(oiletProxy.targetUrl(properties.baseUrl())))
                 .requestFactory(requestFactory)
                 .build();
         return new GeminiAiAnalysisClient(restClient, properties, mcpProperties, objectMapper);

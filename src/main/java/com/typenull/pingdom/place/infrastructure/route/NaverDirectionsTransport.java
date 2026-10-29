@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.infrastructure.route;
 
 import com.typenull.pingdom.place.api.dto.route.RouteCoordinate;
+import com.typenull.pingdom.shared.config.proxy.OiletProxyProperties;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.ExecutionException;
@@ -17,15 +18,17 @@ import org.springframework.web.util.UriComponentsBuilder;
 class NaverDirectionsTransport {
     private final CloseableHttpAsyncClient client;
     private final NaverDirectionsClient.Properties properties;
+    private final OiletProxyProperties oiletProxy;
 
     NaverDirectionsTransport(@Qualifier("naverDirectionsHttpClient") CloseableHttpAsyncClient client,
-            NaverDirectionsClient.Properties properties) {
+            NaverDirectionsClient.Properties properties, OiletProxyProperties oiletProxy) {
         this.client = client;
         this.properties = properties;
+        this.oiletProxy = oiletProxy;
     }
 
     ProviderResponse get(RouteCoordinate origin, RouteCoordinate destination) throws IOException {
-        var uri = UriComponentsBuilder.fromUriString(properties.baseUrl()).path("/map-direction/v1/driving")
+        var uri = UriComponentsBuilder.fromUriString(oiletProxy.targetUrl(properties.baseUrl())).path("/map-direction/v1/driving")
                 .queryParam("start", origin.longitude() + "," + origin.latitude())
                 .queryParam("goal", destination.longitude() + "," + destination.latitude())
                 .queryParam("option", "traoptimal").build().toUri();
