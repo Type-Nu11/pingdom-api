@@ -45,7 +45,7 @@ class GeminiGenerateContentClientTest {
         server = MockRestServiceServer.bindTo(builder).build();
         client = new GeminiGenerateContentClient(
                 builder.build(),
-                new GeminiProperties(true, "test-api-key", "gemini-test", Duration.ofSeconds(2), Duration.ofSeconds(5)),
+                new GeminiProperties(true, "test-api-key", "gemini-test", Duration.ofSeconds(2), Duration.ofSeconds(5), null),
                 Clock.fixed(Instant.parse("2026-10-08T16:00:00Z"), ZoneId.of("Asia/Seoul"))
         );
     }

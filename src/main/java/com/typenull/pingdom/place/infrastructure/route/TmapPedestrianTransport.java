@@ -3,6 +3,7 @@ package com.typenull.pingdom.place.infrastructure.route;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.place.api.dto.route.RouteCoordinate;
+import com.typenull.pingdom.shared.config.proxy.OiletProxyProperties;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.util.LinkedHashMap;
@@ -21,16 +22,19 @@ class TmapPedestrianTransport {
     private final CloseableHttpAsyncClient client;
     private final TmapPedestrianClient.Properties properties;
     private final ObjectMapper mapper;
+    private final OiletProxyProperties oiletProxy;
 
     TmapPedestrianTransport(@Qualifier("tmapPedestrianHttpClient") CloseableHttpAsyncClient client,
-            TmapPedestrianClient.Properties properties, ObjectMapper mapper) {
+            TmapPedestrianClient.Properties properties, ObjectMapper mapper,
+            OiletProxyProperties oiletProxy) {
         this.client = client;
         this.properties = properties;
         this.mapper = mapper;
+        this.oiletProxy = oiletProxy;
     }
 
     ProviderResponse post(RouteCoordinate origin, RouteCoordinate destination) throws IOException {
-        var request = SimpleRequestBuilder.post(properties.baseUrl() + "/tmap/routes/pedestrian?version=1")
+        var request = SimpleRequestBuilder.post(oiletProxy.targetUrl(properties.baseUrl()) + "/tmap/routes/pedestrian?version=1")
                 .setHeader("appKey", properties.appKey()).setHeader("Accept", "application/json")
                 .setBody(requestBody(origin, destination), ContentType.APPLICATION_JSON).build();
         long started = System.nanoTime();

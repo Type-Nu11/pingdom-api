@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.infrastructure.localhot;
 
+import com.typenull.pingdom.shared.config.proxy.OiletProxyProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -9,12 +10,13 @@ import org.springframework.web.client.RestClient;
 class KakaoLocalRegionConfiguration {
 
     @Bean
-    RestClient kakaoLocalRegionRestClient(KakaoLocalRegionProperties properties) {
+    RestClient kakaoLocalRegionRestClient(KakaoLocalRegionProperties properties, OiletProxyProperties oiletProxy) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(properties.connectTimeout());
         requestFactory.setReadTimeout(properties.readTimeout());
+        oiletProxy.applyTo(requestFactory);
         return RestClient.builder()
-                .baseUrl(properties.baseUrl())
+                .baseUrl(oiletProxy.targetUrl(properties.baseUrl()))
                 .requestFactory(requestFactory)
                 .build();
     }
