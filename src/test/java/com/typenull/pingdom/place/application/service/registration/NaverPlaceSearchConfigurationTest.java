@@ -2,7 +2,6 @@ package com.typenull.pingdom.place.application.service.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.typenull.pingdom.shared.config.proxy.OiletProxyProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -33,8 +32,7 @@ class NaverPlaceSearchConfigurationTest {
     }
 
     @Configuration(proxyBeanMethods = false)
-    @EnableConfigurationProperties({NaverPlaceSearchClient.Properties.class, NaverAddressSearchClient.Properties.class,
-            OiletProxyProperties.class})
+    @EnableConfigurationProperties({NaverPlaceSearchClient.Properties.class, NaverAddressSearchClient.Properties.class})
     @Import({NaverPlaceSearchConfiguration.class, NaverPlaceSearchClient.class,
             NaverAddressSearchConfiguration.class, NaverAddressSearchClient.class})
     static class SearchConfiguration {}

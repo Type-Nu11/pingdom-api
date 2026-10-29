@@ -1,6 +1,5 @@
 package com.typenull.pingdom.place.infrastructure.route;
 
-import com.typenull.pingdom.shared.config.proxy.OiletProxyProperties;
 import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
@@ -14,13 +13,13 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 class NaverDirectionsConfiguration {
     @Bean(initMethod = "start", destroyMethod = "close")
-    CloseableHttpAsyncClient naverDirectionsHttpClient(NaverDirectionsClient.Properties properties, OiletProxyProperties oiletProxy) {
+    CloseableHttpAsyncClient naverDirectionsHttpClient(NaverDirectionsClient.Properties properties) {
         var connections = PoolingAsyncClientConnectionManagerBuilder.create()
                 .setDefaultConnectionConfig(ConnectionConfig.custom()
                         .setConnectTimeout(Timeout.ofMilliseconds(properties.connectTimeout().toMillis()))
                         .setSocketTimeout(Timeout.ofMilliseconds(properties.readTimeout().toMillis())).build())
                 .setMaxConnTotal(20).setMaxConnPerRoute(20).build();
-        return oiletProxy.applyTo(HttpAsyncClients.custom())
+        return HttpAsyncClients.custom()
                 .setConnectionManager(connections)
                 .setIOReactorConfig(IOReactorConfig.custom().setIoThreadCount(2).build())
                 .setDefaultRequestConfig(RequestConfig.custom()

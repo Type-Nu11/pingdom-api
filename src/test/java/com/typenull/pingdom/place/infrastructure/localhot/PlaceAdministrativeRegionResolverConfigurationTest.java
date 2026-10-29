@@ -3,7 +3,6 @@ package com.typenull.pingdom.place.infrastructure.localhot;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.typenull.pingdom.place.domain.place.region.PlaceAdministrativeRegionResolver;
-import com.typenull.pingdom.shared.config.proxy.OiletProxyProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -45,8 +44,7 @@ class PlaceAdministrativeRegionResolverConfigurationTest {
     }
 
     @Configuration(proxyBeanMethods = false)
-    @EnableConfigurationProperties({KakaoLocalRegionProperties.class, NaverLocalRegionProperties.class,
-            OiletProxyProperties.class})
+    @EnableConfigurationProperties({KakaoLocalRegionProperties.class, NaverLocalRegionProperties.class})
     @Import({
             KakaoLocalRegionConfiguration.class,
             NaverLocalRegionConfiguration.class,

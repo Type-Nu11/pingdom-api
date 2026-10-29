@@ -9,11 +9,9 @@ public record GeminiProperties(
         String apiKey,
         String model,
         Duration connectTimeout,
-        Duration readTimeout,
-        String baseUrl
+        Duration readTimeout
 ) {
 
-    private static final String DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
     private static final String DEFAULT_MODEL = "gemini-3.1-flash-lite";
     private static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(2);
     private static final Duration DEFAULT_READ_TIMEOUT = Duration.ofSeconds(5);
@@ -30,10 +28,6 @@ public record GeminiProperties(
         }
         if (readTimeout == null || !readTimeout.isPositive()) {
             readTimeout = DEFAULT_READ_TIMEOUT;
-        }
-        baseUrl = normalize(baseUrl);
-        if (baseUrl == null) {
-            baseUrl = DEFAULT_BASE_URL;
         }
     }
 
