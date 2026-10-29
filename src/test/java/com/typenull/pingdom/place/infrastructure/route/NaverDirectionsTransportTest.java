@@ -7,7 +7,6 @@ import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
 import com.typenull.pingdom.place.api.dto.route.RouteCoordinate;
-import com.typenull.pingdom.shared.config.proxy.OiletProxyProperties;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -36,7 +35,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 /** 실제 소켓으로 전송 정책을 검증합니다. 외부 공급자 호출이나 Docker가 필요하지 않습니다. */
 class NaverDirectionsTransportTest {
-    private static final OiletProxyProperties NO_PROXY = new OiletProxyProperties(false, null, 0);
     private static final RouteCoordinate ORIGIN = new RouteCoordinate(37.5665, 126.9780);
     private static final RouteCoordinate DESTINATION = new RouteCoordinate(37.4979, 127.0276);
     private HttpServer server;
@@ -59,9 +57,9 @@ class NaverDirectionsTransportTest {
         when(properties.connectTimeout()).thenReturn(Duration.ofMillis(300));
         when(properties.readTimeout()).thenReturn(Duration.ofMillis(300));
         when(properties.requestTimeout()).thenReturn(Duration.ofMillis(800));
-        client = new NaverDirectionsConfiguration().naverDirectionsHttpClient(properties, NO_PROXY);
+        client = new NaverDirectionsConfiguration().naverDirectionsHttpClient(properties);
         client.start();
-        transport = new NaverDirectionsTransport(client, properties, NO_PROXY);
+        transport = new NaverDirectionsTransport(client, properties);
     }
 
     @AfterEach

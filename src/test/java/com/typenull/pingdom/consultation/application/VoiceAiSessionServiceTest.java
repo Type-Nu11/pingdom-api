@@ -34,7 +34,7 @@ class VoiceAiSessionServiceTest {
     private final Map<String, VoiceAiReplay> replayStore = new HashMap<>();
     private final VoiceAiReplayTransactionService transactions = new VoiceAiReplayTransactionService(sessions, replays);
     private final VoiceAiSessionService service = new VoiceAiSessionService(sessions,
-            new GeminiProperties(true, "test-key", null, null, null, null), provider, new ProviderEnvelopeValidator(),
+            new GeminiProperties(true, "test-key", null, null, null), provider, new ProviderEnvelopeValidator(),
             transactions, clock);
     private VoiceAiSession session;
 

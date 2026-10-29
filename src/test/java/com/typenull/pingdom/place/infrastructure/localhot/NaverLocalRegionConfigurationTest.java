@@ -2,7 +2,6 @@ package com.typenull.pingdom.place.infrastructure.localhot;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.typenull.pingdom.shared.config.proxy.OiletProxyProperties;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -62,7 +61,7 @@ class NaverLocalRegionConfigurationTest {
     }
 
     @Configuration(proxyBeanMethods = false)
-    @EnableConfigurationProperties({NaverLocalRegionProperties.class, OiletProxyProperties.class})
+    @EnableConfigurationProperties(NaverLocalRegionProperties.class)
     static class TestConfiguration {
     }
 }

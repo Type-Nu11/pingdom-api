@@ -296,14 +296,6 @@ gemini:
   model: ${GEMINI_MODEL:gemini-3.1-flash-lite}
   connect-timeout: ${GEMINI_CONNECT_TIMEOUT:PT2S}
   read-timeout: ${GEMINI_READ_TIMEOUT:PT5S}
-  base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
-
-# 외부 API egress 프록시(Oilet). 서버에서만 켠다. base URL은 https 그대로 두면 켜졌을 때 http://host:443 으로 자동 변환된다.
-oilet:
-  proxy:
-    enabled: ${OILET_PROXY_ENABLED:false}
-    host: ${OILET_PROXY_HOST:172.31.36.40}
-    port: ${OILET_PROXY_PORT:10010}
 
 menu:
   currency-exchange:
