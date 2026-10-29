@@ -69,7 +69,7 @@ class ConsultationIntroServiceTest {
      */
     private ConsultationIntroService service(boolean enabled, String apiKey) {
         return new ConsultationIntroService(
-                new GeminiProperties(enabled, apiKey, null, Duration.ofSeconds(2), Duration.ofSeconds(5)),
+                new GeminiProperties(enabled, apiKey, null, Duration.ofSeconds(2), Duration.ofSeconds(5), null),
                 geminiIntroClient
         );
     }
