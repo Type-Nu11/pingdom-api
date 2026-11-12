@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -50,4 +51,13 @@ public interface PlaceRecommendationSnapshotRepository extends JpaRepository<Pla
             FROM PlaceRecommendationSnapshot s
             """)
     Long sumExposureCount();
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM PlaceRecommendationSnapshot s WHERE s.placeId IN :ids "
+            + "AND NOT EXISTS (SELECT p.id FROM MapPlace p WHERE p.id = s.placeId)")
+    int deleteOrphans(@Param("ids") Collection<Long> ids);
+
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM PlaceRecommendationSnapshot s "
+            + "WHERE NOT EXISTS (SELECT p.id FROM MapPlace p WHERE p.id = s.placeId)")
+    int deleteAllOrphans();
 }
