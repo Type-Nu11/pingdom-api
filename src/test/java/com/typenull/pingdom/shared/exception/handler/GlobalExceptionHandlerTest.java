@@ -4,13 +4,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
+import com.typenull.pingdom.identity.domain.exception.UsersErrorCode;
+import com.typenull.pingdom.identity.domain.exception.UsersException;
+import com.typenull.pingdom.identity.domain.travel.TravelSchedule;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.api.dto.ValidationErrorResponse;
 import com.typenull.pingdom.shared.exception.CommonErrorCode;
 import com.typenull.pingdom.shared.observability.AuthMetrics;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Path;
@@ -19,9 +27,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.orm.jpa.JpaOptimisticLockingFailureException;
+import org.springframework.transaction.TransactionSystemException;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 class GlobalExceptionHandlerTest {
 
@@ -65,6 +79,98 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode()).isEqualTo(AuthErrorCode.INVALID_TOKEN.getStatus());
         assertThat(response.getBody()).isEqualTo(ErrorResponse.from(AuthErrorCode.INVALID_TOKEN));
         verify(authMetrics).recordAuthFailure(AuthErrorCode.INVALID_TOKEN, "controller_advice");
+    }
+
+    @Test
+    void mapsUserOptimisticConflictToConflictWithoutExposingInternalDetails() {
+        ResponseEntity<ErrorResponse> response = handler.handleOptimisticLockException(
+                new ObjectOptimisticLockingFailureException(User.class, 1L));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(409);
+        assertThat(response.getBody()).isEqualTo(ErrorResponse.from(UsersErrorCode.USER_CONCURRENT_MODIFICATION));
+        assertThat(response.getBody().message()).doesNotContain(User.class.getName());
+    }
+
+    @Test
+    void mapsUserJpaFlushConflictToSamePublicContract() {
+        ResponseEntity<ErrorResponse> response = handler.handleOptimisticLockException(
+                new OptimisticLockException("internal password=secret", null, User.builder().id(1L).build()));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(409);
+        assertThat(response.getBody()).isEqualTo(ErrorResponse.from(UsersErrorCode.USER_CONCURRENT_MODIFICATION));
+        assertThat(response.getBody().message()).doesNotContain("secret");
+    }
+
+    @Test
+    void mapsJpaTranslatedUserConflictWithoutClassMetadata() {
+        JpaOptimisticLockingFailureException exception = new JpaOptimisticLockingFailureException(
+                new OptimisticLockException("stale User", null, User.builder().id(1L).build()));
+        assertThat(exception.getPersistentClass()).isNull();
+
+        ResponseEntity<ErrorResponse> response = handler.handleOptimisticLockException(exception);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(409);
+        assertThat(response.getBody()).isEqualTo(ErrorResponse.from(UsersErrorCode.USER_CONCURRENT_MODIFICATION));
+    }
+
+    @Test
+    void mapsWrappedUserCommitConflict() {
+        TransactionSystemException exception = new TransactionSystemException("commit failed",
+                new jakarta.persistence.RollbackException(new OptimisticLockException(
+                        "stale User", null, User.builder().id(1L).build())));
+
+        ResponseEntity<ErrorResponse> response = handler.handleOptimisticLockException(exception);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(409);
+        assertThat(response.getBody()).isEqualTo(ErrorResponse.from(UsersErrorCode.USER_CONCURRENT_MODIFICATION));
+    }
+
+    @Test
+    void returnsConflictForWrappedUserCommitFailureThroughMvcResolver() throws Exception {
+        MockMvcBuilders.standaloneSetup(new WrappedConflictController())
+                .setControllerAdvice(handler)
+                .build()
+                .perform(get("/test/user-commit-conflict"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("USER_CONCURRENT_MODIFICATION"));
+    }
+
+    @Test
+    void preservesInternalErrorForAnotherEntityCommitFailureThroughMvcResolver() throws Exception {
+        MockMvcBuilders.standaloneSetup(new WrappedConflictController())
+                .setControllerAdvice(handler)
+                .build()
+                .perform(get("/test/other-commit-conflict"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"));
+    }
+
+    @Test
+    void recognizesUserProxyClassMetadata() {
+        ResponseEntity<ErrorResponse> response = handler.handleOptimisticLockException(
+                new ObjectOptimisticLockingFailureException(UserProxy.class, 1L));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(409);
+        assertThat(response.getBody()).isEqualTo(ErrorResponse.from(UsersErrorCode.USER_CONCURRENT_MODIFICATION));
+    }
+
+    @Test
+    void doesNotReclassifyAnotherEntityConflictAsUserConflict() {
+        ResponseEntity<ErrorResponse> response = handler.handleOptimisticLockException(
+                new ObjectOptimisticLockingFailureException(TravelSchedule.class, 1L));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(500);
+        assertThat(response.getBody()).isEqualTo(ErrorResponse.from(CommonErrorCode.INTERNAL_SERVER_ERROR));
+    }
+
+    @Test
+    void preservesExistingTravelScheduleConflictContract() {
+        ResponseEntity<ErrorResponse> response = handler.handleDomainException(
+                new UsersException(UsersErrorCode.TRAVEL_SCHEDULE_CONCURRENT_MODIFICATION));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(409);
+        assertThat(response.getBody())
+                .isEqualTo(ErrorResponse.from(UsersErrorCode.TRAVEL_SCHEDULE_CONCURRENT_MODIFICATION));
     }
 
     /**
@@ -116,5 +222,26 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode()).isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR.getStatus());
         assertThat(response.getBody()).isEqualTo(ErrorResponse.from(CommonErrorCode.INTERNAL_SERVER_ERROR));
         assertThat(response.getBody().message()).doesNotContain("secret");
+    }
+
+    private static class UserProxy extends User {
+    }
+
+    @RestController
+    static class WrappedConflictController {
+
+        @GetMapping("/test/user-commit-conflict")
+        public void userCommitFailure() {
+            throw new TransactionSystemException("commit failed",
+                    new jakarta.persistence.RollbackException(new OptimisticLockException(
+                            "stale User", null, User.builder().id(1L).build())));
+        }
+
+        @GetMapping("/test/other-commit-conflict")
+        public void otherCommitFailure() {
+            throw new TransactionSystemException("commit failed",
+                    new jakarta.persistence.RollbackException(
+                            new ObjectOptimisticLockingFailureException(TravelSchedule.class, 1L)));
+        }
     }
 }

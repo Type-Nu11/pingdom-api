@@ -5,22 +5,28 @@ import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
 import com.typenull.pingdom.availability.domain.exception.AvailabilityException;
 import com.typenull.pingdom.boost.domain.exception.VerifiedBoostException;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
+import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
+import com.typenull.pingdom.identity.domain.exception.UsersErrorCode;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.api.dto.ValidationErrorResponse;
 import com.typenull.pingdom.shared.exception.CommonErrorCode;
 import com.typenull.pingdom.shared.exception.DomainException;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.observability.AuthMetrics;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -141,6 +147,30 @@ public class GlobalExceptionHandler {
         return errorResponse(CommonErrorCode.DATA_INTEGRITY_VIOLATION);
     }
 
+    /** User 쓰기의 flush·commit 충돌은 자동 재시도 없이 거절하고 다른 도메인의 기존 오류 계약은 유지. */
+    @ExceptionHandler({ObjectOptimisticLockingFailureException.class, OptimisticLockException.class})
+    public ResponseEntity<ErrorResponse> handleOptimisticLockException(RuntimeException exception) {
+        return handleUnexpectedException(exception);
+    }
+
+    private boolean isUserOptimisticConflict(Throwable exception) {
+        Set<Throwable> visited = new HashSet<>();
+        for (Throwable cause = exception; cause != null && visited.add(cause); cause = cause.getCause()) {
+            if (cause instanceof ObjectOptimisticLockingFailureException springException) {
+                Class<?> persistentClass = springException.getPersistentClass();
+                if ((persistentClass != null && User.class.isAssignableFrom(persistentClass))
+                        || User.class.getName().equals(springException.getPersistentClassName())) {
+                    return true;
+                }
+            }
+            // JPA 변환 예외는 클래스 메타데이터가 없어도 원인 예외에 충돌 엔티티를 보존한다.
+            if (cause instanceof OptimisticLockException jpaException && jpaException.getEntity() instanceof User) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** 요청한 HTTP 상태와 reason을 유지. reason이 null일 때만 공통 요청 실패 메시지로 대체. */
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ErrorResponse> handleResponseStatusException(ResponseStatusException exception) {
@@ -163,9 +193,12 @@ public class GlobalExceptionHandler {
         return errorResponse(CommonErrorCode.METHOD_NOT_ALLOWED);
     }
 
-    /** 처리되지 않은 예외의 클래스명만 로그에 남기고 내부 상세를 제외한 공통 500 응답을 반환. */
+    /** commit wrapper의 User 충돌도 같은 409로 처리하고 나머지는 내부 상세를 제외한 공통 500 응답을 반환. */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpectedException(Exception exception) {
+        if (isUserOptimisticConflict(exception)) {
+            return errorResponse(UsersErrorCode.USER_CONCURRENT_MODIFICATION);
+        }
         log.error("Unhandled exception type={}", exception.getClass().getName());
         return errorResponse(CommonErrorCode.INTERNAL_SERVER_ERROR);
     }
