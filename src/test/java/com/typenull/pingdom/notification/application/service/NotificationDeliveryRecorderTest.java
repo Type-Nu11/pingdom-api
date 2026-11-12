@@ -2,8 +2,14 @@ package com.typenull.pingdom.notification.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import com.typenull.pingdom.notification.domain.NotificationType;
+import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.notification.domain.NotificationDeliveryStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -93,5 +99,35 @@ class NotificationDeliveryRecorderTest {
 
         assertThat(captor.getValue().status()).isEqualTo(NotificationDeliveryStatus.RETRY_SCHEDULED);
         assertThat(captor.getValue().retryable()).isTrue();
+    }
+
+    @Test
+    void recordsStaleAsNonRetryableTerminalFailure() {
+        recorder.recordEmailStale(1L, "event-id", OutboxEventType.EMAIL_VERIFICATION_REQUESTED, "user@example.com");
+        ArgumentCaptor<NotificationDeliveryRecordRequest> captor = ArgumentCaptor.forClass(NotificationDeliveryRecordRequest.class);
+        verify(writer).record(captor.capture());
+        assertThat(captor.getValue().status()).isEqualTo(NotificationDeliveryStatus.FAILED);
+        assertThat(captor.getValue().errorCode()).isEqualTo(NotificationDeliveryRecorder.ERROR_EMAIL_REQUEST_STALE);
+        assertThat(captor.getValue().retryable()).isFalse();
+    }
+
+    @Test
+    void propagatesTerminalLookupFailureInsteadOfAllowingSend() {
+        when(writer.isEmailDeliveryTerminal("event-id", "user@example.com")).thenThrow(new IllegalStateException("db unavailable"));
+        assertThrows(IllegalStateException.class, () -> recorder.isEmailDeliveryTerminal("event-id", "user@example.com"));
+    }
+
+    @Test
+    void propagatesStaleRecordingFailureBeforeTerminalCompletion() {
+        doThrow(new IllegalStateException("db unavailable")).when(writer).record(any());
+        assertThrows(IllegalStateException.class, () -> recorder.recordEmailStale(1L, "event-id",
+                OutboxEventType.EMAIL_VERIFICATION_REQUESTED, "user@example.com"));
+    }
+
+    @Test
+    void keepsSuccessRecordingBestEffortWhenDatabaseFails() {
+        doThrow(new IllegalStateException("db unavailable")).when(writer).record(any());
+        assertDoesNotThrow(() -> recorder.recordEmailSuccess(1L, "event-id",
+                OutboxEventType.EMAIL_VERIFICATION_REQUESTED, "user@example.com", "message-id"));
     }
 }
