@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerReviewRequest;
@@ -39,6 +40,7 @@ import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.LongStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -47,6 +49,11 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -74,6 +81,86 @@ class MerchantOwnerAdminServiceTest {
 
     @Captor
     private ArgumentCaptor<List<MerchantOwnerPlace>> savedMappings;
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 20, 100})
+    void loadsPlacesOnceForTheWholeProfilePage(int count) {
+        List<MerchantOwnerProfile> profiles = LongStream.rangeClosed(1, count)
+                .mapToObj(this::pendingProfile).toList();
+        List<Long> userIds = profiles.stream().map(MerchantOwnerProfile::getUserId).toList();
+        PageRequest pageable = PageRequest.of(0, count);
+        when(profileRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(profiles, pageable, count));
+        when(ownerPlaceRepository.findAllByMerchantOwnerUserIdInOrderByMerchantOwnerUserIdAscPlaceIdAsc(userIds))
+                .thenReturn(List.of());
+
+        var response = service.list(null, 1, count);
+
+        assertThat(response.profiles()).extracting(profile -> profile.userId()).containsExactlyElementsOf(userIds);
+        assertThat(response.profiles()).allSatisfy(profile -> assertThat(profile.placeIds()).isEmpty());
+        verify(ownerPlaceRepository).findAllByMerchantOwnerUserIdInOrderByMerchantOwnerUserIdAscPlaceIdAsc(userIds);
+        verify(ownerPlaceRepository, never()).findAllByMerchantOwnerUserIdOrderByPlaceIdAsc(anyLong());
+    }
+
+    @Test
+    void groupsOrderedPlacesWithoutChangingProfileOrderOrPageMetadata() {
+        List<MerchantOwnerProfile> profiles = List.of(pendingProfile(3L), pendingProfile(1L), pendingProfile(2L));
+        List<Long> userIds = List.of(3L, 1L, 2L);
+        PageRequest pageable = PageRequest.of(1, 20,
+                Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("userId")));
+        when(profileRepository.findAllByStatus(MerchantOwnerStatus.PENDING, pageable))
+                .thenReturn(new PageImpl<>(profiles, pageable, 51));
+        when(ownerPlaceRepository.findAllByMerchantOwnerUserIdInOrderByMerchantOwnerUserIdAscPlaceIdAsc(userIds))
+                .thenReturn(List.of(mapping(1L, 10L), mapping(1L, 20L), mapping(3L, 30L)));
+
+        var response = service.list(MerchantOwnerStatus.PENDING, 2, 20);
+
+        assertThat(response.profiles()).extracting(profile -> profile.userId()).containsExactly(3L, 1L, 2L);
+        assertThat(response.profiles().get(0).placeIds()).containsExactly(30L);
+        assertThat(response.profiles().get(1).placeIds()).containsExactly(10L, 20L);
+        assertThat(response.profiles().get(2).placeIds()).isEmpty();
+        assertThat(response.page()).isEqualTo(2);
+        assertThat(response.limit()).isEqualTo(20);
+        assertThat(response.totalCount()).isEqualTo(51);
+        assertThat(response.totalPages()).isEqualTo(3);
+        assertThat(response.hasNext()).isTrue();
+        verify(profileRepository).findAllByStatus(MerchantOwnerStatus.PENDING, pageable);
+        verify(profileRepository, never()).findAll(any(Pageable.class));
+        verify(ownerPlaceRepository, never()).findAllByMerchantOwnerUserIdOrderByPlaceIdAsc(anyLong());
+    }
+
+    @Test
+    void skipsPlaceLookupForAnEmptyProfilePage() {
+        when(profileRepository.findAll(any(Pageable.class)))
+                .thenReturn(Page.empty(PageRequest.of(0, 20)));
+
+        var response = service.list(null, 1, 20);
+
+        assertThat(response.profiles()).isEmpty();
+        assertThat(response.totalCount()).isZero();
+        assertThat(response.totalPages()).isZero();
+        assertThat(response.hasNext()).isFalse();
+        verifyNoInteractions(ownerPlaceRepository);
+    }
+
+    @Test
+    void preservesPageAndLimitBounds() {
+        PageRequest pageable = PageRequest.of(0, 100,
+                Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("userId")));
+        when(profileRepository.findAll(pageable)).thenReturn(Page.empty(pageable));
+
+        var response = service.list(null, 0, 101);
+
+        assertThat(response.page()).isEqualTo(1);
+        assertThat(response.limit()).isEqualTo(100);
+        verify(profileRepository).findAll(pageable);
+        verifyNoInteractions(ownerPlaceRepository);
+    }
+
+    private MerchantOwnerPlace mapping(long ownerId, long placeId) {
+        return MerchantOwnerPlace.builder()
+                .merchantOwnerUserId(ownerId).placeId(placeId).createdAt(NOW).build();
+    }
 
     /**
      * 통합 신청이 없는 대기 프로필을 승인하면 활성 상태와 심사자·사유가 저장되는지 검증.
@@ -297,8 +384,12 @@ class MerchantOwnerAdminServiceTest {
      * 심사 메타데이터와 상태 전이를 확인할 수 있도록 전날 신청된 대기 점주 프로필을 생성.
      */
     private MerchantOwnerProfile pendingProfile() {
+        return pendingProfile(USER_ID);
+    }
+
+    private MerchantOwnerProfile pendingProfile(long userId) {
         return MerchantOwnerProfile.pending(
-                USER_ID,
+                userId,
                 "핑덤 카페",
                 "핑덤 사장님",
                 null,

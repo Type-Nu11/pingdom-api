@@ -15,6 +15,10 @@ public interface MerchantOwnerPlaceRepository extends JpaRepository<MerchantOwne
 
     List<MerchantOwnerPlace> findAllByMerchantOwnerUserIdOrderByPlaceIdAsc(Long merchantOwnerUserId);
 
+    List<MerchantOwnerPlace> findAllByMerchantOwnerUserIdInOrderByMerchantOwnerUserIdAscPlaceIdAsc(
+            Collection<Long> merchantOwnerUserIds
+    );
+
     @Query("SELECT place.placeId FROM MerchantOwnerPlace place WHERE place.merchantOwnerUserId = :userId ORDER BY place.placeId ASC")
     List<Long> findPlaceIdsByMerchantOwnerUserId(@Param("userId") Long userId);
 

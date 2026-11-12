@@ -39,6 +39,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -81,8 +82,19 @@ public class MerchantOwnerAdminService {
         Page<MerchantOwnerProfile> result = status == null
                 ? profileRepository.findAll(pageable)
                 : profileRepository.findAllByStatus(status, pageable);
+        List<Long> userIds = result.getContent().stream().map(MerchantOwnerProfile::getUserId).toList();
+        Map<Long, List<Long>> placeIdsByOwner = userIds.isEmpty()
+                ? Map.of()
+                : ownerPlaceRepository
+                        .findAllByMerchantOwnerUserIdInOrderByMerchantOwnerUserIdAscPlaceIdAsc(userIds).stream()
+                        .collect(Collectors.groupingBy(
+                                MerchantOwnerPlace::getMerchantOwnerUserId,
+                                Collectors.mapping(MerchantOwnerPlace::getPlaceId, Collectors.toList())
+                        ));
         List<MerchantOwnerProfileResponse> profiles = result.getContent().stream()
-                .map(this::response)
+                .map(profile -> MerchantOwnerProfileResponse.from(
+                        profile, placeIdsByOwner.getOrDefault(profile.getUserId(), List.of())
+                ))
                 .toList();
         return new MerchantOwnerProfilePageResponse(
                 profiles,
