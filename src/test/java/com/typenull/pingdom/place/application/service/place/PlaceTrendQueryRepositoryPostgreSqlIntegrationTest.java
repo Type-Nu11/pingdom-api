@@ -4,14 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceTrendQueryRepository;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -73,8 +71,8 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
      */
     @Test
     void deduplicatesBookmarkToggleGrowth() {
-        LocalDateTime periodStart = LocalDateTime.now(ZoneOffset.UTC).minusDays(7);
-        LocalDateTime periodEnd = LocalDateTime.now(ZoneOffset.UTC);
+        LocalDateTime periodStart = LocalDateTime.of(2026, 8, 20, 12, 0);
+        LocalDateTime periodEnd = periodStart.plusDays(7);
         Long firstPlaceId = insertPlace("토글 포함 트렌드", "카페");
         Long secondPlaceId = insertPlace("동률 트렌드", "카페");
         Long hiddenPlaceId = insertPlace("숨김 트렌드", "카페");
@@ -92,15 +90,15 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
         jdbcTemplate.update("INSERT INTO map_bookmark (user_id, place_id, created_at) VALUES (?, ?, ?)", 3L, firstPlaceId, periodEnd);
         jdbcTemplate.update("INSERT INTO map_bookmark (user_id, place_id, created_at) VALUES (?, ?, ?)", 4L, secondPlaceId, periodEnd);
 
-        long total = placeTrendQueryRepository.countTrends(periodStart, periodEnd);
-        List<PlaceTrendQueryRepository.PlaceTrendProjection> result = placeTrendQueryRepository.findTrends(
+        List<PlaceTrendQueryRepository.PlaceTrendProjection> result = placeTrendQueryRepository.findTrendPage(
                 periodStart,
                 periodEnd,
                 1L,
-                PageRequest.of(0, 20)
+                0L,
+                20
         );
 
-        assertThat(total).isEqualTo(2L);
+        assertThat(result).allSatisfy(row -> assertThat(row.getTotalElements()).isEqualTo(2L));
         assertThat(result).extracting(PlaceTrendQueryRepository.PlaceTrendProjection::getPlaceId)
                 .containsExactly(firstPlaceId, secondPlaceId);
         assertThat(result.getFirst())
@@ -112,6 +110,140 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
                         PlaceTrendQueryRepository.PlaceTrendProjection::getBookmarked
                 )
                 .containsExactly(2L, 1L, 1L, 2L, true);
+    }
+
+    @Test
+    void retainsTotalWhenThereAreNoTrendsOrThePageIsOutOfRange() {
+        LocalDateTime start = LocalDateTime.of(2026, 8, 20, 12, 0);
+        LocalDateTime end = start.plusDays(7);
+
+        var empty = placeTrendQueryRepository.findTrendPage(start, end, 1L, 0L, 20);
+
+        assertThat(empty).singleElement().satisfies(row -> {
+            assertThat(row.getPlaceId()).isNull();
+            assertThat(row.getTotalElements()).isZero();
+        });
+        Long placeId = insertPlace("단일 트렌드", "카페");
+        insertEvent(1L, placeId, placeId, "ADDED", start.plusHours(1));
+
+        var outOfRange = placeTrendQueryRepository.findTrendPage(start, end, 1L, 20L, 20);
+
+        assertThat(outOfRange).singleElement().satisfies(row -> {
+            assertThat(row.getPlaceId()).isNull();
+            assertThat(row.getTotalElements()).isEqualTo(1L);
+        });
+    }
+
+    @Test
+    void preservesPeriodBoundariesAndLastEventIdAtTheSameTime() {
+        LocalDateTime start = LocalDateTime.of(2026, 8, 20, 12, 0);
+        LocalDateTime end = start.plusDays(7);
+        Long placeId = insertPlace("기간 경계", "카페");
+        insertEvent(1L, placeId, placeId, "ADDED", start);
+        insertEvent(2L, placeId, placeId, "ADDED", end);
+        insertEvent(3L, placeId, placeId, "ADDED", end.plusNanos(1000));
+        insertEvent(4L, placeId, placeId, "BASELINE_ACTIVE", start.minusNanos(1000));
+        insertEvent(4L, placeId, placeId, "REMOVED", start);
+        insertEvent(5L, placeId, placeId, "ADDED", start.minusNanos(1000));
+        insertEvent(5L, placeId, placeId, "REMOVED", end);
+        insertEvent(6L, placeId, placeId, "ADDED", start);
+        insertEvent(6L, placeId, placeId, "REMOVED", start);
+        insertEvent(7L, placeId, placeId, "REMOVED", end);
+        insertEvent(7L, placeId, placeId, "ADDED", end);
+
+        var result = placeTrendQueryRepository.findTrendPage(start, end, 1L, 0L, 20);
+
+        assertThat(result).singleElement().satisfies(row -> {
+            assertThat(row.getPlaceId()).isEqualTo(placeId);
+            assertThat(row.getTotalElements()).isEqualTo(1L);
+            assertThat(row.getBookmarkAdds()).isEqualTo(3L);
+            assertThat(row.getBookmarkRemoves()).isEqualTo(2L);
+            assertThat(row.getNetBookmarkGrowth()).isEqualTo(1L);
+        });
+    }
+
+    @Test
+    void foldsMergedOriginStreamsBeforeCountingUserGrowth() {
+        LocalDateTime start = LocalDateTime.of(2026, 8, 20, 12, 0);
+        Long placeId = insertPlace("병합 장소", "카페");
+        // 기존 활성 origin은 같은 사용자의 새 origin 추가가 순증으로 세어지는 것을 막는다.
+        insertEvent(10L, placeId, 1001L, "BASELINE_ACTIVE", start.minusSeconds(1));
+        insertEvent(10L, placeId, 1002L, "ADDED", start.plusHours(1));
+        insertEvent(11L, placeId, 2001L, "ADDED", start.plusHours(1));
+        insertEvent(11L, placeId, 2002L, "ADDED", start.plusHours(1));
+        insertEvent(12L, placeId, 3001L, "BASELINE_ACTIVE", start.minusSeconds(1));
+        insertEvent(12L, placeId, 3002L, "BASELINE_ACTIVE", start.minusSeconds(1));
+        insertEvent(12L, placeId, 3001L, "REMOVED", start.plusHours(1));
+
+        var result = placeTrendQueryRepository.findTrendPage(start, start.plusDays(7), 1L, 0L, 20);
+
+        assertThat(result).singleElement().satisfies(row -> {
+            assertThat(row.getPlaceId()).isEqualTo(placeId);
+            assertThat(row.getBookmarkAdds()).isEqualTo(1L);
+            assertThat(row.getBookmarkRemoves()).isZero();
+            assertThat(row.getNetBookmarkGrowth()).isEqualTo(1L);
+        });
+    }
+
+    @Test
+    void preservesAllTieBreakersAndJoinsRequesterAndImageDataForThePage() {
+        LocalDateTime start = LocalDateTime.of(2026, 8, 20, 12, 0);
+        Long first = insertPlace("순증 우선", "카페");
+        Long second = insertPlace("추가 수 우선", "카페");
+        Long third = insertPlace("현재 북마크 수 하위", "카페");
+        Long fourth = insertPlace("ID 하위", "카페");
+        Long fifth = insertPlace("ID 상위", "카페");
+        insertGrowth(first, 3, 0, start);
+        insertGrowth(second, 4, 2, start);
+        insertGrowth(third, 3, 1, start);
+        insertGrowth(fourth, 3, 1, start);
+        insertGrowth(fifth, 3, 1, start);
+        insertBookmark(920L, third, start);
+        insertBookmark(900L, fourth, start);
+        insertBookmark(901L, fourth, start);
+        insertBookmark(910L, fifth, start);
+        insertBookmark(911L, fifth, start);
+        insertImage(fifth, "https://example.com/old.jpg", "ACTIVE", start);
+        insertImage(fifth, "https://example.com/latest.jpg", "ACTIVE", start);
+        insertImage(fifth, "https://example.com/hidden.jpg", "HIDDEN", start.plusHours(1));
+        insertImage(fourth, "https://example.com/fallback.jpg", "ACTIVE", start);
+        jdbcTemplate.update("UPDATE map_place SET image_url = ? WHERE map_place_id = ?",
+                "https://example.com/direct.jpg", fourth);
+
+        var all = placeTrendQueryRepository.findTrendPage(start, start.plusDays(7), 900L, 0L, 20);
+        var page = placeTrendQueryRepository.findTrendPage(start, start.plusDays(7), 900L, 2L, 2);
+
+        assertThat(all).extracting(PlaceTrendQueryRepository.PlaceTrendProjection::getPlaceId)
+                .containsExactly(first, second, fifth, fourth, third);
+        assertThat(page).extracting(PlaceTrendQueryRepository.PlaceTrendProjection::getPlaceId)
+                .containsExactly(fifth, fourth);
+        assertThat(page).allSatisfy(row -> assertThat(row.getTotalElements()).isEqualTo(5L));
+        assertThat(page).extracting(PlaceTrendQueryRepository.PlaceTrendProjection::getBookmarked)
+                .containsExactly(false, true);
+        assertThat(page).extracting(PlaceTrendQueryRepository.PlaceTrendProjection::getImageUrl)
+                .containsExactly("https://example.com/latest.jpg", "https://example.com/direct.jpg");
+    }
+
+    private void insertGrowth(Long placeId, int adds, int removes, LocalDateTime start) {
+        for (long userId = 1; userId <= adds; userId++) {
+            insertEvent(userId, placeId, placeId, "ADDED", start.plusHours(1));
+        }
+        for (long userId = 100; userId < 100 + removes; userId++) {
+            insertEvent(userId, placeId, placeId, "BASELINE_ACTIVE", start.minusSeconds(1));
+            insertEvent(userId, placeId, placeId, "REMOVED", start.plusHours(1));
+        }
+    }
+
+    private void insertBookmark(Long userId, Long placeId, LocalDateTime createdAt) {
+        jdbcTemplate.update("INSERT INTO map_bookmark (user_id, place_id, created_at) VALUES (?, ?, ?)",
+                userId, placeId, createdAt);
+    }
+
+    private void insertImage(Long placeId, String imageUrl, String visibility, LocalDateTime createdAt) {
+        jdbcTemplate.update("""
+                INSERT INTO map_image (image_url, s3_key, title, like_count, map_place_id, visibility_status, created_time)
+                VALUES (?, ?, '트렌드 이미지', 0, ?, ?, ?)
+                """, imageUrl, imageUrl, placeId, visibility, createdAt);
     }
 
     /**
