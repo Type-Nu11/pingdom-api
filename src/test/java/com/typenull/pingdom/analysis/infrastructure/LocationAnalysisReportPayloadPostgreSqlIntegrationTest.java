@@ -3,12 +3,18 @@ package com.typenull.pingdom.analysis.infrastructure;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisReportUpdateRequest;
+import com.typenull.pingdom.analysis.api.dto.LocationAnalysisReportResponse;
 import com.typenull.pingdom.analysis.application.LocationAnalysisReportArchiveService;
 import com.typenull.pingdom.analysis.domain.LocationAnalysisReport;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportErrorCode;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
 import jakarta.persistence.EntityManager;
+import java.lang.management.ManagementFactory;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -17,12 +23,15 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.IntConsumer;
 import org.hibernate.resource.jdbc.spi.StatementInspector;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -78,8 +87,12 @@ class LocationAnalysisReportPayloadPostgreSqlIntegrationTest {
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.datasource.hikari.data-source-properties.socketFactory",
+                () -> CountingPostgreSqlSocketFactory.class.getName());
+        registry.add("spring.datasource.hikari.data-source-properties.sslmode", () -> "disable");
     }
 
     @Configuration(proxyBeanMethods = false)
@@ -244,6 +257,102 @@ class LocationAnalysisReportPayloadPostgreSqlIntegrationTest {
                 Long.class)).isEqualTo(1L);
         assertStoredPayloadAndOwner();
     }
+
+    @Test
+    void comparesEntityAndProjectionCostsWithTheSamePayload() throws Exception {
+        var allocations = (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
+        assertThat(allocations.isThreadAllocatedMemorySupported()).isTrue();
+        if (!allocations.isThreadAllocatedMemoryEnabled()) {
+            allocations.setThreadAllocatedMemoryEnabled(true);
+        }
+        Map<String, Cost> costs = new LinkedHashMap<>();
+        // 기준 구현의 entity 조회·dirty checking 흐름만 현재 소유자 ID 모델에서 재현한다.
+        costs.put("entityUpdate", measure(allocations, () -> {}, index -> transaction().executeWithoutResult(status -> {
+            var report = repository.findByReportIdAndOwnerUserId("report-1", 7L).orElseThrow();
+            report.update("비교 " + index, "owner@example.com", NOW);
+            LocationAnalysisReportResponse.from(report);
+        })));
+        costs.put("metadataUpdate", measure(allocations, () -> {}, index -> service.update("report-1", 7L,
+                new LocationAnalysisReportUpdateRequest("비교 " + index, "owner@example.com"))));
+
+        Runnable restore = () -> {
+            jdbc.update("DELETE FROM location_analysis_report");
+            transaction().executeWithoutResult(status -> entityManager.persist(report("report-1")));
+        };
+        costs.put("entityDelete", measure(allocations, restore, index -> transaction().executeWithoutResult(status ->
+                repository.delete(repository.findByReportIdAndOwnerUserId("report-1", 7L).orElseThrow()))));
+        costs.put("metadataDelete", measure(allocations, restore, index -> service.delete("report-1", 7L)));
+
+        restore.run();
+        var readOnly = transaction();
+        readOnly.setReadOnly(true);
+        costs.put("entityDownload", measure(allocations, () -> {}, index -> readOnly.executeWithoutResult(status -> {
+            var report = repository.findByReportIdAndOwnerUserId("report-1", 7L).orElseThrow();
+            assertThat(report.getPdfContent().length).isEqualTo(PDF.length);
+        })));
+        costs.put("pdfProjectionDownload", measure(allocations, () -> {}, index ->
+                assertThat(service.download("report-1", 7L).content().length).isEqualTo(PDF.length)));
+
+        assertThat(costs.get("entityUpdate").sql()).anyMatch(this::mentionsPayload);
+        assertThat(costs.get("metadataUpdate").sql()).noneMatch(this::mentionsPayload);
+        assertThat(costs.get("metadataDelete").sql()).noneMatch(this::mentionsPayload);
+        long fixtureBytes = PDF.length + HTML.getBytes(StandardCharsets.UTF_8).length;
+        assertThat(costs.get("entityUpdate").receivedBytesPerRequest()).isGreaterThanOrEqualTo(fixtureBytes);
+        assertThat(costs.get("entityUpdate").sentBytesPerRequest()).isGreaterThanOrEqualTo(fixtureBytes);
+        assertThat(costs.get("metadataUpdate").receivedBytesPerRequest())
+                .isLessThan(costs.get("entityUpdate").receivedBytesPerRequest());
+        assertThat(costs.get("metadataUpdate").sentBytesPerRequest())
+                .isLessThan(costs.get("entityUpdate").sentBytesPerRequest());
+        assertThat(costs.get("metadataUpdate").allocatedBytesPerRequest())
+                .isLessThan(costs.get("entityUpdate").allocatedBytesPerRequest());
+
+        var output = Path.of("build", "reports", "1835-report-payload-cost.json");
+        Files.createDirectories(output.getParent());
+        Files.writeString(output, new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(Map.of(
+                "fixture", Map.of("pdfBytes", PDF.length, "htmlUtf8Bytes", HTML.getBytes(StandardCharsets.UTF_8).length),
+                "warmupRequestsPerPath", 5, "measuredRequestsPerPath", 15,
+                "javaVersion", System.getProperty("java.version"), "costs", costs)));
+    }
+
+    private boolean mentionsPayload(String sql) {
+        return sql.contains("pdf_content") || sql.contains("html_content");
+    }
+
+    private Cost measure(com.sun.management.ThreadMXBean allocations, Runnable prepare, IntConsumer operation) {
+        for (int index = 0; index < 5; index++) {
+            prepare.run();
+            operation.accept(index);
+        }
+        long[] elapsed = new long[15];
+        long received = 0;
+        long sent = 0;
+        long allocated = 0;
+        List<String> statements = List.of();
+        for (int index = 0; index < elapsed.length; index++) {
+            prepare.run();
+            SqlCapture.reset();
+            CountingPostgreSqlSocketFactory.startCounting();
+            try {
+                long allocatedBefore = allocations.getCurrentThreadAllocatedBytes();
+                long started = System.nanoTime();
+                operation.accept(index);
+                elapsed[index] = System.nanoTime() - started;
+                allocated += allocations.getCurrentThreadAllocatedBytes() - allocatedBefore;
+                received += CountingPostgreSqlSocketFactory.receivedBytes();
+                sent += CountingPostgreSqlSocketFactory.sentBytes();
+                statements = SqlCapture.statements();
+            } finally {
+                CountingPostgreSqlSocketFactory.stopCounting();
+            }
+        }
+        Arrays.sort(elapsed);
+        return new Cost(received / elapsed.length, sent / elapsed.length, allocated / elapsed.length,
+                elapsed[elapsed.length / 2] / 1_000_000.0,
+                elapsed[(int) Math.ceil(elapsed.length * 0.95) - 1] / 1_000_000.0, statements);
+    }
+
+    private record Cost(long receivedBytesPerRequest, long sentBytesPerRequest, long allocatedBytesPerRequest,
+                        double medianMilliseconds, double p95Milliseconds, List<String> sql) {}
 
     private long readVersionAndWait(CountDownLatch bothRead, CountDownLatch release) {
         long version = repository.findMetadataByReportIdAndOwnerUserId("report-1", 7L).orElseThrow().getVersion();
