@@ -4,15 +4,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceTrendQueryRepository;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -54,6 +62,13 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
 
     @Autowired private PlaceTrendQueryRepository placeTrendQueryRepository;
     @Autowired private JdbcTemplate jdbcTemplate;
+    @Autowired private PlatformTransactionManager transactionManager;
+    private PlaceTrendHistoryCostProbe costProbe;
+
+    @BeforeEach
+    void prepareComparison() throws Exception {
+        costProbe = new PlaceTrendHistoryCostProbe(jdbcTemplate, transactionManager);
+    }
 
     /**
      * 추세 이력과 현재 북마크·이미지·장소 행을 의존 순서대로 제거.
@@ -98,6 +113,8 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
                 20
         );
 
+        costProbe.assertEquivalent(periodStart, periodEnd, 1L, 0L, 20, result);
+
         assertThat(result).allSatisfy(row -> assertThat(row.getTotalElements()).isEqualTo(2L));
         assertThat(result).extracting(PlaceTrendQueryRepository.PlaceTrendProjection::getPlaceId)
                 .containsExactly(firstPlaceId, secondPlaceId);
@@ -118,6 +135,7 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
         LocalDateTime end = start.plusDays(7);
 
         var empty = placeTrendQueryRepository.findTrendPage(start, end, 1L, 0L, 20);
+        costProbe.assertEquivalent(start, end, 1L, 0L, 20, empty);
 
         assertThat(empty).singleElement().satisfies(row -> {
             assertThat(row.getPlaceId()).isNull();
@@ -127,6 +145,7 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
         insertEvent(1L, placeId, placeId, "ADDED", start.plusHours(1));
 
         var outOfRange = placeTrendQueryRepository.findTrendPage(start, end, 1L, 20L, 20);
+        costProbe.assertEquivalent(start, end, 1L, 20L, 20, outOfRange);
 
         assertThat(outOfRange).singleElement().satisfies(row -> {
             assertThat(row.getPlaceId()).isNull();
@@ -152,6 +171,7 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
         insertEvent(7L, placeId, placeId, "ADDED", end);
 
         var result = placeTrendQueryRepository.findTrendPage(start, end, 1L, 0L, 20);
+        costProbe.assertEquivalent(start, end, 1L, 0L, 20, result);
 
         assertThat(result).singleElement().satisfies(row -> {
             assertThat(row.getPlaceId()).isEqualTo(placeId);
@@ -176,6 +196,7 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
         insertEvent(12L, placeId, 3001L, "REMOVED", start.plusHours(1));
 
         var result = placeTrendQueryRepository.findTrendPage(start, start.plusDays(7), 1L, 0L, 20);
+        costProbe.assertEquivalent(start, start.plusDays(7), 1L, 0L, 20, result);
 
         assertThat(result).singleElement().satisfies(row -> {
             assertThat(row.getPlaceId()).isEqualTo(placeId);
@@ -212,6 +233,8 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
 
         var all = placeTrendQueryRepository.findTrendPage(start, start.plusDays(7), 900L, 0L, 20);
         var page = placeTrendQueryRepository.findTrendPage(start, start.plusDays(7), 900L, 2L, 2);
+        costProbe.assertEquivalent(start, start.plusDays(7), 900L, 0L, 20, all);
+        costProbe.assertEquivalent(start, start.plusDays(7), 900L, 2L, 2, page);
 
         assertThat(all).extracting(PlaceTrendQueryRepository.PlaceTrendProjection::getPlaceId)
                 .containsExactly(first, second, fifth, fourth, third);
@@ -222,6 +245,59 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
                 .containsExactly(false, true);
         assertThat(page).extracting(PlaceTrendQueryRepository.PlaceTrendProjection::getImageUrl)
                 .containsExactly("https://example.com/latest.jpg", "https://example.com/direct.jpg");
+    }
+
+    @Test
+    void repeatableReadRetainsPageAndTotalWhileBookmarksAndMergedEventsChange() throws Exception {
+        LocalDateTime start = LocalDateTime.of(2026, 8, 20, 12, 0);
+        Long source = insertPlace("병합 원본", "카페");
+        Long target = insertPlace("병합 대상", "카페");
+        insertEvent(1L, source, source, "ADDED", start.plusHours(1));
+        insertBookmark(1L, source, start);
+        var read = new TransactionTemplate(transactionManager);
+        read.setReadOnly(true);
+        read.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
+        try (var executor = Executors.newSingleThreadExecutor()) {
+            read.executeWithoutResult(status -> {
+                var before = placeTrendQueryRepository.findTrendPage(start, start.plusDays(7), 1L, 0L, 20);
+                try {
+                    // 다른 연결에서 전체 병합을 커밋한 뒤 같은 읽기 트랜잭션이 기존 snapshot을 유지하는지 검증한다.
+                    executor.submit(() -> new TransactionTemplate(transactionManager).executeWithoutResult(write -> {
+                        jdbcTemplate.update("UPDATE map_bookmark SET place_id = ? WHERE place_id = ?", target, source);
+                        jdbcTemplate.update("UPDATE map_bookmark_trend_event SET place_id = ? WHERE place_id = ?", target, source);
+                        jdbcTemplate.update("UPDATE map_place SET discovery_status = 'HIDDEN' WHERE map_place_id = ?", source);
+                    })).get(10, TimeUnit.SECONDS);
+                } catch (Exception exception) {
+                    throw new IllegalStateException("동시 병합 fixture 실패", exception);
+                }
+                var after = placeTrendQueryRepository.findTrendPage(start, start.plusDays(7), 1L, 0L, 20);
+                assertThat(after).extracting(PlaceTrendQueryRepository.PlaceTrendProjection::getPlaceId)
+                        .containsExactly(source);
+                assertThat(after.getFirst().getBookmarked()).isTrue();
+                costProbe.assertEquivalent(start, start.plusDays(7), 1L, 0L, 20, before);
+                costProbe.assertEquivalent(start, start.plusDays(7), 1L, 0L, 20, after);
+            });
+        }
+        var committed = placeTrendQueryRepository.findTrendPage(start, start.plusDays(7), 1L, 0L, 20);
+        assertThat(committed).extracting(PlaceTrendQueryRepository.PlaceTrendProjection::getPlaceId)
+                .containsExactly(target);
+        assertThat(committed.getFirst().getTotalElements()).isEqualTo(1L);
+        assertThat(committed.getFirst().getBookmarked()).isTrue();
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "TREND_QUERY_BENCHMARK", matches = "true")
+    void measuresSameRecentChangesWithGrowingHistory() throws Exception {
+        LocalDateTime start = LocalDateTime.of(2026, 8, 20, 12, 0);
+        var places = new ArrayList<Long>();
+        for (int index = 0; index < 20; index++) {
+            Long place = insertPlace("비용 비교 " + index, "카페");
+            places.add(place);
+            for (long user = index + 1; user <= 1_000; user += 20) {
+                insertBookmark(user, place, start.plusDays(1));
+            }
+        }
+        costProbe.measure(start, start.plusDays(7), places);
     }
 
     private void insertGrowth(Long placeId, int adds, int removes, LocalDateTime start) {
