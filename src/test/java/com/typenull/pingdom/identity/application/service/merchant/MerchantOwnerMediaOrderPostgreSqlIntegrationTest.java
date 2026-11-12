@@ -99,13 +99,12 @@ class MerchantOwnerMediaOrderPostgreSqlIntegrationTest {
         doNothing().when(capabilityPolicy).require(any(), any(), any());
         service = new MerchantOwnerPlaceManagementService(
                 mapPlaceRepository,
-                placeMediaRepository,
-                mock(MerchantPlaceMediaUploadRepository.class),
                 capabilityPolicy,
-                mock(PlaceOperatingHoursEvaluator.class),
-                mock(S3ObjectStorage.class),
-                mock(S3ObjectDeleteOutboxPublisher.class),
-                CLOCK
+                new MerchantOwnerPlaceOperatingService(mapPlaceRepository, capabilityPolicy,
+                        mock(PlaceOperatingHoursEvaluator.class), CLOCK),
+                new MerchantOwnerPlaceMediaService(mapPlaceRepository, placeMediaRepository,
+                        mock(MerchantPlaceMediaUploadRepository.class), capabilityPolicy,
+                        mock(S3ObjectStorage.class), mock(S3ObjectDeleteOutboxPublisher.class), CLOCK)
         );
     }
 
