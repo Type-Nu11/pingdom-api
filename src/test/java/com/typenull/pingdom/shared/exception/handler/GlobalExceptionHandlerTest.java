@@ -23,11 +23,13 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Path;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.orm.jpa.JpaOptimisticLockingFailureException;
@@ -35,6 +37,8 @@ import org.springframework.transaction.TransactionSystemException;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -66,6 +70,30 @@ class GlobalExceptionHandlerTest {
                 new org.springframework.web.multipart.support.MissingServletRequestPartException("file"));
         assertThat(response.getStatusCode().value()).isEqualTo(400);
         assertThat(response.getBody().code()).isEqualTo("INVALID_REQUEST_PARAMETER");
+    }
+
+    @Test
+    void mapsUnsupportedMediaTypeWithoutLosingSupportedMediaHeader() {
+        var exception = new HttpMediaTypeNotSupportedException(MediaType.TEXT_PLAIN,
+                List.of(MediaType.APPLICATION_JSON));
+
+        ResponseEntity<ErrorResponse> response = handler.handleUnsupportedMediaType(exception);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(415);
+        assertThat(response.getHeaders().getAccept()).containsExactly(MediaType.APPLICATION_JSON);
+        assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_JSON);
+        assertThat(response.getBody()).isEqualTo(ErrorResponse.from(CommonErrorCode.UNSUPPORTED_MEDIA_TYPE));
+    }
+
+    @Test
+    void mapsNotAcceptableMediaTypeToFixedJsonError() {
+        var exception = new HttpMediaTypeNotAcceptableException(List.of(MediaType.APPLICATION_PDF));
+
+        ResponseEntity<ErrorResponse> response = handler.handleNotAcceptableMediaType(exception);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(406);
+        assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_JSON);
+        assertThat(response.getBody()).isEqualTo(ErrorResponse.from(CommonErrorCode.NOT_ACCEPTABLE));
     }
 
     /**
