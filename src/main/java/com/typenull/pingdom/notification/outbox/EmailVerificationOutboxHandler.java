@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.identity.application.port.EmailSendException;
 import com.typenull.pingdom.identity.application.port.EmailSendResult;
 import com.typenull.pingdom.identity.application.port.EmailSender;
+import com.typenull.pingdom.identity.application.service.auth.AuthEmailDispatchPolicy;
 import com.typenull.pingdom.notification.application.service.NotificationDeliveryRecorder;
 import com.typenull.pingdom.shared.outbox.application.OutboxEventHandler;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
@@ -11,8 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
- * 인증 메일 Outbox를 역직렬화해 발송하고 성공/실패를 기록.
- * 전송 예외는 상위 Outbox 처리기로 다시 던지며, 이미 성공한 동일 이벤트의 자체 조회·생략은 처리 범위 외.
+ * 현재 인증 요청만 발송하고 저장된 성공/미발송 종료 이력을 재사용한다.
+ * 공급자 성공과 결과 저장 사이 장애의 중복 가능성은 남으며 외부 전달의 exactly-once를 보장하지 않는다.
  */
 @Component
 @RequiredArgsConstructor
@@ -21,6 +22,7 @@ public class EmailVerificationOutboxHandler implements OutboxEventHandler {
     private final EmailSender emailSender;
     private final ObjectMapper objectMapper;
     private final NotificationDeliveryRecorder notificationDeliveryRecorder;
+    private final AuthEmailDispatchPolicy dispatchPolicy;
 
     @Override
     public OutboxEventType supportedType() {
@@ -30,6 +32,18 @@ public class EmailVerificationOutboxHandler implements OutboxEventHandler {
     @Override
     public void handle(String eventId, String payload) {
         EmailVerificationOutboxPayload event = deserialize(eventId, payload);
+        try {
+            if (notificationDeliveryRecorder.isEmailDeliveryTerminal(eventId, event.recipientEmail())) {
+                return;
+            }
+            if (!dispatchPolicy.canSendVerification(event.userId(), event.recipientEmail(), event.verificationCode(), event.expiresAt())) {
+                notificationDeliveryRecorder.recordEmailStale(event.userId(), eventId, supportedType(), event.recipientEmail());
+                return;
+            }
+        } catch (RuntimeException exception) {
+            // 조회/미발송 종료 기록 장애는 발송 없이 재시도한다. 원문 예외는 PII를 포함할 수 있다.
+            throw new IllegalStateException("인증 메일 발송 준비에 실패했습니다.");
+        }
         try {
             EmailSendResult result = emailSender.sendVerificationEmail(
                     event.recipientEmail(),
@@ -50,10 +64,11 @@ public class EmailVerificationOutboxHandler implements OutboxEventHandler {
                     event.recipientEmail(),
                     providerErrorCode(exception),
                     errorCode(exception),
-                    failureReason(exception),
+                    "인증 메일 전송에 실패했습니다.",
                     retryable(exception)
             );
-            throw exception;
+            throw new EmailSendException("인증 메일 전송에 실패했습니다.",
+                    errorCode(exception), providerErrorCode(exception), retryable(exception), null);
         }
     }
 
@@ -62,7 +77,11 @@ public class EmailVerificationOutboxHandler implements OutboxEventHandler {
             if (payload == null || payload.isBlank()) {
                 throw new IllegalArgumentException("Payload is empty");
             }
-            return objectMapper.readValue(payload, EmailVerificationOutboxPayload.class);
+            EmailVerificationOutboxPayload event = objectMapper.readValue(payload, EmailVerificationOutboxPayload.class);
+            if (event == null) {
+                throw new IllegalArgumentException("Payload is invalid");
+            }
+            return event;
         } catch (Exception exception) {
             notificationDeliveryRecorder.recordEmailFailure(
                     null,
@@ -71,10 +90,10 @@ public class EmailVerificationOutboxHandler implements OutboxEventHandler {
                     null,
                     null,
                     NotificationDeliveryRecorder.ERROR_EMAIL_PAYLOAD_INVALID,
-                    failureReason(exception),
+                    payload == null || payload.isBlank() ? "Payload is empty" : "Payload is invalid",
                     false
             );
-            throw new IllegalArgumentException("이메일 Outbox payload 역직렬화에 실패했습니다.", exception);
+            throw new IllegalArgumentException("이메일 Outbox payload 역직렬화에 실패했습니다.");
         }
     }
 
@@ -90,10 +109,6 @@ public class EmailVerificationOutboxHandler implements OutboxEventHandler {
             return emailSendException.getErrorCode();
         }
         return NotificationDeliveryRecorder.ERROR_EMAIL_SEND_FAILED;
-    }
-
-    private String failureReason(Exception exception) {
-        return exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage();
     }
 
     private boolean retryable(RuntimeException exception) {
