@@ -50,7 +50,9 @@ class UsernameChangeControllerTest {
         users = mock(UserRepository.class);
         when(users.findById(1L)).thenReturn(Optional.of(User.builder().id(1L).username("current-user").build()));
         ChangeInfoService service = new ChangeInfoService(users, mock(PasswordEncoder.class),
-                mock(ProfileImageFileValidator.class), mock(S3ObjectStorage.class));
+                mock(ProfileImageFileValidator.class), mock(S3ObjectStorage.class),
+                mock(com.typenull.pingdom.identity.application.command.ProfileImageUploadService.class),
+                new com.typenull.pingdom.identity.application.command.ProfileImageStorageProperties(null, null, null));
         UsersController controller = new UsersController(mock(MyPageService.class), mock(UserDataExportService.class),
                 service, mock(TravelPurposePreferenceService.class));
         mvc = MockMvcBuilders.standaloneSetup(controller)
