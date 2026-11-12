@@ -73,19 +73,16 @@ class PlaceRecommendationAggregateLoader {
         return aggregateMap;
     }
 
-    long resolveTotalClickCount() {
-        Long snapshotClickCount = placeRecommendationSnapshotRepository.sumClickCount();
-        if (snapshotClickCount != null) {
-            return snapshotClickCount;
-        }
-        return placeRecommendationClickService.countAllClicks();
+    GlobalCounts resolveGlobalCounts() {
+        var snapshotCounts = placeRecommendationSnapshotRepository.sumGlobalCounts();
+        Long clickCount = snapshotCounts == null ? null : snapshotCounts.getClickCount();
+        Long exposureCount = snapshotCounts == null ? null : snapshotCounts.getExposureCount();
+        return new GlobalCounts(
+                clickCount != null ? clickCount : placeRecommendationClickService.countAllClicks(),
+                exposureCount != null ? exposureCount : placeRecommendationExposureService.countAllExposures()
+        );
     }
 
-    long resolveTotalExposureCount() {
-        Long snapshotExposureCount = placeRecommendationSnapshotRepository.sumExposureCount();
-        if (snapshotExposureCount != null) {
-            return snapshotExposureCount;
-        }
-        return placeRecommendationExposureService.countAllExposures();
+    record GlobalCounts(long clickCount, long exposureCount) {
     }
 }
