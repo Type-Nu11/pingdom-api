@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -13,21 +15,26 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.notification.outbox.EmailVerificationOutboxPayload;
 import com.typenull.pingdom.shared.outbox.application.OutboxEventPublisher;
+import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class SignupProfileImageNamespaceTest {
     private final UserRepository users = mock(UserRepository.class);
     private final PasswordEncoder encoder = mock(PasswordEncoder.class);
     private final OutboxEventPublisher outbox = mock(OutboxEventPublisher.class);
-    private final AuthServiceImpl service = new AuthServiceImpl(users, null, encoder, null, outbox,
-            null, null, null, null, Clock.fixed(Instant.parse("2026-11-12T00:00:00Z"), ZoneOffset.UTC), null);
+    private final EmailVerificationService verification = new EmailVerificationService(users, outbox,
+            Clock.fixed(Instant.parse("2026-11-12T00:00:00Z"), ZoneOffset.UTC));
+    private final AuthServiceImpl service = new AuthServiceImpl(users, encoder, verification, null, null, null);
 
     @ParameterizedTest
     @ValueSource(strings = {
@@ -62,6 +69,27 @@ class SignupProfileImageNamespaceTest {
         when(encoder.encode(anyString())).thenReturn("encoded");
         when(users.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         assertThat(service.signup(request(url)).profileImageUrl()).isEqualTo(url);
+    }
+
+    @Test
+    void signupPublishesVerificationAfterTheUserReceivesItsPersistentId() {
+        when(encoder.encode(anyString())).thenReturn("encoded");
+        when(users.save(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            assertThat(user.getEmailVerificationCode()).matches("[0-9]{6}");
+            ReflectionTestUtils.setField(user, "id", 17L);
+            return user;
+        });
+
+        assertThat(service.signup(request(null)).id()).isEqualTo(17L);
+
+        org.mockito.ArgumentCaptor<EmailVerificationOutboxPayload> payload =
+                org.mockito.ArgumentCaptor.forClass(EmailVerificationOutboxPayload.class);
+        verify(outbox).publish(anyString(), eq(OutboxEventType.EMAIL_VERIFICATION_REQUESTED),
+                payload.capture(), eq("USER"), eq("17"));
+        assertThat(payload.getValue().userId()).isEqualTo(17L);
+        assertThat(payload.getValue().expiresAt()).isEqualTo(
+                java.time.LocalDateTime.of(2026, 11, 12, 0, 10));
     }
 
     private SignupRequest request(String url) {
