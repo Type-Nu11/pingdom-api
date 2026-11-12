@@ -56,7 +56,10 @@ public class VoiceAiSessionController {
             대기자 종료는 실행 중인 provider나 저장 결과를 취소하지 않으며 동일 ID/text로 재시도할 수 있습니다.
             실패하여 결과가 저장되지 않았다면 재시도에서 provider를 다시 호출합니다.
             결과는 세션이 활성인 동안 재사용하며 refresh는 이 기간을 연장합니다. 만료·종료 후에는 replay도 410입니다.
-            현재 저장 데이터의 자동 삭제 기간은 설정되어 있지 않습니다. 앱의 epoch/generation 및 256개 ledger는 앱 소유입니다.
+            완료 결과는 completedAt부터 14일 경과 후 제한 배치로 삭제하며 이후 동일 requestId의 결과 재사용은 보장하지 않습니다.
+            세션은 종료·만료 후 14일이 지나고 남은 결과가 없을 때 삭제합니다. 진행 중 요청과 유효 lease는 보존합니다.
+            오래된 PROCESSING은 세션 종료·만료와 마지막 lease 만료가 모두 14일 경과한 뒤 정리합니다.
+            세션 물리 삭제 후에는 404입니다. 앱의 epoch/generation 및 256개 ledger는 앱 소유입니다.
             앱의 30초 deadline이나 연결 종료는 서버/provider 취소를 보장하지 않습니다. 서버 처리가 커밋되었다면
             동일 ID/text 재시도로 결과를 회수할 수 있습니다. DELETE는 진행 중 전송 완료 후 세션을 종료하며 호출을 취소하지 않습니다.
             provider 연결/read timeout은 gemini 설정(기본 2초/5초)이며 서버 전체 deadline을 의미하지 않습니다.

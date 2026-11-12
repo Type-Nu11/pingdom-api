@@ -9,9 +9,11 @@ import com.typenull.pingdom.consultation.domain.exception.VoiceAiException;
 import com.typenull.pingdom.consultation.infrastructure.persistence.VoiceAiReplayRepository;
 import com.typenull.pingdom.consultation.infrastructure.persistence.VoiceAiSessionRepository;
 import java.time.Duration;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -22,11 +24,19 @@ import org.springframework.transaction.annotation.Transactional;
 class VoiceAiReplayTransactionService {
     private final VoiceAiSessionRepository sessionRepository;
     private final VoiceAiReplayRepository replayRepository;
+    private final Clock clock;
 
+    @Autowired
     VoiceAiReplayTransactionService(VoiceAiSessionRepository sessionRepository,
                                     VoiceAiReplayRepository replayRepository) {
+        this(sessionRepository, replayRepository, Clock.systemDefaultZone());
+    }
+
+    VoiceAiReplayTransactionService(VoiceAiSessionRepository sessionRepository,
+                                    VoiceAiReplayRepository replayRepository, Clock clock) {
         this.sessionRepository = sessionRepository;
         this.replayRepository = replayRepository;
+        this.clock = clock;
     }
 
     @Transactional(timeout = VoiceAiReplayWait.DATABASE_ATTEMPT_TIMEOUT_SECONDS)
@@ -42,7 +52,7 @@ class VoiceAiReplayTransactionService {
         }
         if (replay != null && replay.isProcessingLeaseExpiredAt(now, processingLease)) {
             String token = newToken();
-            replay.takeOverProcessing(token, now);
+            replay.takeOverProcessing(token, now, processingLease);
             return VoiceAiReplayClaim.owner(token);
         }
         if (replay != null) {
@@ -58,7 +68,7 @@ class VoiceAiReplayTransactionService {
             replayRepository.delete(activeProcessing);
         }
         String token = newToken();
-        replayRepository.save(VoiceAiReplay.start(sessionId, requestId, payloadHash, token, now));
+        replayRepository.save(VoiceAiReplay.start(sessionId, requestId, payloadHash, token, now, processingLease));
         return VoiceAiReplayClaim.owner(token);
     }
 
@@ -67,7 +77,7 @@ class VoiceAiReplayTransactionService {
                              JsonNode envelope) {
         requireOwnedSession(sessionId, userId);
         VoiceAiReplay replay = replayRepository.findBySessionIdAndRequestId(sessionId, requestId).orElse(null);
-        if (replay != null && replay.complete(processingToken, envelope)) {
+        if (replay != null && replay.complete(processingToken, envelope, LocalDateTime.now(clock))) {
             return envelope;
         }
         return replay != null && replay.isCompleted() ? replay.getEnvelope() : null;

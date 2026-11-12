@@ -216,8 +216,7 @@ public class VoiceAiSessionService {
     }
 
     private Duration processingLease() {
-        Duration providerTimeout = geminiProperties.connectTimeout().plus(geminiProperties.readTimeout()).plusSeconds(5);
-        return providerTimeout.compareTo(Duration.ofSeconds(30)) < 0 ? Duration.ofSeconds(30) : providerTimeout;
+        return VoiceAiProcessingLease.duration(geminiProperties);
     }
 
 }
