@@ -73,6 +73,27 @@ class PlaceRecommendationSimilarityServiceTest {
         when(mapBookmarkRepository.countDistinctUserId()).thenReturn(0L);
     }
 
+    @Test
+    void aggregateInputsMatchUserSetScores() {
+        MapPlace left = place(1L, 35.18, 128.10, 3L);
+        MapPlace right = place(2L, 35.19, 128.11, 4L);
+        var leftTrend = new PlaceRecommendationSimilarityService.TrendProfile(3, 0.5d, true);
+        var rightTrend = new PlaceRecommendationSimilarityService.TrendProfile(4, 0.7d, true);
+        var context = new PlaceRecommendationSimilarityService.SimilarityContext(
+                Map.of(1L, left, 2L, right),
+                Map.of(1L, Set.of(11L, 12L), 2L, Set.of(12L, 13L)),
+                Map.of(1L, Set.of(21L, 22L), 2L, Set.of(22L)),
+                Map.of(1L, leftTrend, 2L, rightTrend), Map.of(), 100L);
+        var original = placeRecommendationSimilarityService.score(left, right, context);
+        var aggregated = placeRecommendationSimilarityService.scoreFromCounts(left, right,
+                2, 2, 1, 2, 1, 1, 100L, leftTrend, rightTrend);
+        assertEquals(original, aggregated);
+        var empty = placeRecommendationSimilarityService.scoreFromCounts(left, right,
+                0, 0, 0, 0, 0, 0, 0, leftTrend, rightTrend);
+        assertEquals(0d, empty.coBookmarkPmi());
+        assertEquals(0d, empty.coLikeCosine());
+    }
+
     /**
      * 저장된 쌍 스냅샷이 있으면 실시간 계산 대신 저장 점수와 snapshotBacked 표시가 반환되는지 확인.
      */
