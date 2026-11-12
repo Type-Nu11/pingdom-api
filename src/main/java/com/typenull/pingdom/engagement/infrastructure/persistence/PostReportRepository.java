@@ -37,6 +37,14 @@ public interface PostReportRepository extends JpaRepository<PostReport, Long> {
     List<PostReport> findAllByImageAndStatusForUpdate(@Param("imageId") Long imageId,
                                                    @Param("status") PostReportStatus status);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT report FROM PostReport report
+            WHERE report.mapImage.id = :imageId
+            ORDER BY report.id ASC
+            """)
+    List<PostReport> findAllByMapImageIdForUpdate(@Param("imageId") Long imageId);
+
     long countByStatus(PostReportStatus status);
 
     boolean existsByReporterUserIdAndMapImage_Id(Long reporterUserId, Long mapImageId);
