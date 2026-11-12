@@ -176,6 +176,8 @@ outbox:
   base-backoff: PT10S
   max-backoff: PT10M
   processing-timeout: PT5M
+  heartbeat-interval: PT30S
+  max-execution-time: PT30M
   retention: P7D
   poll-delay: PT5S
   initial-delay: PT5S
