@@ -45,3 +45,15 @@ JPQL 세 곳은 해당 저장소의 `RESERVABLE_MERCHANT_PREDICATE`만 재사용
 정상 대조 장소를 먼저 만들고 페이지 크기를 1로 설정하여 첫 페이지를 가득 채운다. 이로써 Spring Data의 짧은 페이지 count 생략을 피하고 실제 native `countQuery` 결과도 검사한다. 대상 장소에 슬롯을 두 개 두어 장소별 대표 슬롯과 장소 기준 집계도 확인한다. 각 시나리오는 트랜잭션 롤백으로 격리하며 reserve는 조회 검증 뒤 마지막에 호출한다.
 
 이 회귀는 현재 자격의 동등성과 경로별 조건을 확인한다. 사용자·점주 자격 변경과 예약 사이의 동시성 전체나 실행 계획의 성능을 증명하지는 않는다. 변경은 기존 predicate 추출이므로 Java 정책, 트랜잭션 경계, 잠금, 스키마를 바꾸지 않는다.
+
+## 2026-11-12 실행 결과
+
+검증 기준은 `92afc490c04849583874ca097ad03fd43b250fe7`이다. `JAVA_HOME`을 JDK 21.0.13으로 설정하고 Docker 29.3.1에서 `postgis/postgis:16-3.4` 이미지를 사용했다. 실제 PostgreSQL 16.4에 Flyway migration 149개가 적용되어 최종 버전은 v177이었다.
+
+```sh
+./gradlew postgresIntegrationTest --tests com.typenull.pingdom.availability.application.ReservableMerchantEligibilityPostgreSqlIntegrationTest --no-daemon --max-workers=2 --console=plain
+```
+
+점주 자격 16개, 슬롯 추가 조건 5개, 주변 장소 추가 조건 4개로 총 **25건 통과, 실패·오류·건너뜀 0건**이다. 첫 실행에서 통과했으며 fixture나 운영 코드를 수정하지 않았다. 빌드는 53초, JUnit 대상 클래스 실행은 23.569초였으며 이는 해당 로컬 검증의 실행 시간이고 API 성능 수치가 아니다. 전체 테스트 스위트는 실행하지 않았다.
+
+이 클래스에는 `postgres-integration` 태그만 있으므로 기본 `test`와 기존 CI의 `postgresSmokeTest`에는 포함되지 않는다. 위 직접 선택 실행으로 Java·JPQL·native 목록/count·실제 reserve의 동등성을 확인했다. 재현 시에도 대상 클래스를 선택해야 하며, 정책을 변경할 때는 앞의 구현 책임 표와 회귀를 함께 검토한다.
