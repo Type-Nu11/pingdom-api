@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * 개인 반응 시드와 후보를 최대 64개 노드로 묶어 유사도 그래프의 개인 친화도를 계산.
- * 시드를 먼저 넣으므로 시드 수에 따라 일부 후보는 그래프에 포함되지 않아 점수가 0으로 남음.
+ * 시드 32개를 먼저 배정하고 남는 자리는 후보·추가 시드로 채우며, 한도 밖 후보는 0점으로 남음.
  * 재시작 확률 0.35로 12번 전파한 점수를 후보 최대값으로 나누어 반환.
  */
 @Service
@@ -24,12 +24,13 @@ public class PlaceRecommendationGraphAffinityService {
     private static final int ITERATION_COUNT = 12;
     private static final int MAX_NEIGHBOR_COUNT = 8;
     private static final int MAX_GRAPH_NODE_COUNT = 64;
+    private static final int INITIAL_SEED_NODE_COUNT = MAX_GRAPH_NODE_COUNT / 2;
     private static final double MIN_EDGE_SIMILARITY = 0.05d;
 
     private final PlaceRecommendationSimilarityService placeRecommendationSimilarityService;
 
     /**
-     * 양수 seed 가중치가 높은 노드를 먼저 선택해 최대 64개 노드의 유사도 그래프에서 개인화 점수를 전파.
+     * 양수 seed 가중치가 높은 노드를 먼저 선택하되 후보가 배제되지 않게 최대 64개 노드의 예산을 분배.
      * 12회 재시작 전파 후 후보 최대값으로 정규화하며 seed나 후보가 없으면 모든 후보에 0을 반환.
      * 선택 한도 밖 후보도 응답에는 남지만 그래프 전파를 받지 않아 0점이 됨.
      */
@@ -43,15 +44,18 @@ public class PlaceRecommendationGraphAffinityService {
             return emptyScores;
         }
 
-        Set<Long> graphNodeIds = new LinkedHashSet<>();
-        seedWeights.entrySet().stream()
+        List<Long> seedNodeIds = seedWeights.entrySet().stream()
                 .filter(entry -> entry.getValue() != null && entry.getValue() > 0d)
-                .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
+                .sorted(Map.Entry.<Long, Double>comparingByValue().reversed()
+                        .thenComparing(Map.Entry.comparingByKey()))
                 .limit(MAX_GRAPH_NODE_COUNT)
-                .forEach(entry -> graphNodeIds.add(entry.getKey()));
-        candidatePlaceIds.stream()
-                .filter(candidateId -> graphNodeIds.size() < MAX_GRAPH_NODE_COUNT)
-                .forEach(graphNodeIds::add);
+                .map(Map.Entry::getKey)
+                .toList();
+        Set<Long> graphNodeIds = new LinkedHashSet<>();
+        addGraphNodes(graphNodeIds, seedNodeIds, INITIAL_SEED_NODE_COUNT);
+        // 시드가 적거나 후보가 시드와 겹치면 남은 예산을 후보가 사용하고, 후보 부족분은 시드로 채운다.
+        addGraphNodes(graphNodeIds, candidatePlaceIds, MAX_GRAPH_NODE_COUNT);
+        addGraphNodes(graphNodeIds, seedNodeIds, MAX_GRAPH_NODE_COUNT);
 
         Map<Long, Double> prior = buildPrior(graphNodeIds, seedWeights);
         Map<Long, List<GraphEdge>> transitionGraph = buildTransitionGraph(graphNodeIds, similarityContext);
@@ -83,6 +87,15 @@ public class PlaceRecommendationGraphAffinityService {
         return normalizeCandidateScores(candidatePlaceIds, currentScores);
     }
 
+    private void addGraphNodes(Set<Long> graphNodeIds, Collection<Long> nodeIds, int nodeLimit) {
+        for (Long nodeId : nodeIds) {
+            if (graphNodeIds.size() >= nodeLimit) {
+                break;
+            }
+            graphNodeIds.add(nodeId);
+        }
+    }
+
     private Map<Long, Double> initializeEmptyScores(Collection<Long> candidatePlaceIds) {
         Map<Long, Double> emptyScores = new HashMap<>();
         for (Long candidatePlaceId : candidatePlaceIds) {
@@ -93,8 +106,9 @@ public class PlaceRecommendationGraphAffinityService {
 
     private Map<Long, Double> buildPrior(Set<Long> graphNodeIds, Map<Long, Double> seedWeights) {
         Map<Long, Double> prior = new HashMap<>();
-        double totalWeight = seedWeights.values().stream()
-                .filter(weight -> weight > 0d)
+        double totalWeight = graphNodeIds.stream()
+                .map(seedWeights::get)
+                .filter(weight -> weight != null && weight > 0d)
                 .mapToDouble(Double::doubleValue)
                 .sum();
 
@@ -103,8 +117,8 @@ public class PlaceRecommendationGraphAffinityService {
         }
 
         for (Long nodeId : graphNodeIds) {
-            double weight = seedWeights.getOrDefault(nodeId, 0d);
-            prior.put(nodeId, weight / totalWeight);
+            Double weight = seedWeights.get(nodeId);
+            prior.put(nodeId, weight != null && weight > 0d ? weight / totalWeight : 0d);
         }
 
         return prior;
@@ -145,7 +159,8 @@ public class PlaceRecommendationGraphAffinityService {
 
         for (Long fromNodeId : nodeIds) {
             List<GraphEdge> edges = edgesByNode.getOrDefault(fromNodeId, List.of()).stream()
-                    .sorted(Comparator.comparingDouble(GraphEdge::weight).reversed())
+                    .sorted(Comparator.comparingDouble(GraphEdge::weight).reversed()
+                            .thenComparing(GraphEdge::targetPlaceId))
                     .limit(MAX_NEIGHBOR_COUNT)
                     .toList();
             if (edges.isEmpty()) {
