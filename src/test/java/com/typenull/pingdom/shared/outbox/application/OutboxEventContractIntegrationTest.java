@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.identity.application.port.EmailSendResult;
 import com.typenull.pingdom.identity.application.port.EmailSender;
+import com.typenull.pingdom.identity.application.service.auth.AuthEmailDispatchPolicy;
 import com.typenull.pingdom.notification.application.service.NotificationDeliveryRecorder;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEvent;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventStatus;
@@ -73,6 +74,7 @@ class OutboxEventContractIntegrationTest {
     }
 
     @MockBean private EmailSender emailSender;
+    @MockBean private AuthEmailDispatchPolicy dispatchPolicy;
     @MockBean private NotificationDeliveryRecorder notificationDeliveryRecorder;
 
     @Autowired private OutboxEventPublisher eventPublisher;
@@ -89,7 +91,10 @@ class OutboxEventContractIntegrationTest {
     void setUp() {
         eventRepository.deleteAllInBatch();
         OUTBOX_CLOCK.set(INITIAL_TIME);
-        reset(emailSender, notificationDeliveryRecorder);
+        reset(emailSender, notificationDeliveryRecorder, dispatchPolicy);
+        when(dispatchPolicy.canSendVerification(Long.valueOf(OutboxEventContractFixture.AGGREGATE_ID),
+                OutboxEventContractFixture.RECIPIENT_EMAIL, OutboxEventContractFixture.VERIFICATION_CODE,
+                OutboxEventContractFixture.EXPIRES_AT)).thenReturn(true);
     }
 
     /**
@@ -152,7 +157,7 @@ class OutboxEventContractIntegrationTest {
         OutboxEvent retry = event(eventId);
         assertThat(retry.getStatus()).isEqualTo(OutboxEventStatus.RETRY);
         assertThat(retry.getAttemptCount()).isEqualTo(1);
-        assertThat(retry.getLastError()).contains("provider temporarily unavailable");
+        assertThat(retry.getLastError()).contains("인증 메일 전송에 실패했습니다.");
         assertThat(retry.getNextAttemptAt()).isBetween(beforeFailure.plusSeconds(10), eventRepository.databaseNow().plusSeconds(10));
 
         makeRetryReady(eventId);
@@ -185,7 +190,7 @@ class OutboxEventContractIntegrationTest {
                 makeRetryReady(eventId);
             } else {
                 assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.FAILED);
-                assertThat(event.getLastError()).contains("provider unavailable");
+                assertThat(event.getLastError()).contains("인증 메일 전송에 실패했습니다.");
             }
         }
     }

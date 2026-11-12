@@ -1,6 +1,7 @@
 package com.typenull.pingdom.shared.outbox.application;
 
 import com.typenull.pingdom.notification.outbox.EmailVerificationOutboxPayload;
+import java.time.LocalDateTime;
 
 final class OutboxEventContractFixture {
 
@@ -8,6 +9,7 @@ final class OutboxEventContractFixture {
     static final String AGGREGATE_ID = "100";
     static final String RECIPIENT_EMAIL = "outbox-contract@pingdom.test";
     static final String VERIFICATION_CODE = "123456";
+    static final LocalDateTime EXPIRES_AT = LocalDateTime.of(2026, 7, 27, 3, 10);
 
     /**
      * 이메일 Outbox 통합 검증의 고정 입력을 정적 메서드로 제공하므로 인스턴스화를 차단.
@@ -26,6 +28,6 @@ final class OutboxEventContractFixture {
      * 고정 집계 사용자·수신 이메일·인증 코드를 payload로 묶어 발행부터 핸들러 전달까지 비교.
      */
     static EmailVerificationOutboxPayload emailVerificationPayload() {
-        return new EmailVerificationOutboxPayload(Long.valueOf(AGGREGATE_ID), RECIPIENT_EMAIL, VERIFICATION_CODE);
+        return new EmailVerificationOutboxPayload(Long.valueOf(AGGREGATE_ID), RECIPIENT_EMAIL, VERIFICATION_CODE, EXPIRES_AT);
     }
 }
