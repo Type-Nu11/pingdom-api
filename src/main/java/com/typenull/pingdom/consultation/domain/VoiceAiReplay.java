@@ -54,11 +54,17 @@ public class VoiceAiReplay {
     @Column(name = "processing_started_at")
     private LocalDateTime processingStartedAt;
 
+    @Column(name = "processing_lease_until")
+    private LocalDateTime processingLeaseUntil;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
     private VoiceAiReplay(String sessionId, String requestId, String payloadHash, String processingToken,
-                          LocalDateTime processingStartedAt, LocalDateTime createdAt) {
+                          LocalDateTime processingStartedAt, LocalDateTime createdAt, java.time.Duration processingLease) {
         this.sessionId = sessionId;
         this.requestId = requestId;
         this.payloadHash = payloadHash;
@@ -66,11 +72,12 @@ public class VoiceAiReplay {
         this.processingToken = processingToken;
         this.processingStartedAt = processingStartedAt;
         this.createdAt = createdAt;
+        this.processingLeaseUntil = processingStartedAt.plus(processingLease);
     }
 
     public static VoiceAiReplay start(String sessionId, String requestId, String payloadHash,
-                                      String processingToken, LocalDateTime now) {
-        return new VoiceAiReplay(sessionId, requestId, payloadHash, processingToken, now, now);
+                                      String processingToken, LocalDateTime now, java.time.Duration processingLease) {
+        return new VoiceAiReplay(sessionId, requestId, payloadHash, processingToken, now, now, processingLease);
     }
 
     public boolean hasSamePayload(String payloadHash) {
@@ -87,12 +94,13 @@ public class VoiceAiReplay {
     }
 
     /** 만료된 소유권만 인계한다. 늦게 끝난 이전 provider 응답은 token 비교에서 폐기된다. */
-    public void takeOverProcessing(String processingToken, LocalDateTime now) {
+    public void takeOverProcessing(String processingToken, LocalDateTime now, java.time.Duration processingLease) {
         this.processingToken = processingToken;
         this.processingStartedAt = now;
+        this.processingLeaseUntil = now.plus(processingLease);
     }
 
-    public boolean complete(String processingToken, JsonNode envelope) {
+    public boolean complete(String processingToken, JsonNode envelope, LocalDateTime now) {
         if (status != VoiceAiReplayStatus.PROCESSING || !Objects.equals(this.processingToken, processingToken)) {
             return false;
         }
@@ -100,6 +108,8 @@ public class VoiceAiReplay {
         this.status = VoiceAiReplayStatus.COMPLETED;
         this.processingToken = null;
         this.processingStartedAt = null;
+        this.processingLeaseUntil = null;
+        this.completedAt = now;
         return true;
     }
 
