@@ -2,11 +2,14 @@ package com.typenull.pingdom.notification.outbox;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.typenull.pingdom.identity.application.port.EmailSendResult;
 import com.typenull.pingdom.identity.application.port.EmailSender;
 import com.typenull.pingdom.notification.application.service.NotificationDeliveryRecorder;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,13 +28,36 @@ class PasswordResetOutboxHandlerTest {
     private NotificationDeliveryRecorder notificationDeliveryRecorder;
 
     private PasswordResetOutboxHandler handler;
+    private ObjectMapper objectMapper;
 
     /**
      * 모의 메일 발송기와 이력 recorder를 연결해 재설정 페이로드 오류 처리를 검사.
      */
     @BeforeEach
     void setUp() {
-        handler = new PasswordResetOutboxHandler(emailSender, new ObjectMapper(), notificationDeliveryRecorder);
+        objectMapper = new ObjectMapper().findAndRegisterModules();
+        handler = new PasswordResetOutboxHandler(emailSender, objectMapper, notificationDeliveryRecorder);
+    }
+
+    @Test
+    void recordsSuccessfulPasswordResetDelivery() throws Exception {
+        LocalDateTime expiresAt = LocalDateTime.of(2026, 11, 12, 15, 30);
+        String payload = objectMapper.writeValueAsString(
+                new PasswordResetOutboxPayload(1L, "user@example.com", "reset-token", expiresAt)
+        );
+        when(emailSender.sendPasswordResetEmail("user@example.com", "reset-token", expiresAt))
+                .thenReturn(EmailSendResult.sent("postmark-reset-message-id"));
+
+        handler.handle(EVENT_ID, payload);
+
+        verify(emailSender).sendPasswordResetEmail("user@example.com", "reset-token", expiresAt);
+        verify(notificationDeliveryRecorder).recordEmailSuccess(
+                1L,
+                EVENT_ID,
+                OutboxEventType.PASSWORD_RESET_REQUESTED,
+                "user@example.com",
+                "postmark-reset-message-id"
+        );
     }
 
     /**

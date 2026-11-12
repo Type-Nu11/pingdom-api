@@ -3,6 +3,7 @@ package com.typenull.pingdom.notification.infrastructure.email;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -14,6 +15,7 @@ import com.postmarkapp.postmark.client.data.model.message.MessageResponse;
 import com.postmarkapp.postmark.client.exception.PostmarkException;
 import com.typenull.pingdom.identity.application.port.EmailSendException;
 import com.typenull.pingdom.identity.application.port.EmailSendResult;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -79,6 +81,31 @@ class PostmarkEmailSenderTest {
         verify(apiClient).deliverMessage(messageCaptor.capture());
         assertEquals("postmark-message-id", result.providerMessageId());
         assertEquals("support@example.com", messageCaptor.getValue().getFrom());
+    }
+
+    @Test
+    void sendsPasswordResetEmailWithLinkAndExpiration() throws Exception {
+        ApiClient apiClient = mock(ApiClient.class);
+        MessageResponse response = new MessageResponse();
+        response.setMessageId("postmark-reset-message-id");
+        when(apiClient.deliverMessage(any(Message.class))).thenReturn(response);
+        PostmarkEmailSender sender = new PostmarkEmailSender(properties(), apiClient);
+        LocalDateTime expiresAt = LocalDateTime.of(2026, 11, 12, 15, 30);
+
+        EmailSendResult result = sender.sendPasswordResetEmail("user@example.com", "reset-token", expiresAt);
+
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(apiClient).deliverMessage(messageCaptor.capture());
+        Message message = messageCaptor.getValue();
+        String resetLink = "https://example.com/reset?email=user%40example.com&token=reset-token";
+        assertEquals("postmark-reset-message-id", result.providerMessageId());
+        assertEquals("no-reply@example.com", message.getFrom());
+        assertEquals("user@example.com", message.getTo());
+        assertEquals("Pingdom 비밀번호 재설정", message.getSubject());
+        assertTrue(message.getTextBody().contains(resetLink));
+        assertTrue(message.getHtmlBody().contains(resetLink));
+        assertTrue(message.getTextBody().contains("2026-11-12 15:30:00"));
+        assertTrue(message.getHtmlBody().contains("2026-11-12 15:30:00"));
     }
 
     /**
