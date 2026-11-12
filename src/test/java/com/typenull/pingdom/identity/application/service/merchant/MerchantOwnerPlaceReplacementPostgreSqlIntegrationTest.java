@@ -2,6 +2,7 @@ package com.typenull.pingdom.identity.application.service.merchant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.AdditionalAnswers.delegatesTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -9,6 +10,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPlaceUpdateRequest;
 import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
 import com.typenull.pingdom.identity.domain.User;
@@ -33,8 +35,13 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -44,6 +51,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -53,6 +61,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -80,6 +89,7 @@ class MerchantOwnerPlaceReplacementPostgreSqlIntegrationTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 31, 3, 0);
     private static final LocalDateTime CREATED_AT = NOW.minusDays(10);
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-08-31T03:00:00Z"), ZoneOffset.UTC);
+    private static final List<LegacyResult> LEGACY_RESULTS = new ArrayList<>();
 
     @Container
     private static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(
@@ -148,6 +158,87 @@ class MerchantOwnerPlaceReplacementPostgreSqlIntegrationTest {
         }
         assertThat(inTransaction(() -> touristOfferRepository.findById(fixture.offerId()).orElseThrow().getStatus()))
                 .isEqualTo(mode.equals("remove") ? OfferStatus.CLOSED : OfferStatus.PUBLISHED);
+    }
+
+    @ParameterizedTest(name = "legacy {0}, measured={1}")
+    @MethodSource("replacements")
+    void recordsLegacyBulkDeleteAndMergeOutcome(String mode, boolean measured) {
+        Fixture fixture = fixture(measured);
+        Snapshot retainedBefore = snapshot(fixture.retainedPlaceId());
+        Snapshot removedBefore = snapshot(fixture.removedPlaceId());
+        Set<Long> requested = switch (mode) {
+            case "add" -> Set.of(fixture.retainedPlaceId(), fixture.removedPlaceId(), fixture.addedPlaceId());
+            case "remove" -> Set.of(fixture.retainedPlaceId());
+            default -> Set.of(fixture.retainedPlaceId(), fixture.removedPlaceId());
+        };
+
+        Throwable failure = catchThrowable(() -> replaceUsingLegacyFlow(fixture.ownerId(), requested));
+        List<Long> actualIds = inTransaction(() -> ownerPlaceRepository.findPlaceIdsByMerchantOwnerUserId(fixture.ownerId()));
+        Map<Long, Snapshot> mappings = new LinkedHashMap<>();
+        actualIds.forEach(id -> mappings.put(id, snapshot(id)));
+        OfferStatus offerStatus = inTransaction(() -> touristOfferRepository.findById(fixture.offerId()).orElseThrow().getStatus());
+        LEGACY_RESULTS.add(new LegacyResult(mode, measured, failure == null ? "COMMITTED" : "ROLLED_BACK",
+                failure == null ? null : failure.getClass().getSimpleName(),
+                requested.stream().sorted().toList(), actualIds, mappings, offerStatus));
+
+        if (measured) {
+            assertThat(failure).isInstanceOf(ObjectOptimisticLockingFailureException.class);
+            assertThat(actualIds).containsExactly(fixture.retainedPlaceId(), fixture.removedPlaceId());
+            assertThat(mappings.get(fixture.retainedPlaceId())).isEqualTo(retainedBefore);
+            assertThat(mappings.get(fixture.removedPlaceId())).isEqualTo(removedBefore);
+            assertThat(offerStatus).isEqualTo(OfferStatus.PUBLISHED);
+        } else {
+            assertThat(failure).isNull();
+            if (mode.equals("add")) {
+                assertThat(actualIds).containsExactly(fixture.addedPlaceId());
+            } else {
+                assertThat(actualIds).isEmpty();
+            }
+            assertThat(offerStatus).isEqualTo(mode.equals("remove") ? OfferStatus.CLOSED : OfferStatus.PUBLISHED);
+        }
+    }
+
+    /** 60962db의 저장 호출 순서를 재현하며 fixture에서 무효인 권한·감사 호출은 제외한다. */
+    private void replaceUsingLegacyFlow(Long ownerId, Set<Long> requested) {
+        inTransaction(() -> {
+            profileRepository.findByUserIdForUpdate(ownerId).orElseThrow();
+            Set<Long> before = new LinkedHashSet<>(ownerPlaceRepository
+                    .findAllByMerchantOwnerUserIdOrderByPlaceIdAsc(ownerId).stream()
+                    .map(MerchantOwnerPlace::getPlaceId).toList());
+            Set<Long> removed = new LinkedHashSet<>(before);
+            removed.removeAll(requested);
+            if (!removed.isEmpty()) {
+                touristOfferRepository.closeAllByMerchantOwnerUserIdAndPlaceIdIn(ownerId, removed, NOW);
+            }
+            List<Long> placeIds = requested.stream().sorted().toList();
+            if (!placeIds.isEmpty()) {
+                assertThat(mapPlaceRepository.findAllByIdInForUpdate(placeIds)).hasSize(placeIds.size());
+                assertThat(ownerPlaceRepository.findAllByPlaceIdIn(placeIds))
+                        .allMatch(mapping -> mapping.getMerchantOwnerUserId().equals(ownerId));
+            }
+            ownerPlaceRepository.deleteAllByMerchantOwnerUserId(ownerId);
+            List<MerchantOwnerPlace> mappings = new ArrayList<>();
+            for (Long placeId : placeIds) {
+                mappings.add(MerchantOwnerPlace.builder().placeId(placeId).merchantOwnerUserId(ownerId)
+                        .createdAt(NOW).build());
+            }
+            ownerPlaceRepository.saveAll(mappings);
+            // 원래 공개 메서드의 response(profile)도 같은 조회로 pending write를 flush한다.
+            return ownerPlaceRepository.findAllByMerchantOwnerUserIdOrderByPlaceIdAsc(ownerId);
+        });
+    }
+
+    @AfterAll
+    static void saveLegacyResults() throws Exception {
+        if (!LEGACY_RESULTS.isEmpty()) {
+            Path output = Path.of("build/reports/1859-legacy-place-replacement.json");
+            Files.createDirectories(output.getParent());
+            new ObjectMapper().findAndRegisterModules().writerWithDefaultPrettyPrinter().writeValue(output.toFile(), Map.of(
+                    "baseline", "60962db65448bd03b77939b375eb0b452c50f8ca",
+                    "currentAtVerification", "92afc490c04849583874ca097ad03fd43b250fe7",
+                    "java", System.getProperty("java.runtime.version"), "postgres", postgres.getDockerImageName(),
+                    "results", LEGACY_RESULTS));
+        }
     }
 
     @Test
@@ -329,5 +420,10 @@ class MerchantOwnerPlaceReplacementPostgreSqlIntegrationTest {
             Long ownerId, MerchantOperationalQualityStatus quality, Integer responseRate,
             Integer cancellationRate, Integer noShowRate, LocalDateTime evaluatedAt, LocalDateTime createdAt
     ) {
+    }
+
+    private record LegacyResult(String mode, boolean measured, String outcome, String failureType,
+                                List<Long> requestedIds, List<Long> actualIds, Map<Long, Snapshot> mappings,
+                                OfferStatus offerStatus) {
     }
 }
