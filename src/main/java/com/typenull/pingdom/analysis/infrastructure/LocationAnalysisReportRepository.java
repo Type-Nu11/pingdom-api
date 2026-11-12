@@ -1,8 +1,9 @@
 package com.typenull.pingdom.analysis.infrastructure;
 
 import com.typenull.pingdom.analysis.domain.LocationAnalysisReport;
-import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,7 +14,7 @@ import org.springframework.data.repository.query.Param;
  */
 public interface LocationAnalysisReportRepository extends JpaRepository<LocationAnalysisReport, String> {
 
-    @Query("""
+    @Query(value = """
             SELECT report.reportId AS reportId, report.reportName AS reportName,
                    report.category AS category, report.region AS region,
                    report.targetCustomerGroup AS targetCustomerGroup,
@@ -22,9 +23,13 @@ public interface LocationAnalysisReportRepository extends JpaRepository<Location
                    report.analysisBasisDate AS analysisBasisDate, report.createdAt AS createdAt
             FROM LocationAnalysisReport report
             WHERE report.ownerUserId = :ownerUserId
-            ORDER BY report.createdAt DESC
+            ORDER BY report.createdAt DESC, report.reportId DESC
+            """, countQuery = """
+            SELECT COUNT(report)
+            FROM LocationAnalysisReport report
+            WHERE report.ownerUserId = :ownerUserId
             """)
-    List<SummaryView> findSummariesByOwnerUserId(@Param("ownerUserId") long ownerUserId);
+    Page<SummaryView> findSummariesByOwnerUserId(@Param("ownerUserId") long ownerUserId, Pageable pageable);
 
     Optional<LocationAnalysisReport> findByReportIdAndOwnerUserId(String reportId, long ownerUserId);
 
