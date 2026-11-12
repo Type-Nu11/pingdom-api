@@ -16,7 +16,9 @@ public interface ProfileImageUploadIntentRepository extends JpaRepository<Profil
     Optional<ProfileImageUploadIntent> findForUpdate(@Param("id") String id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<ProfileImageUploadIntent> findByUserIdAndImageUrl(Long userId, String imageUrl);
+    @Query("select i from ProfileImageUploadIntent i where i.userId = :userId and i.imageUrl = :imageUrl")
+    Optional<ProfileImageUploadIntent> findByUserIdAndImageUrlForUpdate(
+            @Param("userId") Long userId, @Param("imageUrl") String imageUrl);
 
     @Query(value = """
             SELECT * FROM profile_image_upload_intent

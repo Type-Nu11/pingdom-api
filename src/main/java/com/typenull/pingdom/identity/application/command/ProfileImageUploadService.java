@@ -49,7 +49,7 @@ public class ProfileImageUploadService {
         if (!intent.canComplete(user.getId(), clock.instant())) throw unavailable();
         intent.attached(clock.instant(), properties.recheckDelay());
         if (previousUrl != null && !previousUrl.equals(intent.getImageUrl())) {
-            intents.findByUserIdAndImageUrl(user.getId(), previousUrl).ifPresent(previous -> {
+            intents.findByUserIdAndImageUrlForUpdate(user.getId(), previousUrl).ifPresent(previous -> {
                 if (previous.ownsKey()) previous.orphaned(clock.instant());
             });
         }

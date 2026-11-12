@@ -40,7 +40,7 @@ class ProfileImageUploadServiceTest {
         previous.attached(NOW.minusSeconds(60), Duration.ofDays(1));
         User user = User.builder().id(1L).profileImageUrl(previous.getImageUrl()).build();
         when(intents.findForUpdate(current.getId())).thenReturn(Optional.of(current));
-        when(intents.findByUserIdAndImageUrl(1L, previous.getImageUrl())).thenReturn(Optional.of(previous));
+        when(intents.findByUserIdAndImageUrlForUpdate(1L, previous.getImageUrl())).thenReturn(Optional.of(previous));
         assertThat(service.complete(current.getId(), user)).isEqualTo(current.getImageUrl());
         assertThat(current.getState()).isEqualTo(ProfileImageUploadIntent.State.ATTACHED);
         assertThat(previous.getState()).isEqualTo(ProfileImageUploadIntent.State.ORPHAN);
@@ -56,7 +56,7 @@ class ProfileImageUploadServiceTest {
         when(users.saveAndFlush(user)).thenThrow(new ObjectOptimisticLockingFailureException(User.class, 1L));
         assertThatThrownBy(() -> service.complete(current.getId(), user)).isInstanceOf(ObjectOptimisticLockingFailureException.class);
         assertThat(current.getState()).isEqualTo(ProfileImageUploadIntent.State.UPLOADING);
-        verify(intents, never()).findByUserIdAndImageUrl(anyLong(), anyString());
+        verify(intents, never()).findByUserIdAndImageUrlForUpdate(anyLong(), anyString());
     }
 
     @Test
