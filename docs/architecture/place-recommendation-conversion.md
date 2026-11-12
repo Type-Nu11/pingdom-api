@@ -133,6 +133,12 @@ totalConversionRate = (bookmarkConversionCount + likeConversionCount) / exposure
    기록하고, 동일 요청을 임의로 재생성하지 않는다.
 5. 재동기화 후 성공·실패 metric과 로그를 확인하고, 남은 차이는 별도 이슈로 추적한다.
 
+추천 노출은 영속 Outbox와 분리한 유한 실행기를 사용한다. 제출 거절·제출 실패·저장 실패,
+대기 시간과 확인된 드롭의 관측 기준은 [운영 관측성](../observability.md#추천-노출-비동기-처리)을
+따른다. 풀 분리는 메모리 이벤트의 best-effort 전달 보장을 강화하지 않는다. 종료 시 완료
+대기는 유한하며 재시작 후 큐 복원이나 requestId 재시도는 지원하지 않는다. DB 커넥션과
+CPU는 Outbox와 계속 공유하므로 스레드 격리만으로 처리량 향상을 단정하지 않는다.
+
 ## 9. 호환성과 rollback 지점
 
 - `V67`은 `place_recommendation_conversion`에 nullable 참조만 추가한다. 기존 row와 기존 API
