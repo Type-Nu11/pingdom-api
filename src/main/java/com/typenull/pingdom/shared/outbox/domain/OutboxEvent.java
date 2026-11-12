@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * 중복 키·payload와 처리 상태를 저장하는 Outbox 행.
- * 실패 때 attemptCount가 증가하며 version으로 동시 DB 갱신을 감지. 외부 handler 중복 실행을 막는 토큰은 없음.
+ * 실패 때 attemptCount가 증가하며 선점 토큰과 lease로 이전 실행의 상태 갱신을 차단한다.
  */
 @Entity
 @Table(
@@ -87,6 +87,12 @@ public class OutboxEvent {
     @Column(name = "processing_started_at")
     private LocalDateTime processingStartedAt;
 
+    @Column(name = "claim_token", length = 36)
+    private String claimToken;
+
+    @Column(name = "lease_until")
+    private LocalDateTime leaseUntil;
+
     @Column(name = "processed_at")
     private LocalDateTime processedAt;
 
@@ -126,12 +132,18 @@ public class OutboxEvent {
     }
 
     /** PENDING/RETRY만 PROCESSING으로 전환해 시작 시각을 기록. 이 단계에서는 시도 횟수 유지. */
-    public void claim(LocalDateTime now) {
+    public void claim(String token, LocalDateTime now, LocalDateTime leaseUntil) {
         if (status != OutboxEventStatus.PENDING && status != OutboxEventStatus.RETRY) {
             return;
         }
+        java.util.Objects.requireNonNull(token);
+        if (leaseUntil == null || !leaseUntil.isAfter(now)) {
+            throw new IllegalArgumentException("Outbox lease는 선점 시각 이후여야 합니다.");
+        }
         status = OutboxEventStatus.PROCESSING;
         processingStartedAt = now;
+        this.claimToken = token;
+        this.leaseUntil = leaseUntil;
         updatedAt = now;
     }
 
@@ -143,6 +155,8 @@ public class OutboxEvent {
         status = OutboxEventStatus.SUCCEEDED;
         processedAt = now;
         processingStartedAt = null;
+        claimToken = null;
+        leaseUntil = null;
         lastError = null;
         updatedAt = now;
     }
@@ -158,6 +172,8 @@ public class OutboxEvent {
         attemptCount++;
         lastError = truncate(errorMessage);
         processingStartedAt = null;
+        claimToken = null;
+        leaseUntil = null;
         updatedAt = now;
 
         if (attemptCount >= maxAttempts) {
@@ -190,6 +206,8 @@ public class OutboxEvent {
         nextAttemptAt = now;
         processedAt = null;
         processingStartedAt = null;
+        claimToken = null;
+        leaseUntil = null;
         lastError = null;
         updatedAt = now;
     }

@@ -34,7 +34,7 @@ class OutboxEventTest {
         for (int attempt = 1; attempt <= 5; attempt++) {
             event.fail(NOW.plusSeconds(attempt), 5, NOW.plusMinutes(attempt), "failure-" + attempt);
             if (attempt < 5) {
-                event.claim(NOW.plusMinutes(attempt));
+                event.claim("test-token", NOW.plusMinutes(attempt), NOW.plusMinutes(attempt).plusMinutes(5));
             }
         }
 
@@ -70,6 +70,8 @@ class OutboxEventTest {
         assertThat(event.getAttemptCount()).isEqualTo(1);
         assertThat(event.getNextAttemptAt()).isEqualTo(NOW.plusMinutes(5).plusSeconds(10));
         assertThat(event.getProcessingStartedAt()).isNull();
+        assertThat(event.getClaimToken()).isNull();
+        assertThat(event.getLeaseUntil()).isNull();
     }
 
     /**
@@ -84,7 +86,7 @@ class OutboxEventTest {
                 "1",
                 NOW.minusMinutes(1)
         );
-        event.claim(NOW.minusSeconds(1));
+        event.claim("test-token", NOW.minusSeconds(1), NOW.minusSeconds(1).plusMinutes(5));
         return event;
     }
 }
