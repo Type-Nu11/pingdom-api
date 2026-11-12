@@ -482,6 +482,14 @@ verification:
     cleanup-enabled: true
     cleanup-delay: PT24H
     cleanup-initial-delay: PT1H
+  visit-evidence-orphan:
+    # 추적 orphan은 기본 정리하며 immutable versionId가 없는 객체만 보류합니다. 활성 증빙의 30일 계약은 유지합니다.
+    cleanup-enabled: true
+    upload-timeout: PT2M
+    batch-size: 50
+    recheck-delay: PT24H
+    cleanup-delay: PT1H
+    cleanup-initial-delay: PT1H
 
 # 관리자 지도 전체 마커 표시 한도. 쿼리 timeout과 별개이며 초기 정책값은 100이다.
 admin:
