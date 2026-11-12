@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.shared.observability.OutboxMetrics;
@@ -11,86 +12,76 @@ import com.typenull.pingdom.shared.outbox.domain.OutboxEvent;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventStatus;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
-import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
 class OutboxEventClaimServiceTest {
+    private static final LocalDateTime NOW = LocalDateTime.of(2026, 11, 12, 0, 0);
+    @Mock private OutboxEventRepository repository;
+    @Mock private OutboxMetrics metrics;
+    private OutboxEventClaimService service;
 
-    private static final Instant NOW = Instant.parse("2026-06-22T03:00:00Z");
-
-    @Mock
-    private OutboxEventRepository outboxEventRepository;
-
-    @Mock
-    private OutboxMetrics outboxMetrics;
-
-    private OutboxEventClaimService claimService;
-
-    /**
-     * 10초 기본 backoff·5분 stale 기준·최대 5회 설정과 고정 Clock으로 선점 복구 서비스를 구성.
-     */
     @BeforeEach
     void setUp() {
-        OutboxProperties properties = new OutboxProperties(
-                20,
-                2,
-                20,
-                100,
-                5,
-                Duration.ofSeconds(10),
-                Duration.ofMinutes(10),
-                Duration.ofMinutes(5),
-                Duration.ofDays(7)
-        );
-        claimService = new OutboxEventClaimService(
-                outboxEventRepository,
-                properties,
-                new OutboxBackoffPolicy(properties),
-                Clock.fixed(NOW, ZoneOffset.UTC),
-                outboxMetrics
-        );
+        OutboxProperties properties = new OutboxProperties(20, 2, 20, 100, 5,
+                Duration.ofSeconds(10), Duration.ofMinutes(10), Duration.ofMinutes(5), Duration.ofDays(7));
+        service = new OutboxEventClaimService(repository, properties, new OutboxBackoffPolicy(properties), metrics);
     }
 
-    /**
-     * 한 번 실패 후 다시 선점되어 5분 이상 멈춘 이벤트를 복구하면 RETRY·시도 2회·20초 뒤 재시도와 복구 1건 메트릭을 기록하는지 검증.
-     */
     @Test
-    void backsOffRecoveredStaleEvent() {
-        LocalDateTime now = LocalDateTime.ofInstant(NOW, ZoneOffset.UTC);
-        OutboxEvent event = OutboxEvent.create(
-                "EMAIL_VERIFICATION:1:123456",
-                OutboxEventType.EMAIL_VERIFICATION_REQUESTED,
-                "{}",
-                "USER",
-                "1",
-                now.minusMinutes(10)
-        );
-        event.claim(now.minusMinutes(9));
-        event.fail(now.minusMinutes(8), 5, now.minusMinutes(7), "first failure");
-        event.claim(now.minusMinutes(6));
-        when(outboxEventRepository.findStaleProcessingEventsForUpdate(
-                eq(OutboxEventStatus.PROCESSING),
-                eq(now.minusMinutes(5)),
-                any(Pageable.class)
-        )).thenReturn(List.of(event));
+    void claimsOnlyReservedSlotsWithIndependentTokensAndDatabaseLease() {
+        OutboxEvent first = event("1");
+        OutboxEvent second = event("2");
+        when(repository.databaseNow()).thenReturn(NOW);
+        when(repository.findReadyEventsForUpdate(any(), eq(NOW), any())).thenReturn(List.of(first, second));
 
-        int recoveredCount = claimService.recoverStaleEvents();
+        List<OutboxClaim> claims = service.claimReadyEvents(2);
 
-        assertThat(recoveredCount).isEqualTo(1);
+        ArgumentCaptor<Pageable> page = ArgumentCaptor.forClass(Pageable.class);
+        verify(repository).findReadyEventsForUpdate(any(), eq(NOW), page.capture());
+        assertThat(page.getValue().getPageSize()).isEqualTo(2);
+        assertThat(claims).extracting(OutboxClaim::claimToken).doesNotHaveDuplicates();
+        assertThat(claims.getFirst().claimToken()).isEqualTo(first.getClaimToken());
+        assertThat(first.getLeaseUntil()).isEqualTo(NOW.plusMinutes(5));
+    }
+
+    @Test
+    void noCapacityDoesNotQueryDatabase() {
+        assertThat(service.claimReadyEvents(0)).isEmpty();
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void backsOffExpiredLeaseAndClearsOldOwnership() {
+        OutboxEvent event = event("1");
+        event.claim("old", NOW.minusMinutes(9), NOW.minusMinutes(4));
+        event.fail(NOW.minusMinutes(8), 5, NOW.minusMinutes(7), "first failure");
+        event.claim("current", NOW.minusMinutes(6), NOW.minusMinutes(1));
+        when(repository.databaseNow()).thenReturn(NOW);
+        when(repository.findStaleProcessingEventsForUpdate(eq(OutboxEventStatus.PROCESSING), eq(NOW), any()))
+                .thenReturn(List.of(event));
+
+        assertThat(service.recoverStaleEvents()).isEqualTo(1);
+
         assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.RETRY);
         assertThat(event.getAttemptCount()).isEqualTo(2);
-        assertThat(event.getNextAttemptAt()).isEqualTo(now.plusSeconds(20));
-        verify(outboxMetrics).recordStaleRecovered(1);
+        assertThat(event.getNextAttemptAt()).isEqualTo(NOW.plusSeconds(20));
+        assertThat(event.getClaimToken()).isNull();
+        assertThat(event.getLeaseUntil()).isNull();
+        verify(metrics).recordStaleRecovered(1);
+    }
+
+    private OutboxEvent event(String id) {
+        return OutboxEvent.create("email:" + id, OutboxEventType.EMAIL_VERIFICATION_REQUESTED,
+                "{}", "USER", id, NOW.minusMinutes(10));
     }
 }
