@@ -41,6 +41,7 @@ public class VoiceAiOpenApiConfig {
                             .addAnyOfItem(new Schema<>().$ref("#/components/schemas/ValidationErrorResponse")))));
             error(send, "409", "REPLAY_CONFLICT: 동일 세션·requestId에 다른 text를 보냈습니다.");
             error(send, "502", "PROVIDER_UNAVAILABLE: provider timeout·일반 장애·비활성 설정. "
+                    + "완료 대기 상한(최대 30초)·인터럽트도 PROVIDER_UNAVAILABLE이며 동일 ID/text로 재시도할 수 있습니다. "
                     + "PROVIDER_RESPONSE_INVALID: schema 위반·16 KiB 초과. timeout 전용 code는 없습니다.");
             error(send, "429", "RATE_LIMIT_EXCEEDED: controller 진입 시 IP 기준 Redis 제한. "
                     + "consultations/intro와 공유하며 기본 1분 10회(설정 가능). replay도 제한에 포함됩니다. "
@@ -51,6 +52,11 @@ public class VoiceAiOpenApiConfig {
                     error(operation, "404", "SESSION_NOT_FOUND: 존재하지 않는 세션");
                     error(operation, "403", "SESSION_FORBIDDEN: 다른 사용자 세션. ACCESS_DENIED: 공통 접근 거부");
                 });
+            }
+            for (String path : List.of(BASE + "/{sessionId}/refresh", BASE + "/{sessionId}")) {
+                api.getPaths().get(path).readOperations().forEach(operation ->
+                        error(operation, "502", "PROVIDER_UNAVAILABLE: 진행 중 전송 완료 대기 상한(최대 30초)·인터럽트. "
+                                + "실행 중 전송은 취소하지 않으며 같은 세션 작업을 재시도할 수 있습니다."));
             }
             error(send, "410", "SESSION_EXPIRED: 만료 또는 종료된 세션. replay도 반환하지 않습니다.");
             error(api.getPaths().get(BASE + "/{sessionId}/refresh").getPost(), "410",

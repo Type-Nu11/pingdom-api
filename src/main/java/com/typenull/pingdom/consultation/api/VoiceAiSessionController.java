@@ -51,7 +51,10 @@ public class VoiceAiSessionController {
             최종 envelope는 UTF-8 16 KiB 이하이며 id는 requestId와 정확히 일치합니다.
             활성 세션 내 requestId를 대소문자 구분하여 비교합니다. 동일 ID·동일 text(UTF-8 SHA-256)는 저장된 결과를
             반환하고 다른 text는 409 REPLAY_CONFLICT입니다. 진행 중 재요청은 provider 호출을 중복하지 않고 결과 저장까지
-            잠금 없이 재조회합니다. 갱신·종료도 진행 중 요청 완료 후 반영합니다. 실패하여 결과가 저장되지 않았다면 재시도에서 provider를 다시 호출합니다.
+            DB 연결 밖에서 100ms부터 최대 1초 간격으로 재조회합니다. 갱신·종료도 진행 중 요청 완료 후 반영합니다.
+            완료 대기는 최대 30초이며 대기 상한·인터럽트는 502 PROVIDER_UNAVAILABLE입니다.
+            대기자 종료는 실행 중인 provider나 저장 결과를 취소하지 않으며 동일 ID/text로 재시도할 수 있습니다.
+            실패하여 결과가 저장되지 않았다면 재시도에서 provider를 다시 호출합니다.
             결과는 세션이 활성인 동안 재사용하며 refresh는 이 기간을 연장합니다. 만료·종료 후에는 replay도 410입니다.
             현재 저장 데이터의 자동 삭제 기간은 설정되어 있지 않습니다. 앱의 epoch/generation 및 256개 ledger는 앱 소유입니다.
             앱의 30초 deadline이나 연결 종료는 서버/provider 취소를 보장하지 않습니다. 서버 처리가 커밋되었다면
@@ -72,13 +75,13 @@ public class VoiceAiSessionController {
     }
 
     @PostMapping("/{sessionId}/refresh")
-    @Operation(summary = "음성 AI 세션 갱신", description = "활성 세션의 만료 시각을 현재 시점에서 5분으로 갱신합니다.")
+    @Operation(summary = "음성 AI 세션 갱신", description = "활성 세션의 만료 시각을 현재 시점에서 5분으로 갱신합니다. 진행 중 전송 완료를 최대 30초 기다리며 대기 상한·인터럽트는 502 PROVIDER_UNAVAILABLE입니다.")
     public VoiceAiSessionResponse refresh(@PathVariable String sessionId, @CurrentUser JwtAuthenticatedUser user) {
         return voiceAiSessionService.refresh(sessionId, user.userId());
     }
 
     @DeleteMapping("/{sessionId}")
-    @Operation(summary = "음성 AI 세션 종료", description = "동일 세션의 반복 종료 요청은 성공으로 처리됩니다.")
+    @Operation(summary = "음성 AI 세션 종료", description = "동일 세션의 반복 종료 요청은 성공으로 처리됩니다. 진행 중 전송 완료를 최대 30초 기다리며 대기 상한·인터럽트는 502 PROVIDER_UNAVAILABLE입니다. 대기 종료는 전송을 취소하거나 세션을 종료하지 않습니다.")
     public ResponseEntity<Void> close(@PathVariable String sessionId, @CurrentUser JwtAuthenticatedUser user) {
         voiceAiSessionService.close(sessionId, user.userId());
         return ResponseEntity.noContent().build();
