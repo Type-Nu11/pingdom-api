@@ -25,13 +25,16 @@ import com.typenull.pingdom.moderation.application.AdminReportService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.post.domain.MapImage;
+import com.typenull.pingdom.post.application.service.MapImageStateLockService;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.moderation.outbox.notification.AdminNotificationOutboxPublisher;
+import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -42,7 +45,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 사진 신고의 승인·반려를 신고자 정책·사진 노출·사용자 제재·감사 기록·알림 outbox와 연결.
  * 승인은 REPORT_REVIEW·USER_SANCTION 권한을 모두 요구하며 반려에는 신고자 정책 갱신 포함.
- * 대기 상태 확인은 일반 조회이므로 동시 처리 간 경쟁 가능.
+ * 신고→신고자 정책→사용자→장소→사진 순서의 잠금을 확보한 뒤 상태와 부작용을 함께 변경.
  */
 @Service
 @RequiredArgsConstructor
@@ -53,6 +56,7 @@ public class AdminReportServiceImpl implements AdminReportService {
 
     private final PostReportRepository postReportRepository;
     private final MapImageRepository mapImageRepository;
+    private final MapImageStateLockService imageStateLockService;
     private final UserRepository userRepository;
     private final AdminPostService adminPostService;
     private final UserSanctionCommandService userSanctionCommandService;
@@ -60,6 +64,7 @@ public class AdminReportServiceImpl implements AdminReportService {
     private final ReportPolicyService reportPolicyService;
     private final AdminNotificationOutboxPublisher adminNotificationOutboxPublisher;
     private final AdminRoleAuthorizationService authorizationService;
+    private final EntityManager entityManager;
     private final Clock clock;
 
     /**
@@ -73,14 +78,13 @@ public class AdminReportServiceImpl implements AdminReportService {
         // 승인에 포함된 사용자 제재 변경도 작업 시작 전에 인가.
         authorizationService.requirePermission(adminUserId, AdminPermission.USER_SANCTION);
         PostReport postReport = getPendingReport(reportId);
-        User reportedUser = userRepository.findById(postReport.getReportedUserId())
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
-        User reporter = userRepository.findById(postReport.getReporterUserId())
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
-
+        Map<Long, User> participants = lockParticipants(List.of(postReport));
+        User reportedUser = getUser(postReport.getReportedUserId(), participants);
+        User reporter = getUser(postReport.getReporterUserId(), participants);
+        MapImage image = getPostForUpdate(postReport.getReportedImageId());
 
         LocalDateTime now = LocalDateTime.now(clock);
-        Map<String, Object> beforeState = reportState(postReport, reportedUser.isCurrentlyBanned(now), false);
+        Map<String, Object> beforeState = reportState(postReport, reportedUser.isCurrentlyBanned(now), !image.isVisible());
         postReport.accept(now);
         reportPolicyService.recordAccepted(postReport.getReporterUserId(), postReport.getReporterUsername());
         reporter.increaseReportCount();
@@ -121,20 +125,17 @@ public class AdminReportServiceImpl implements AdminReportService {
     public AdminReportActionResponse declineReport(Long reportId, Long adminUserId) {
         authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
         PostReport postReport = getPendingReport(reportId);
+        Map<Long, User> participants = lockParticipants(List.of(postReport));
         LocalDateTime now = LocalDateTime.now(clock);
-        User reporter = userRepository.findById(postReport.getReporterUserId())
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        User reporter = getUser(postReport.getReporterUserId(), participants);
+        User reportedUser = participants.get(postReport.getReportedUserId());
 
-        boolean beforeBanned = userRepository.findById(postReport.getReportedUserId())
-                .map(user -> user.isCurrentlyBanned(now))
-                .orElse(false);
+        boolean beforeBanned = reportedUser != null && reportedUser.isCurrentlyBanned(now);
         Map<String, Object> beforeState = reportState(postReport, beforeBanned, false);
 
         postReport.decline(now);
         reportPolicyService.recordDeclined(postReport.getReporterUserId(), postReport.getReporterUsername(), now);
-        boolean banned = userRepository.findById(postReport.getReportedUserId())
-                .map(user -> user.isCurrentlyBanned(now))
-                .orElse(false);
+        boolean banned = reportedUser != null && reportedUser.isCurrentlyBanned(now);
         adminAuditLogService.record(
                 adminUserId,
                 AdminAuditAction.REPORT_DECLINED,
@@ -171,24 +172,23 @@ public class AdminReportServiceImpl implements AdminReportService {
         authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
         // 승인에 포함된 사용자 제재 변경도 작업 시작 전에 인가.
         authorizationService.requirePermission(adminUserId, AdminPermission.USER_SANCTION);
-        MapImage mapImage = getPost(postId);
+        requirePostExists(postId);
         List<PostReport> pendingReports = getPendingReports(postId);
         if (pendingReports.isEmpty()) {
             throw new AdminException(AdminErrorCode.PENDING_REPORT_NOT_FOUND);
         }
 
-        PostReport firstReport = pendingReports.getFirst();
-        User reportedUser = userRepository.findById(firstReport.getReportedUserId())
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        Map<Long, User> participants = lockParticipants(pendingReports);
+        User reportedUser = getUser(pendingReports.getFirst().getReportedUserId(), participants);
+        MapImage mapImage = getPostForUpdate(postId);
 
         LocalDateTime now = LocalDateTime.now(clock);
         boolean beforeBanned = reportedUser.isCurrentlyBanned(now);
         boolean beforePostHidden = !mapImage.isVisible();
         Map<Long, Map<String, Object>> beforeStates = reportStates(pendingReports, beforeBanned, beforePostHidden);
-        Map<Long, User> reportersById = loadReportersById(pendingReports);
 
         for (PostReport report : pendingReports) {
-            User reporter = getReporter(report, reportersById);
+            User reporter = getUser(report.getReporterUserId(), participants);
             report.accept(now);
             reportPolicyService.recordAccepted(report.getReporterUserId(), report.getReporterUsername());
             reporter.increaseReportCount();
@@ -228,23 +228,21 @@ public class AdminReportServiceImpl implements AdminReportService {
     @Transactional
     public AdminPostReportBulkActionResponse declinePostReports(Long postId, Long adminUserId) {
         authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
-        MapImage mapImage = getPost(postId);
+        requirePostExists(postId);
         List<PostReport> pendingReports = getPendingReports(postId);
         if (pendingReports.isEmpty()) {
             throw new AdminException(AdminErrorCode.PENDING_REPORT_NOT_FOUND);
         }
 
+        Map<Long, User> participants = lockParticipants(pendingReports);
+        User reportedUser = getUser(pendingReports.getFirst().getReportedUserId(), participants);
+        MapImage mapImage = getPostForUpdate(postId);
         LocalDateTime now = LocalDateTime.now(clock);
         boolean postHidden = !mapImage.isVisible();
-        PostReport firstReport = pendingReports.getFirst();
-        User reportedUser = userRepository.findById(firstReport.getReportedUserId())
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
         boolean beforeBanned = reportedUser.isCurrentlyBanned(now);
         Map<Long, Map<String, Object>> beforeStates = reportStates(pendingReports, beforeBanned, postHidden);
-        Map<Long, User> reportersById = loadReportersById(pendingReports);
 
         for (PostReport report : pendingReports) {
-            getReporter(report, reportersById);
             report.decline(now);
             reportPolicyService.recordDeclined(report.getReporterUserId(), report.getReporterUsername(), now);
         }
@@ -317,7 +315,7 @@ public class AdminReportServiceImpl implements AdminReportService {
     }
 
     private PostReport getPendingReport(Long reportId) {
-        PostReport postReport = postReportRepository.findById(reportId)
+        PostReport postReport = postReportRepository.findByIdForUpdate(reportId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.REPORT_NOT_FOUND));
 
         if (!postReport.isPending()) {
@@ -327,13 +325,20 @@ public class AdminReportServiceImpl implements AdminReportService {
         return postReport;
     }
 
-    private MapImage getPost(Long postId) {
-        return mapImageRepository.findWithMapPlaceById(postId)
-                .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
+    private void requirePostExists(Long postId) {
+        if (!mapImageRepository.existsById(postId)) {
+            throw new AdminException(AdminErrorCode.POST_NOT_FOUND);
+        }
+    }
+
+    private MapImage getPostForUpdate(Long postId) {
+        return imageStateLockService.findForUpdate(postId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND))
+                .image();
     }
 
     private List<PostReport> getPendingReports(Long postId) {
-        return postReportRepository.findAllByReportedImageIdAndStatusOrderByIdAsc(
+        return postReportRepository.findAllByImageAndStatusForUpdate(
                 postId,
                 PostReportStatus.PENDING
         );
@@ -351,29 +356,28 @@ public class AdminReportServiceImpl implements AdminReportService {
         return states;
     }
 
-    private Map<Long, User> loadReportersById(List<PostReport> reports) {
-        Map<Long, User> reportersById = new LinkedHashMap<>();
-        for (PostReport report : reports) {
-            reportersById.putIfAbsent(report.getReporterUserId(), null);
-        }
-
-        userRepository.findAllById(reportersById.keySet())
-                .forEach(reporter -> reportersById.put(reporter.getId(), reporter));
-
-        reportersById.forEach((reporterUserId, reporter) -> {
-            if (reporter == null) {
-                throw new AuthException(AuthErrorCode.USER_NOT_FOUND);
-            }
-        });
-        return reportersById;
+    private Map<Long, User> lockParticipants(List<PostReport> reports) {
+        reportPolicyService.lockForModeration(reports);
+        Map<Long, User> participants = new LinkedHashMap<>();
+        reports.stream()
+                .flatMap(report -> Stream.of(report.getReporterUserId(), report.getReportedUserId()))
+                .distinct()
+                .sorted()
+                .forEach(userId -> userRepository.findByIdForUpdate(userId).ifPresent(user -> {
+                    // 권한 확인 등으로 이미 적재된 사용자가 있어도 잠금 이후의 version·상태를 사용합니다.
+                    entityManager.refresh(user);
+                    participants.put(userId, user);
+                }));
+        reports.forEach(report -> getUser(report.getReporterUserId(), participants));
+        return participants;
     }
 
-    private User getReporter(PostReport report, Map<Long, User> reportersById) {
-        User reporter = reportersById.get(report.getReporterUserId());
-        if (reporter == null) {
+    private User getUser(Long userId, Map<Long, User> participants) {
+        User user = participants.get(userId);
+        if (user == null) {
             throw new AuthException(AuthErrorCode.USER_NOT_FOUND);
         }
-        return reporter;
+        return user;
     }
 
     private AdminPostReportBulkActionResponse toBulkActionResponse(
