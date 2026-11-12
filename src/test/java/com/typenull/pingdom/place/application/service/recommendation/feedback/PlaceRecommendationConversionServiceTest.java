@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.place.application.service.recommendation.feature.PlaceRecommendationFeatureLogService;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotService;
+import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotWriteLock;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationVersionSnapshotService;
 import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommendationClick;
 import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommendationConversion;
@@ -29,6 +30,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class PlaceRecommendationConversionServiceTest {
+
+    @Mock
+    private PlaceRecommendationSnapshotWriteLock snapshotWriteLock;
 
     @Mock
     private PlaceRecommendationClickRepository placeRecommendationClickRepository;
