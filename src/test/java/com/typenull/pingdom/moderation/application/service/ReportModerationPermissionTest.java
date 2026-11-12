@@ -68,7 +68,7 @@ class ReportModerationPermissionTest {
     private final AdminPostServiceImpl postService = new AdminPostServiceImpl(
             images, reports, growth, imageStateLock, s3, audit, authorization, CLOCK);
     private final ReportAppealService appealService = new ReportAppealService(
-            appeals, reports, images, users, posts, sanctions, audit, authorization, CLOCK);
+            appeals, reports, images, users, posts, sanctions, audit, authorization, entityManager, CLOCK);
 
     enum Actor {
         ANALYST, NO_ROLE, REVOKED, CONTENT, SUPPORT, CONTENT_AND_SUPPORT, SUPER_ADMIN
