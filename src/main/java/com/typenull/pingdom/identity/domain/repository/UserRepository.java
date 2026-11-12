@@ -36,6 +36,43 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u WHERE u.id = :userId")
     Optional<User> findByIdForUpdate(@Param("userId") Long userId);
 
+    // PostgreSQL의 FK KEY SHARE도 차단해 참조 검사와 실제 DELETE 사이의 새 종속 행 삽입을 막는다.
+    @Query(value = "SELECT * FROM users WHERE id = :userId FOR UPDATE", nativeQuery = true)
+    Optional<User> findByIdForPurge(@Param("userId") Long userId);
+
+    // 미시도 사용자를 먼저, 이후 오래된 시도부터 조회해 보류 집단이 매 실행의 상한을 독점하지 못하게 한다.
+    @Query("""
+            SELECT u.id AS userId, u.withdrawnAt AS withdrawnAt,
+                   COALESCE(retry.updatedAt, :neverAttemptedAt) AS attemptedAt
+            FROM User u LEFT JOIN UserPurgeRetry retry ON retry.userId = u.id
+            WHERE u.status = :status
+              AND u.withdrawnAt IS NOT NULL
+              AND u.withdrawnAt <= :cutoff
+              AND (retry.userId IS NULL OR retry.nextAttemptAt <= :now)
+              AND (
+                  COALESCE(retry.updatedAt, :neverAttemptedAt) > :afterAttemptAt
+                  OR (COALESCE(retry.updatedAt, :neverAttemptedAt) = :afterAttemptAt
+                      AND (u.withdrawnAt > :afterAt OR (u.withdrawnAt = :afterAt AND u.id > :afterId)))
+              )
+            ORDER BY COALESCE(retry.updatedAt, :neverAttemptedAt) ASC, u.withdrawnAt ASC, u.id ASC
+            """)
+    List<PurgeCandidate> findPurgeCandidates(
+            @Param("status") UserStatus status,
+            @Param("cutoff") LocalDateTime cutoff,
+            @Param("now") LocalDateTime now,
+            @Param("neverAttemptedAt") LocalDateTime neverAttemptedAt,
+            @Param("afterAttemptAt") LocalDateTime afterAttemptAt,
+            @Param("afterAt") LocalDateTime afterAt,
+            @Param("afterId") Long afterId,
+            Pageable pageable
+    );
+
+    interface PurgeCandidate {
+        Long getUserId();
+        LocalDateTime getWithdrawnAt();
+        LocalDateTime getAttemptedAt();
+    }
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "1000"))
     @Query("SELECT u FROM User u WHERE u.username = :username")
