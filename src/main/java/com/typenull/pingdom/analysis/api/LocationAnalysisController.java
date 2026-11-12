@@ -9,6 +9,7 @@ import com.typenull.pingdom.analysis.application.LocationAnalysisReportService;
 import com.typenull.pingdom.analysis.application.LocationAnalysisReportArchiveService;
 import com.typenull.pingdom.analysis.application.LocationAnalysisReportGenerationLimiter;
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisReportResponse;
+import com.typenull.pingdom.analysis.api.dto.LocationAnalysisReportPageResponse;
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisReportUpdateRequest;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
@@ -16,13 +17,14 @@ import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import com.typenull.pingdom.shared.ratelimit.annotation.RateLimited;
 import com.typenull.pingdom.shared.ratelimit.core.RateLimitAction;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -86,13 +88,27 @@ public class LocationAnalysisController {
     }
 
     @GetMapping
-    @Operation(summary = "보관된 입지 분석 보고서 목록 조회")
-    public List<LocationAnalysisReportResponse> list(
+    @Operation(
+            summary = "보관된 입지 분석 보고서 목록 조회",
+            description = "생성 시각 내림차순, 보고서 ID 내림차순으로 정렬된 요약 페이지를 반환합니다. "
+                    + "기존 JSON 배열 응답은 reports와 페이지 메타데이터를 포함한 객체로 변경되었습니다. "
+                    + "PDF·HTML 본문은 포함하지 않습니다."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "보고서 요약 페이지 조회 성공"),
+            @ApiResponse(responseCode = "400", description = "페이지 범위 또는 파라미터 형식 오류",
+                    content = @io.swagger.v3.oas.annotations.media.Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public LocationAnalysisReportPageResponse list(
             @RequestParam String email,
+            @Parameter(description = "1부터 시작하는 페이지", schema = @Schema(minimum = "1"))
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "페이지 크기", schema = @Schema(minimum = "1", maximum = "100"))
+            @RequestParam(defaultValue = "20") int limit,
             @CurrentUser JwtAuthenticatedUser user
     ) {
         accessPolicy.requireOwnedEmail(userId(user), email);
-        return archiveService.list(userId(user));
+        return archiveService.list(userId(user), page, limit);
     }
 
     @GetMapping("/{reportId}")

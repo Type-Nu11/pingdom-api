@@ -93,7 +93,7 @@ class LocationAnalysisReportSecurityIntegrationTest {
         mockMvc.perform(get("/analysis/reports").param("email", "after@example.com")
                         .header(HttpHeaders.AUTHORIZATION, token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].reportId").value("owned-report"));
+                .andExpect(jsonPath("$.reports[0].reportId").value("owned-report"));
         mockMvc.perform(get("/analysis/reports/owned-report").param("email", "after@example.com")
                         .header(HttpHeaders.AUTHORIZATION, token))
                 .andExpect(status().isOk());
@@ -119,7 +119,8 @@ class LocationAnalysisReportSecurityIntegrationTest {
         String email = user.getEmail();
         mockMvc.perform(get("/analysis/reports").param("email", email)
                         .header(HttpHeaders.AUTHORIZATION, token))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.reports.length()").value(0))
+                .andExpect(jsonPath("$.totalCount").value(0));
         for (String suffix : new String[]{"", "/download", "/html"}) {
             mockMvc.perform(get("/analysis/reports/" + reportId + suffix).param("email", email)
                             .header(HttpHeaders.AUTHORIZATION, token))
@@ -212,7 +213,7 @@ class LocationAnalysisReportSecurityIntegrationTest {
     }
 
     /**
-     * 본인 이메일의 대소문자·양끝 공백 차이를 허용하고 보관 보고서가 없으면 200 빈 배열을 반환하는지 검증.
+     * 본인 이메일의 대소문자·양끝 공백 차이를 허용하고 보관 보고서가 없으면 빈 페이지를 반환하는지 검증.
      */
     @Test
     void allowsNormalizedOwnedEmail() throws Exception {
@@ -222,8 +223,11 @@ class LocationAnalysisReportSecurityIntegrationTest {
                         .param("email", " READER@EXAMPLE.COM ")
                         .header(HttpHeaders.AUTHORIZATION, bearerToken(user)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(0));
+                .andExpect(jsonPath("$.reports").isArray())
+                .andExpect(jsonPath("$.reports.length()").value(0))
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.limit").value(20))
+                .andExpect(jsonPath("$.totalCount").value(0));
     }
 
     /**
