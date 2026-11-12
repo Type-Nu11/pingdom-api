@@ -29,7 +29,7 @@ class VoiceAiReplayTransactionService {
         this.replayRepository = replayRepository;
     }
 
-    @Transactional
+    @Transactional(timeout = VoiceAiReplayWait.DATABASE_ATTEMPT_TIMEOUT_SECONDS)
     public VoiceAiReplayClaim claim(String sessionId, Long userId, String requestId, String payloadHash,
                                     LocalDateTime now, Duration processingLease) {
         requireUsableSession(sessionId, userId, now);
@@ -81,7 +81,12 @@ class VoiceAiReplayTransactionService {
                 .ifPresent(replayRepository::delete);
     }
 
-    @Transactional
+    @Transactional(timeout = VoiceAiReplayWait.DATABASE_ATTEMPT_TIMEOUT_SECONDS)
+    public void abandonUnstarted(String sessionId, Long userId, String requestId, String processingToken) {
+        release(sessionId, userId, requestId, processingToken);
+    }
+
+    @Transactional(timeout = VoiceAiReplayWait.DATABASE_ATTEMPT_TIMEOUT_SECONDS)
     public boolean refreshWhenNoProcessing(String sessionId, Long userId, LocalDateTime now,
                                            LocalDateTime expiresAt, Duration processingLease) {
         VoiceAiSession session = requireUsableSession(sessionId, userId, now);
@@ -92,7 +97,7 @@ class VoiceAiReplayTransactionService {
         return true;
     }
 
-    @Transactional
+    @Transactional(timeout = VoiceAiReplayWait.DATABASE_ATTEMPT_TIMEOUT_SECONDS)
     public boolean closeWhenNoProcessing(String sessionId, Long userId, LocalDateTime now,
                                          Duration processingLease) {
         VoiceAiSession session = requireOwnedSession(sessionId, userId);

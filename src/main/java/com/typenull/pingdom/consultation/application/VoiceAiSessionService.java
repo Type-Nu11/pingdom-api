@@ -15,7 +15,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.UUID;
-import java.util.concurrent.locks.LockSupport;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -38,6 +38,7 @@ public class VoiceAiSessionService {
     private final Clock clock;
     private final ProviderEnvelopeValidator envelopeValidator;
     private final VoiceAiReplayTransactionService replayTransactionService;
+    private final Supplier<VoiceAiReplayWait> replayWaits;
 
     @Autowired
     public VoiceAiSessionService(VoiceAiSessionRepository sessionRepository, GeminiProperties geminiProperties,
@@ -52,12 +53,22 @@ public class VoiceAiSessionService {
                           GeminiVoiceClient geminiVoiceClient,
                           ProviderEnvelopeValidator envelopeValidator,
                           VoiceAiReplayTransactionService replayTransactionService, Clock clock) {
+        this(sessionRepository, geminiProperties, geminiVoiceClient, envelopeValidator,
+                replayTransactionService, clock, VoiceAiReplayWait::start);
+    }
+
+    VoiceAiSessionService(VoiceAiSessionRepository sessionRepository, GeminiProperties geminiProperties,
+                          GeminiVoiceClient geminiVoiceClient,
+                          ProviderEnvelopeValidator envelopeValidator,
+                          VoiceAiReplayTransactionService replayTransactionService, Clock clock,
+                          Supplier<VoiceAiReplayWait> replayWaits) {
         this.sessionRepository = sessionRepository;
         this.geminiProperties = geminiProperties;
         this.geminiVoiceClient = geminiVoiceClient;
         this.envelopeValidator = envelopeValidator;
         this.replayTransactionService = replayTransactionService;
         this.clock = clock;
+        this.replayWaits = replayWaits;
     }
 
     @Transactional
@@ -69,20 +80,37 @@ public class VoiceAiSessionService {
     }
 
     public VoiceAiSessionResponse refresh(String sessionId, Long userId) {
+        VoiceAiReplayWait wait = replayWaits.get();
         while (true) {
+            wait.beforeAttempt();
             LocalDateTime now = now();
             LocalDateTime expiresAt = now.plus(SESSION_TTL);
-            if (replayTransactionService.refreshWhenNoProcessing(sessionId, userId, now, expiresAt,
-                    processingLease())) {
-                return response(sessionId, expiresAt);
+            try {
+                if (replayTransactionService.refreshWhenNoProcessing(sessionId, userId, now, expiresAt,
+                        processingLease())) {
+                    return response(sessionId, expiresAt);
+                }
+            } catch (RuntimeException exception) {
+                if (!VoiceAiReplayWait.isDatabaseWaitFailure(exception)) throw exception;
+                // 프록시가 해당 시도의 트랜잭션을 롤백한 뒤 DB 연결 밖에서 대기한다.
             }
-            waitForReplayCompletion();
+            wait.pause();
         }
     }
 
     public void close(String sessionId, Long userId) {
-        while (!replayTransactionService.closeWhenNoProcessing(sessionId, userId, now(), processingLease())) {
-            waitForReplayCompletion();
+        VoiceAiReplayWait wait = replayWaits.get();
+        while (true) {
+            wait.beforeAttempt();
+            try {
+                if (replayTransactionService.closeWhenNoProcessing(sessionId, userId, now(), processingLease())) {
+                    return;
+                }
+            } catch (RuntimeException exception) {
+                if (!VoiceAiReplayWait.isDatabaseWaitFailure(exception)) throw exception;
+                // 실패한 DB 시도는 소유권을 변경하지 않은 채 다시 확인한다.
+            }
+            wait.pause();
         }
     }
 
@@ -92,14 +120,23 @@ public class VoiceAiSessionService {
      */
     public JsonNode send(String sessionId, Long userId, String text, String requestId) {
         String payloadHash = sha256(text);
+        VoiceAiReplayWait wait = replayWaits.get();
         while (true) {
-            VoiceAiReplayClaim claim = replayTransactionService.claim(sessionId, userId, requestId, payloadHash,
-                    now(), processingLease());
+            wait.beforeAttempt();
+            VoiceAiReplayClaim claim;
+            try {
+                claim = replayTransactionService.claim(sessionId, userId, requestId, payloadHash,
+                        now(), processingLease());
+            } catch (RuntimeException exception) {
+                if (!VoiceAiReplayWait.isDatabaseWaitFailure(exception)) throw exception;
+                wait.pause();
+                continue;
+            }
             if (claim.type() == VoiceAiReplayClaim.Type.COMPLETED) {
                 return claim.envelope();
             }
             if (claim.type() == VoiceAiReplayClaim.Type.PROCESSING) {
-                waitForReplayCompletion();
+                wait.pause();
                 continue;
             }
             if (!geminiProperties.enabled() || !StringUtils.hasText(geminiProperties.apiKey())) {
@@ -107,6 +144,18 @@ public class VoiceAiSessionService {
                         geminiProperties.enabled(), StringUtils.hasText(geminiProperties.apiKey()));
                 replayTransactionService.release(sessionId, userId, requestId, claim.processingToken());
                 throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_UNAVAILABLE);
+            }
+            try {
+                wait.beforeAttempt();
+            } catch (VoiceAiException exception) {
+                try {
+                    replayTransactionService.abandonUnstarted(sessionId, userId, requestId, claim.processingToken());
+                } catch (RuntimeException cleanupFailure) {
+                    // 미실행 claim은 기존 lease 만료로 회수한다. 정리 장애가 원래 대기 종료를 가리지 않게 한다.
+                    log.warn("Voice AI unstarted claim cleanup failed exceptionType={}",
+                            cleanupFailure.getClass().getSimpleName());
+                }
+                throw exception;
             }
             try {
                 JsonNode envelope = geminiVoiceClient.generateEnvelope(text, requestId);
@@ -125,6 +174,7 @@ public class VoiceAiSessionService {
                 replayTransactionService.release(sessionId, userId, requestId, claim.processingToken());
                 throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_UNAVAILABLE, exception);
             }
+            wait.pause();
         }
     }
 
@@ -170,8 +220,4 @@ public class VoiceAiSessionService {
         return providerTimeout.compareTo(Duration.ofSeconds(30)) < 0 ? Duration.ofSeconds(30) : providerTimeout;
     }
 
-    private void waitForReplayCompletion() {
-        // DB 연결을 잡지 않은 채 재전송 결과만 확인한다. HTTP 동기 응답 계약을 유지하기 위한 짧은 polling이다.
-        LockSupport.parkNanos(Duration.ofMillis(100).toNanos());
-    }
 }
