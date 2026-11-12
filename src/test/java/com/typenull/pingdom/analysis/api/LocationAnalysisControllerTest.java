@@ -23,11 +23,14 @@ import com.typenull.pingdom.analysis.infrastructure.LocationAnalysisReportReposi
 import com.typenull.pingdom.analysis.infrastructure.LocationAnalysisReportGenerationProperties;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportErrorCode;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
+import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.shared.exception.handler.GlobalExceptionHandler;
 import com.typenull.pingdom.shared.observability.AuthMetrics;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import java.time.Clock;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -83,6 +86,23 @@ class LocationAnalysisControllerTest {
                 .andExpect(jsonPath("$.reports[0].pdfContent").doesNotExist())
                 .andExpect(jsonPath("$.reports[0].htmlContent").doesNotExist());
         verify(archiveService).list(OWNER.userId(), 2, 100);
+    }
+
+    @Test
+    void rejectsAnotherEmailBeforeListingReports() throws Exception {
+        UserRepository users = mock(UserRepository.class);
+        User account = mock(User.class);
+        when(account.getEmail()).thenReturn("owner@example.com");
+        when(users.findById(OWNER.userId())).thenReturn(Optional.of(account));
+        LocationAnalysisReportArchiveService archiveService = mock(LocationAnalysisReportArchiveService.class);
+        MockMvc mockMvc = mockMvcBuilder(mock(LocationAnalysisReportService.class), archiveService,
+                new LocationAnalysisReportAccessPolicy(users))
+                .setControllerAdvice(new GlobalExceptionHandler(mock(AuthMetrics.class))).build();
+
+        mockMvc.perform(get("/analysis/reports").param("email", "other@example.com"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ANALYSIS_REPORT_FORBIDDEN"));
+        org.mockito.Mockito.verifyNoInteractions(archiveService);
     }
 
     @ParameterizedTest
