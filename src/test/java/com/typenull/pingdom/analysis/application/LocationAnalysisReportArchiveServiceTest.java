@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisReportUpdateRequest;
@@ -30,6 +32,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 class LocationAnalysisReportArchiveServiceTest {
 
@@ -75,7 +78,8 @@ class LocationAnalysisReportArchiveServiceTest {
     void rejectsAllSingleReportOperationsWhenOwnerScopedQueryFindsNothing() {
         when(repository.findSummaryByReportIdAndOwnerUserId("report-1", 8L)).thenReturn(Optional.empty());
         when(repository.findHtmlByReportIdAndOwnerUserId("report-1", 8L)).thenReturn(Optional.empty());
-        when(repository.findByReportIdAndOwnerUserId("report-1", 8L)).thenReturn(Optional.empty());
+        when(repository.findMetadataByReportIdAndOwnerUserId("report-1", 8L)).thenReturn(Optional.empty());
+        when(repository.findPdfByReportIdAndOwnerUserId("report-1", 8L)).thenReturn(Optional.empty());
 
         assertNotFound(() -> service.get("report-1", 8L));
         assertNotFound(() -> service.html("report-1", 8L));
@@ -86,19 +90,97 @@ class LocationAnalysisReportArchiveServiceTest {
     }
 
     @Test
-    void contactChangePreservesOwnerAndStoredPayload() {
-        LocationAnalysisReport report = report();
-        when(repository.findByReportIdAndOwnerUserId("report-1", 7L)).thenReturn(Optional.of(report));
+    void updatesContactWithinOwnerAndVersionScopeWithoutLoadingStoredPayload() {
+        var metadata = metadata();
+        var updated = summary("report-1");
+        when(updated.getReportName()).thenReturn("수정");
+        when(updated.getEmail()).thenReturn("new@example.com");
+        when(repository.findMetadataByReportIdAndOwnerUserId("report-1", 7L)).thenReturn(Optional.of(metadata));
+        when(repository.updateMetadataIfVersionMatches("report-1", 7L, 3L,
+                "수정", "new@example.com", LocalDateTime.now(CLOCK))).thenReturn(1);
+        when(repository.findSummaryByReportIdAndOwnerUserId("report-1", 7L)).thenReturn(Optional.of(updated));
 
-        service.update("report-1", 7L, new LocationAnalysisReportUpdateRequest("수정", "new@example.com"));
+        var result = service.update("report-1", 7L,
+                new LocationAnalysisReportUpdateRequest("수정", " New@Example.com "));
 
-        assertThat(report.getOwnerUserId()).isEqualTo(7L);
-        assertThat(report.getEmail()).isEqualTo("new@example.com");
-        assertThat(report.getHtmlContent()).isEqualTo("<html>원문</html>");
-        assertThat(report.getPdfContent()).containsExactly(1, 2);
-        assertThat(service.download("report-1", 7L).content()).containsExactly(1, 2);
+        assertThat(result.reportName()).isEqualTo("수정");
+        assertThat(result.email()).isEqualTo("new@example.com");
+        assertThat(result.downloadPath()).isEqualTo("/analysis/reports/report-1/download");
+        verify(repository).updateMetadataIfVersionMatches("report-1", 7L, 3L,
+                "수정", "new@example.com", LocalDateTime.now(CLOCK));
+        verify(repository, never()).findByReportIdAndOwnerUserId(any(), org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    void rejectsConcurrentMetadataChangeRatherThanOverwritingNewerVersion() {
+        var metadata = metadata();
+        when(repository.findMetadataByReportIdAndOwnerUserId("report-1", 7L)).thenReturn(Optional.of(metadata));
+
+        assertThatThrownBy(() -> service.update("report-1", 7L,
+                new LocationAnalysisReportUpdateRequest("수정", "new@example.com")))
+                .isInstanceOfSatisfying(ObjectOptimisticLockingFailureException.class, exception -> {
+                    assertThat(exception.getPersistentClass()).isEqualTo(LocationAnalysisReport.class);
+                    assertThat(exception.getIdentifier()).isEqualTo("report-1");
+                });
+        verify(repository, never()).findSummaryByReportIdAndOwnerUserId(any(), org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    void doesNotIncreaseVersionWhenAllMetadataAndClockTimeAreUnchanged() {
+        var metadata = metadata();
+        when(metadata.getUpdatedAt()).thenReturn(LocalDateTime.now(CLOCK));
+        when(repository.findMetadataByReportIdAndOwnerUserId("report-1", 7L)).thenReturn(Optional.of(metadata));
+
+        var result = service.update("report-1", 7L,
+                new LocationAnalysisReportUpdateRequest("분석", " OLD@EXAMPLE.COM "));
+
+        assertThat(result.reportName()).isEqualTo("분석");
+        verify(repository).findMetadataByReportIdAndOwnerUserId("report-1", 7L);
+        verifyNoMoreInteractions(repository);
+    }
+
+    @Test
+    void deletesOnlyTheOwnerScopedVersionReadByTheRequest() {
+        var metadata = metadata();
+        when(repository.findMetadataByReportIdAndOwnerUserId("report-1", 7L)).thenReturn(Optional.of(metadata));
+        when(repository.deleteIfVersionMatches("report-1", 7L, 3L)).thenReturn(1);
+
         service.delete("report-1", 7L);
-        verify(repository).delete(report);
+
+        verify(repository).findMetadataByReportIdAndOwnerUserId("report-1", 7L);
+        verify(repository).deleteIfVersionMatches("report-1", 7L, 3L);
+        verifyNoMoreInteractions(repository);
+    }
+
+    @Test
+    void rejectsConcurrentDeleteRatherThanSilentlySucceeding() {
+        var metadata = metadata();
+        when(repository.findMetadataByReportIdAndOwnerUserId("report-1", 7L)).thenReturn(Optional.of(metadata));
+
+        assertThatThrownBy(() -> service.delete("report-1", 7L))
+                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
+    }
+
+    @Test
+    void downloadsPdfWithTheFilenameMetadataAndVersion() {
+        var pdf = mock(LocationAnalysisReportRepository.PdfView.class);
+        LocalDate publishedDate = LocalDate.of(2026, 11, 12);
+        when(pdf.getReportId()).thenReturn("report-1");
+        when(pdf.getReportName()).thenReturn("분석");
+        when(pdf.getPublishedDate()).thenReturn(publishedDate);
+        when(pdf.getVersion()).thenReturn(3L);
+        when(pdf.getPdfContent()).thenReturn(new byte[]{1, 2});
+        when(repository.findPdfByReportIdAndOwnerUserId("report-1", 7L)).thenReturn(Optional.of(pdf));
+
+        var result = service.download("report-1", 7L);
+
+        assertThat(result.reportId()).isEqualTo("report-1");
+        assertThat(result.reportName()).isEqualTo("분석");
+        assertThat(result.publishedDate()).isEqualTo(publishedDate);
+        assertThat(result.version()).isEqualTo(3L);
+        assertThat(result.content()).containsExactly(1, 2);
+        verify(repository).findPdfByReportIdAndOwnerUserId("report-1", 7L);
+        verifyNoMoreInteractions(repository);
     }
 
     @Test
@@ -150,10 +232,14 @@ class LocationAnalysisReportArchiveServiceTest {
         return summary;
     }
 
-    private LocationAnalysisReport report() {
-        return LocationAnalysisReport.create("report-1", 7L, "분석", "카페", "서울", null, null,
-                "old@example.com", true, LocalDate.of(2026, 11, 12), LocalDate.of(2026, 11, 11),
-                "<html>원문</html>", new byte[]{1, 2}, LocalDateTime.now(CLOCK));
+    private LocationAnalysisReportRepository.MetadataView metadata() {
+        var metadata = mock(LocationAnalysisReportRepository.MetadataView.class);
+        when(metadata.getReportId()).thenReturn("report-1");
+        when(metadata.getReportName()).thenReturn("분석");
+        when(metadata.getEmail()).thenReturn("old@example.com");
+        when(metadata.getVersion()).thenReturn(3L);
+        when(metadata.getUpdatedAt()).thenReturn(LocalDateTime.now(CLOCK).minusMinutes(1));
+        return metadata;
     }
 
     private void assertForbidden(org.assertj.core.api.ThrowableAssert.ThrowingCallable action) {

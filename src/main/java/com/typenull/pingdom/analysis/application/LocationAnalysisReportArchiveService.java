@@ -12,9 +12,11 @@ import com.typenull.pingdom.analysis.infrastructure.LocationAnalysisReportReposi
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Locale;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -73,7 +75,9 @@ public class LocationAnalysisReportArchiveService {
 
     @Transactional(readOnly = true)
     public LocationAnalysisPdfDownload download(String reportId, Long ownerUserId) {
-        LocationAnalysisReport report = find(reportId, ownerUserId);
+        requireOwnerUserId(ownerUserId);
+        var report = reportRepository.findPdfByReportIdAndOwnerUserId(reportId, ownerUserId)
+                .orElseThrow(this::notFound);
         return new LocationAnalysisPdfDownload(
                 report.getReportId(), report.getReportName(), report.getPublishedDate(), report.getVersion(),
                 report.getPdfContent()
@@ -97,20 +101,36 @@ public class LocationAnalysisReportArchiveService {
             Long ownerUserId,
             LocationAnalysisReportUpdateRequest request
     ) {
-        LocationAnalysisReport report = find(reportId, ownerUserId);
-        report.update(request.reportName(), normalizeEmail(request.email()), LocalDateTime.now(clock));
-        return LocationAnalysisReportResponse.from(report);
+        var report = findMetadata(reportId, ownerUserId);
+        String email = normalizeEmail(request.email());
+        LocalDateTime now = LocalDateTime.now(clock);
+        if (Objects.equals(report.getReportName(), request.reportName())
+                && Objects.equals(report.getEmail(), email)
+                && Objects.equals(report.getUpdatedAt(), now)) {
+            return toResponse(report);
+        }
+        requireChangedRow(reportId, reportRepository.updateMetadataIfVersionMatches(
+                reportId, ownerUserId, report.getVersion(), request.reportName(), email, now));
+        return get(reportId, ownerUserId);
     }
 
     @Transactional
     public void delete(String reportId, Long ownerUserId) {
-        reportRepository.delete(find(reportId, ownerUserId));
+        var report = findMetadata(reportId, ownerUserId);
+        requireChangedRow(reportId,
+                reportRepository.deleteIfVersionMatches(reportId, ownerUserId, report.getVersion()));
     }
 
-    private LocationAnalysisReport find(String reportId, Long ownerUserId) {
+    private LocationAnalysisReportRepository.MetadataView findMetadata(String reportId, Long ownerUserId) {
         requireOwnerUserId(ownerUserId);
-        return reportRepository.findByReportIdAndOwnerUserId(reportId, ownerUserId)
+        return reportRepository.findMetadataByReportIdAndOwnerUserId(reportId, ownerUserId)
                 .orElseThrow(this::notFound);
+    }
+
+    private void requireChangedRow(String reportId, int changedRows) {
+        if (changedRows != 1) {
+            throw new ObjectOptimisticLockingFailureException(LocationAnalysisReport.class, reportId);
+        }
     }
 
     private void requireOwnerUserId(Long ownerUserId) {
