@@ -1,56 +1,73 @@
 package com.typenull.pingdom.moderation.application.service.trust;
 
-import com.typenull.pingdom.engagement.domain.policy.ReporterModerationPolicy;
-import com.typenull.pingdom.engagement.domain.policy.TrustScoreChangeHistory;
-import com.typenull.pingdom.engagement.domain.policy.TrustScoreChangeReason;
 import com.typenull.pingdom.engagement.infrastructure.persistence.ReporterModerationPolicyRepository;
 import com.typenull.pingdom.engagement.infrastructure.persistence.TrustScoreChangeHistoryRepository;
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreBatchResponse;
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreChangeHistoryItem;
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreChangeHistoryResponse;
-import java.time.Clock;
-import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 전체 신고자 정책을 한 트랜잭션으로 읽어 100 + 승인수×5 - 허위신고수×20을 0~100으로 보정.
+ * ID 목록만 제한된 크기로 읽고 정책별 트랜잭션에서 최신 통계로 점수를 재계산.
  * 점수가 바뀐 정책에만 변경 이력을 저장하며 만료 제한 해제·이상 징후 탐지·개입 규칙 평가는 처리 범위에서 제외.
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class TrustScoreBatchService {
 
+    private static final int ID_PAGE_SIZE = 100;
+
     private final ReporterModerationPolicyRepository policyRepository;
     private final TrustScoreChangeHistoryRepository historyRepository;
-    private final Clock clock;
+    private final TrustScoreRecalculationService recalculationService;
 
     /**
-     * 전체 신고자 정책의 승인·허위 신고 누적 수로 점수를 다시 계산하고 0~100 범위로 보정.
-     * 점수가 달라진 정책만 변경 이력을 남기며 전체 재계산은 하나의 트랜잭션. 응답은 별도 전체 건수 조회와 실제 변경 수.
+     * 실행 시작 시 최대 ID를 상한으로 순회하며 실제 커밋한 정책 수와 점수 변경 수를 반환.
+     * 중간 실패 전 행은 유지되며 재실행 시 동일 점수에는 이력을 추가하지 않습니다.
+     * 순회 도중 생성된 상한 이하 정책은 커서가 아직 지나지 않았다면 포함될 수 있습니다.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public AdminTrustScoreBatchResponse recalculate() {
-        int changed = 0;
-        LocalDateTime now = LocalDateTime.now(clock);
-        for (ReporterModerationPolicy policy : policyRepository.findAll()) {
-            int before = policy.getTrustScore();
-            int after = Math.max(0, Math.min(100,
-                    100 + (int) policy.getAcceptedCount() * 5 - (int) policy.getFalseReportCount() * 20));
-            if (before == after) {
-                continue;
-            }
-            policy.changeTrustScore(after);
-            historyRepository.save(TrustScoreChangeHistory.builder()
-                    .reporterUserId(policy.getReporterUserId()).beforeScore(before).afterScore(after)
-                    .reason(TrustScoreChangeReason.BATCH_RECALCULATION).changedAt(now).build());
-            changed++;
+        Long throughId = policyRepository.findMaxReporterUserId();
+        if (throughId == null) {
+            return new AdminTrustScoreBatchResponse(0, 0);
         }
-        return new AdminTrustScoreBatchResponse((int) policyRepository.count(), changed);
+        Long afterId = null;
+        int processed = 0;
+        int changed = 0;
+        while (true) {
+            List<Long> reporterIds = policyRepository.findReporterUserIdsAfter(
+                    afterId, throughId, PageRequest.of(0, ID_PAGE_SIZE));
+            if (reporterIds.isEmpty()) {
+                break;
+            }
+            for (Long reporterId : reporterIds) {
+                TrustScoreRecalculationService.RecalculationResult result;
+                try {
+                    result = recalculationService.recalculate(reporterId);
+                } catch (RuntimeException exception) {
+                    log.warn("Trust score batch stopped: reporterId={}, processed={}, changed={}",
+                            reporterId, processed, changed, exception);
+                    throw exception;
+                }
+                if (result.processed()) {
+                    processed++;
+                }
+                if (result.changed()) {
+                    changed++;
+                }
+            }
+            afterId = reporterIds.get(reporterIds.size() - 1);
+        }
+        return new AdminTrustScoreBatchResponse(processed, changed);
     }
 
     /**
