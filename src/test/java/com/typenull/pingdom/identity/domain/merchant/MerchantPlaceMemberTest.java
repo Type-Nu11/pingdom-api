@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 class MerchantPlaceMemberTest {
 
@@ -21,6 +23,42 @@ class MerchantPlaceMemberTest {
         assertThat(owner.getRole()).isEqualTo(MerchantPlaceMemberRole.OWNER);
         member.changeRole(MerchantPlaceMemberRole.MANAGER, NOW.plusMinutes(1));
         assertThat(member.getRole()).isEqualTo(MerchantPlaceMemberRole.MANAGER);
+    }
+
+    @ParameterizedTest
+    @EnumSource(MerchantPlaceMemberRole.class)
+    void rejectsChangingCurrentOwnerRole(MerchantPlaceMemberRole requestedRole) {
+        MerchantPlaceMember owner = MerchantPlaceMember.owner(10L, 1L, NOW);
+
+        assertThatThrownBy(() -> owner.changeRole(requestedRole, NOW.plusMinutes(1)))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(owner.getRole()).isEqualTo(MerchantPlaceMemberRole.OWNER);
+        assertThat(owner.getStatus()).isEqualTo(MerchantPlaceMemberStatus.ACTIVE);
+        assertThat(owner.getUpdatedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    void preservesDedicatedOwnershipTransferMethods() {
+        MerchantPlaceMember previousOwner = MerchantPlaceMember.owner(10L, 1L, NOW);
+        MerchantPlaceMember nextOwner = MerchantPlaceMember.create(
+                10L, 2L, MerchantPlaceMemberRole.MANAGER, 1L, NOW);
+
+        previousOwner.revoke(NOW.plusMinutes(1));
+        nextOwner.promoteToOwner(NOW.plusMinutes(1));
+
+        assertThat(previousOwner.getStatus()).isEqualTo(MerchantPlaceMemberStatus.REVOKED);
+        assertThat(nextOwner.getRole()).isEqualTo(MerchantPlaceMemberRole.OWNER);
+        assertThat(nextOwner.getStatus()).isEqualTo(MerchantPlaceMemberStatus.ACTIVE);
+
+        nextOwner.revoke(NOW.plusMinutes(2));
+        previousOwner.restoreAsOwner(1L, NOW.plusMinutes(2));
+
+        assertThat(previousOwner.getRole()).isEqualTo(MerchantPlaceMemberRole.OWNER);
+        assertThat(previousOwner.getStatus()).isEqualTo(MerchantPlaceMemberStatus.ACTIVE);
+        assertThat(previousOwner.getInvitedBy()).isEqualTo(1L);
+        assertThat(previousOwner.getUpdatedAt()).isEqualTo(NOW.plusMinutes(2));
+        assertThat(nextOwner.getStatus()).isEqualTo(MerchantPlaceMemberStatus.REVOKED);
     }
 
     /**
