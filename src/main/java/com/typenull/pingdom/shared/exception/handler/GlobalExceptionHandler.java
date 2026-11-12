@@ -31,6 +31,8 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -205,6 +207,23 @@ public class GlobalExceptionHandler {
             HttpRequestMethodNotSupportedException exception
     ) {
         return errorResponse(CommonErrorCode.METHOD_NOT_ALLOWED);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException exception) {
+        return ResponseEntity.status(CommonErrorCode.UNSUPPORTED_MEDIA_TYPE.getStatus())
+                .headers(exception.getHeaders())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(ErrorResponse.from(CommonErrorCode.UNSUPPORTED_MEDIA_TYPE));
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
+    public ResponseEntity<ErrorResponse> handleNotAcceptableMediaType(HttpMediaTypeNotAcceptableException exception) {
+        // 원래 Accept와 호환되지 않아 발생한 오류도 고정 JSON으로 반환해 다시 협상에 실패하지 않게 한다.
+        return ResponseEntity.status(CommonErrorCode.NOT_ACCEPTABLE.getStatus())
+                .headers(exception.getHeaders())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(ErrorResponse.from(CommonErrorCode.NOT_ACCEPTABLE));
     }
 
     /** commit wrapper의 User 충돌도 같은 409로 처리하고 나머지는 내부 상세를 제외한 공통 500 응답을 반환. */
