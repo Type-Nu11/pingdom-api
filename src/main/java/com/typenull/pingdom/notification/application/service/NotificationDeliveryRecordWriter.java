@@ -38,6 +38,17 @@ class NotificationDeliveryRecordWriter {
     public void record(NotificationDeliveryRecordRequest request) {
         LocalDateTime now = LocalDateTime.now(clock);
         String recipientHash = hashRecipient(request);
+        if (request.channel() == NotificationDeliveryChannel.EMAIL
+                && StringUtils.hasText(request.outboxEventId()) && recipientHash != null) {
+            String reason = request.failureReason();
+            notificationDeliveryRepository.upsertEmailDelivery(
+                    request.status().name(), request.userId(), request.outboxEventId(), request.outboxEventType(),
+                    recipientHash, request.providerMessageId(), request.providerErrorCode(), request.errorCode(),
+                    reason == null ? null : reason.substring(0, Math.min(reason.length(), 1000)),
+                    request.retryable(), Math.max(outboxProperties.maxAttempts(), 1), now
+            );
+            return;
+        }
         NotificationDelivery delivery = findExisting(request, recipientHash)
                 .orElseGet(() -> NotificationDelivery.create(
                         request.channel(),
@@ -82,6 +93,20 @@ class NotificationDeliveryRecordWriter {
                         hashRecipient(NotificationDeliveryChannel.FCM, token)
                 )
                 .map(delivery -> delivery.getStatus() == NotificationDeliveryStatus.SUCCEEDED)
+                .orElse(false);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isEmailDeliveryTerminal(String outboxEventId, String recipient) {
+        if (!StringUtils.hasText(outboxEventId) || !StringUtils.hasText(recipient)) {
+            return false;
+        }
+        return notificationDeliveryRepository.findDeliveryRecord(
+                        outboxEventId, NotificationDeliveryChannel.EMAIL,
+                        hashRecipient(NotificationDeliveryChannel.EMAIL, recipient))
+                .map(delivery -> delivery.getStatus() == NotificationDeliveryStatus.SUCCEEDED
+                        || (delivery.getStatus() == NotificationDeliveryStatus.FAILED
+                            && NotificationDeliveryRecorder.ERROR_EMAIL_REQUEST_STALE.equals(delivery.getErrorCode())))
                 .orElse(false);
     }
 
