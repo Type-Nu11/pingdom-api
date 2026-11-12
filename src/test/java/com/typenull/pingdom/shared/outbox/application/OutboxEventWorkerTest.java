@@ -1,10 +1,18 @@
 package com.typenull.pingdom.shared.outbox.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,65 +24,63 @@ import org.springframework.core.task.TaskRejectedException;
 
 @ExtendWith(MockitoExtension.class)
 class OutboxEventWorkerTest {
-
-    @Mock
-    private OutboxEventClaimService claimService;
-
-    @Mock
-    private OutboxEventProcessor processor;
-
-    @Mock
-    private OutboxEventCleanupService cleanupService;
-
-    @Mock
-    private OutboxEventStateService stateService;
-
-    @Mock
-    private TaskExecutor outboxExecutor;
-
+    private static final OutboxClaim FIRST = new OutboxClaim("first", "first-token");
+    private static final OutboxClaim SECOND = new OutboxClaim("second", "second-token");
+    @Mock private OutboxEventClaimService claimService;
+    @Mock private OutboxEventProcessor processor;
+    @Mock private OutboxEventCleanupService cleanupService;
+    @Mock private OutboxEventStateService stateService;
+    @Mock private TaskExecutor executor;
     private OutboxEventWorker worker;
 
-    /**
-     * 선점·처리·정리·상태 서비스와 executor 대역을 연결해 worker의 작업 제출만 검증.
-     */
     @BeforeEach
     void setUp() {
-        worker = new OutboxEventWorker(
-                claimService,
-                processor,
-                cleanupService,
-                stateService,
-                outboxExecutor
-        );
+        OutboxProperties properties = new OutboxProperties(20, 2, 40, 100, 5,
+                Duration.ofSeconds(10), Duration.ofMinutes(10), Duration.ofMinutes(5), Duration.ofDays(7));
+        worker = new OutboxEventWorker(claimService, processor, cleanupService, stateService, executor, properties);
     }
 
-    /**
-     * 선점된 이벤트 ID 2개에 대해 executor에 Runnable을 두 번 제출하는지 검증. 작업 본문 실행은 검증 범위에서 제외.
-     */
     @Test
-    void claimedEventsAreSubmittedToExecutor() {
-        when(claimService.claimReadyEvents()).thenReturn(List.of("event-1", "event-2"));
+    void reservesCapacityUntilRunnableActuallyTerminates() {
+        List<Runnable> submitted = new ArrayList<>();
+        doAnswer(invocation -> { submitted.add(invocation.getArgument(0)); return null; })
+                .when(executor).execute(any());
+        when(claimService.claimReadyEvents(2)).thenReturn(List.of(FIRST, SECOND));
+        when(claimService.claimReadyEvents(1)).thenReturn(List.of());
 
         worker.processReadyEvents();
+        worker.processReadyEvents();
+        verify(claimService, times(1)).claimReadyEvents(2);
+        assertThat(submitted).hasSize(2);
 
-        verify(outboxExecutor, org.mockito.Mockito.times(2)).execute(any(Runnable.class));
+        submitted.getFirst().run();
+        verify(processor).process(FIRST);
+        worker.processReadyEvents();
+        verify(claimService).claimReadyEvents(1);
     }
 
-    /**
-     * 선점 후 executor가 작업을 거절하면 이벤트 ID와 TaskRejectedException을 상태 실패 처리에 전달하는지 검증.
-     */
     @Test
-    void returnsRejectedTaskToFailureFlow() {
-        when(claimService.claimReadyEvents()).thenReturn(List.of("event-1"));
-        doThrow(new TaskRejectedException("queue full"))
-                .when(outboxExecutor)
-                .execute(any(Runnable.class));
+    void rejectionReturnsClaimWithoutBusinessFailureAndReleasesSlot() {
+        when(claimService.claimReadyEvents(2)).thenReturn(List.of(FIRST), List.of());
+        doThrow(new TaskRejectedException("full")).when(executor).execute(any());
 
         worker.processReadyEvents();
+        worker.processReadyEvents();
 
-        verify(stateService).markFailed(
-                org.mockito.ArgumentMatchers.eq("event-1"),
-                any(TaskRejectedException.class)
-        );
+        verify(stateService).releaseClaim(FIRST);
+        verify(stateService, never()).markFailed(any(), any());
+        verify(claimService, times(2)).claimReadyEvents(2);
+        verifyNoInteractions(processor);
+    }
+
+    @Test
+    void claimFailureReturnsReservedCapacity() {
+        when(claimService.claimReadyEvents(2)).thenThrow(new IllegalStateException("db"))
+                .thenReturn(List.of());
+
+        assertThatThrownBy(worker::processReadyEvents).isInstanceOf(IllegalStateException.class);
+        worker.processReadyEvents();
+
+        verify(claimService, times(2)).claimReadyEvents(2);
     }
 }
