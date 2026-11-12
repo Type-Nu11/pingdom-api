@@ -21,10 +21,15 @@ import com.typenull.pingdom.verification.domain.LocationCheckIn;
 import com.typenull.pingdom.verification.domain.VisitEvidence;
 import com.typenull.pingdom.verification.infrastructure.LocationCheckInRepository;
 import com.typenull.pingdom.verification.infrastructure.VisitEvidenceRepository;
+import com.typenull.pingdom.verification.infrastructure.VisitEvidenceUploadIntentRepository;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -36,7 +41,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Tag("integration")
 @SpringBootTest(properties = "verification.visit-evidence.max-file-size-bytes=1024")
@@ -50,6 +57,9 @@ class VerificationSecurityControllerIntegrationTest {
     @Autowired private MapPlaceRepository placeRepository;
     @Autowired private LocationCheckInRepository checkInRepository;
     @Autowired private VisitEvidenceRepository evidenceRepository;
+    @Autowired private VisitEvidenceUploadIntentRepository intentRepository;
+    private final List<OwnedCheckIn> committedCheckIns = new ArrayList<>();
+    private final List<User> committedUsers = new ArrayList<>();
 
     @MockBean
     private S3ObjectStorage objectStorage;
@@ -58,6 +68,20 @@ class VerificationSecurityControllerIntegrationTest {
     @BeforeEach
     void setUp() {
         reset(objectStorage);
+    }
+
+    /** S3 외부 호출 경계를 검증하는 테스트만 별도 커밋한 fixture를 직접 정리합니다. */
+    @AfterEach
+    void removeCommittedUploadFixtures() {
+        for (OwnedCheckIn owned : committedCheckIns) {
+            evidenceRepository.findByLocationCheckInIdAndTouristUserId(owned.checkIn().getId(), owned.user().getId())
+                    .ifPresent(evidenceRepository::delete);
+            intentRepository.deleteAll(intentRepository.findAll().stream()
+                    .filter(intent -> intent.getUserId().equals(owned.user().getId())).toList());
+            checkInRepository.deleteById(owned.checkIn().getId());
+            placeRepository.deleteById(owned.checkIn().getPlaceId());
+        }
+        committedUsers.forEach(user -> userRepository.deleteById(user.getId()));
     }
 
     /** 토큰 없이 체크인·증빙 메타데이터/파일·세션 조회/관측·제보/정정 조회에 접근하면 모두 401이어야 함. */
@@ -204,9 +228,11 @@ class VerificationSecurityControllerIntegrationTest {
 
     /** 타인 체크인에 업로드·다운로드 요청을 하면 모두 CHECK_IN_NOT_FOUND 404이며 S3 접근이 없어야 함. */
     @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void rejectForeignEvidenceAccess() throws Exception {
         OwnedCheckIn owned = ownedCheckIn("privateEvidenceOwner");
         User other = userRepository.saveAndFlush(user("privateEvidenceOther", UserRole.USER));
+        committedUsers.add(other);
         MockMultipartFile file = new MockMultipartFile("file", "visit.jpg", "image/jpeg", jpegBytes());
 
         mockMvc.perform(multipart("/location-check-ins/{checkInId}/evidence", owned.checkIn().getId())
@@ -224,6 +250,7 @@ class VerificationSecurityControllerIntegrationTest {
 
     /** JPEG를 PNG라고 선언한 업로드의 파일 형식 오류 400 응답과 S3 미호출 확인. */
     @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void rejectMismatchedEvidenceType() throws Exception {
         OwnedCheckIn owned = ownedCheckIn("invalidFileOwner");
         MockMultipartFile invalid = new MockMultipartFile(
@@ -240,6 +267,7 @@ class VerificationSecurityControllerIntegrationTest {
 
     /** 1KB 제한에 1,025바이트를 업로드할 때 크기 초과 413·전용 오류 코드 반환과 S3 미호출 확인. */
     @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void rejectOversizedEvidence() throws Exception {
         OwnedCheckIn owned = ownedCheckIn("oversizedFileOwner");
         MockMultipartFile oversized = new MockMultipartFile(
@@ -259,10 +287,11 @@ class VerificationSecurityControllerIntegrationTest {
      * 이어 메타데이터를 조회하면 저장한 원본 파일명이 반환되어야 함.
      */
     @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void uploadAndReadOwnedEvidence() throws Exception {
         OwnedCheckIn owned = ownedCheckIn("successfulEvidenceOwner");
         MockMultipartFile file = new MockMultipartFile("file", "visit.jpg", "image/jpeg", jpegBytes());
-        when(objectStorage.put(any(byte[].class), anyString(), eq("image/jpeg"), eq("visit-evidence")))
+        when(objectStorage.putAtKey(any(byte[].class), eq("image/jpeg"), anyString(), any(Duration.class)))
                 .thenReturn(new S3PutResult("visit-evidence/success-key", "unused"));
 
         mockMvc.perform(multipart("/location-check-ins/{checkInId}/evidence", owned.checkIn().getId())
@@ -280,10 +309,11 @@ class VerificationSecurityControllerIntegrationTest {
 
     /** S3 업로드 연결 실패는 저장소 사용 불가 503으로 변환되고 DB 증빙 행이 남지 않아야 함. */
     @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void rejectFailedEvidenceUpload() throws Exception {
         OwnedCheckIn owned = ownedCheckIn("storageFailureOwner");
         MockMultipartFile file = new MockMultipartFile("file", "visit.jpg", "image/jpeg", jpegBytes());
-        when(objectStorage.put(any(byte[].class), anyString(), eq("image/jpeg"), eq("visit-evidence")))
+        when(objectStorage.putAtKey(any(byte[].class), eq("image/jpeg"), anyString(), any(Duration.class)))
                 .thenThrow(storageUnavailable());
 
         mockMvc.perform(multipart("/location-check-ins/{checkInId}/evidence", owned.checkIn().getId())
@@ -336,7 +366,12 @@ class VerificationSecurityControllerIntegrationTest {
         MapPlace savedPlace = placeRepository.saveAndFlush(place(owner.getId()));
         LocationCheckIn savedCheckIn = checkInRepository.saveAndFlush(
                 checkIn(owner.getId(), savedPlace.getId(), Instant.now()));
-        return new OwnedCheckIn(owner, savedCheckIn);
+        OwnedCheckIn owned = new OwnedCheckIn(owner, savedCheckIn);
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            committedCheckIns.add(owned);
+            committedUsers.add(owner);
+        }
+        return owned;
     }
 
     /** 저장한 사용자 ID·이름·역할로 액세스 토큰을 발급해 Authorization 헤더 형식으로 반환. */
