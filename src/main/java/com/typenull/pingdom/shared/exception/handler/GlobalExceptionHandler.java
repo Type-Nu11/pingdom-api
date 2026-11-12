@@ -14,6 +14,7 @@ import com.typenull.pingdom.shared.exception.CommonErrorCode;
 import com.typenull.pingdom.shared.exception.DomainException;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.observability.AuthMetrics;
+import com.typenull.pingdom.shared.web.RequestIdFilter;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -22,6 +23,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -211,7 +213,9 @@ public class GlobalExceptionHandler {
         if (isUserOptimisticConflict(exception)) {
             return errorResponse(UsersErrorCode.USER_CONCURRENT_MODIFICATION);
         }
-        log.error("Unhandled exception type={}", exception.getClass().getName());
+        String requestId = MDC.get(RequestIdFilter.REQUEST_ID_MDC_KEY);
+        log.error("Unhandled exception requestId={} diagnostic={}",
+                requestId == null ? "-" : requestId, UnexpectedExceptionLogFormatter.format(exception));
         return errorResponse(CommonErrorCode.INTERNAL_SERVER_ERROR);
     }
 
