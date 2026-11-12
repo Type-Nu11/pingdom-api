@@ -27,8 +27,10 @@ import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.moderation.infrastructure.persistence.ReportAppealRepository;
 import com.typenull.pingdom.moderation.outbox.notification.AdminNotificationOutboxPublisher;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
+import com.typenull.pingdom.post.application.service.MapImageStateLockService;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
+import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -55,13 +57,16 @@ class ReportModerationPermissionTest {
     private final ReportPolicyService policy = mock(ReportPolicyService.class);
     private final AdminNotificationOutboxPublisher notifications = mock(AdminNotificationOutboxPublisher.class);
     private final PlaceGrowthService growth = mock(PlaceGrowthService.class);
+    private final MapImageStateLockService imageStateLock = mock(MapImageStateLockService.class);
+    private final EntityManager entityManager = mock(EntityManager.class);
     private final S3ObjectDeleteOutboxPublisher s3 = mock(S3ObjectDeleteOutboxPublisher.class);
     private final AdminRoleAuthorizationService authorization =
             new AdminRoleAuthorizationService(users, assignments, CLOCK);
     private final AdminReportServiceImpl reportService = new AdminReportServiceImpl(
-            reports, images, users, posts, sanctions, audit, policy, notifications, authorization, CLOCK);
+            reports, images, imageStateLock, users, posts, sanctions, audit, policy, notifications,
+            authorization, entityManager, CLOCK);
     private final AdminPostServiceImpl postService = new AdminPostServiceImpl(
-            images, reports, growth, s3, audit, authorization, CLOCK);
+            images, reports, growth, imageStateLock, s3, audit, authorization, CLOCK);
     private final ReportAppealService appealService = new ReportAppealService(
             appeals, reports, images, users, posts, sanctions, audit, authorization, CLOCK);
 
@@ -134,7 +139,7 @@ class ReportModerationPermissionTest {
                         allowed ? operation.missingTarget : AdminErrorCode.ADMIN_PERMISSION_REQUIRED));
         verifyNoInteractions(posts, sanctions, audit, policy, notifications, growth, s3);
         if (!allowed) {
-            verifyNoInteractions(reports, images, appeals);
+            verifyNoInteractions(reports, images, appeals, imageStateLock, entityManager);
         }
     }
 
