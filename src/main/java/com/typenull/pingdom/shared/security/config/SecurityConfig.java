@@ -2,6 +2,7 @@ package com.typenull.pingdom.shared.security.config;
 
 import com.typenull.pingdom.shared.security.cors.CorsProperties;
 import com.typenull.pingdom.shared.security.handler.UnknownPathRedirectFilter;
+import com.typenull.pingdom.shared.security.handler.KnownMvcPathIndex;
 import com.typenull.pingdom.shared.security.jwt.JwtAccessDeniedHandler;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticationEntryPoint;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticationFilter;
@@ -92,7 +93,7 @@ public class SecurityConfig {
             JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
             JwtAccessDeniedHandler jwtAccessDeniedHandler,
             ApiAuthorizationRules apiAuthorizationRules,
-            @Qualifier("requestMappingHandlerMapping") ObjectProvider<RequestMappingHandlerMapping> handlerMapping
+            KnownMvcPathIndex knownMvcPathIndex
     ) throws Exception {
         http
                 .cors(Customizer.withDefaults())
@@ -105,11 +106,18 @@ public class SecurityConfig {
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 // Security 체인 내부에만 등록해 서블릿 필터로 중복 실행되지 않도록 구성.
-                .addFilterBefore(new UnknownPathRedirectFilter(handlerMapping::getObject), JwtAuthenticationFilter.class)
+                .addFilterBefore(new UnknownPathRedirectFilter(knownMvcPathIndex), JwtAuthenticationFilter.class)
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .formLogin(form -> form.disable());
 
         return http.build();
+    }
+
+    @Bean
+    public KnownMvcPathIndex knownMvcPathIndex(
+            @Qualifier("requestMappingHandlerMapping") ObjectProvider<RequestMappingHandlerMapping> handlerMapping
+    ) {
+        return new KnownMvcPathIndex(handlerMapping::getObject);
     }
 
     /** OAuth2 authorization request를 HTTP 세션에 보관. API 체인의 stateless 정책과 별도 경로에서 사용. */
