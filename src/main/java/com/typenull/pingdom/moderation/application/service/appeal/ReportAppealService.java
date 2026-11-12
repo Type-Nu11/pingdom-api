@@ -38,6 +38,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -69,8 +71,10 @@ public class ReportAppealService {
      */
     @Transactional
     public ReportAppealCreateResponse submit(Long reportId, String reason, Long userId, String username) {
-        PostReport report = postReportRepository.findById(reportId)
+        PostReport report = postReportRepository.findByIdForUpdate(reportId)
                 .orElseThrow(() -> new MapException(MapErrorCode.REPORT_NOT_FOUND));
+        // 최종 승인과 같은 신고 잠금을 사용하고, 잠금 전 적재된 상태도 다시 확인합니다.
+        entityManager.refresh(report);
         if (!report.getReportedUserId().equals(userId)) {
             throw new MapException(MapErrorCode.REPORT_APPEAL_NOT_ALLOWED);
         }
@@ -85,14 +89,22 @@ public class ReportAppealService {
             throw new MapException(MapErrorCode.REPORT_APPEAL_ALREADY_EXISTS);
         }
 
-        ReportAppeal appeal = reportAppealRepository.saveAndFlush(ReportAppeal.builder()
-                .reportId(report.getId())
-                .postId(report.getReportedImageId())
-                .appellantUserId(userId)
-                .appellantUsername(username)
-                .targetUserId(report.getReportedUserId())
-                .reason(reason)
-                .build());
+        ReportAppeal appeal;
+        try {
+            appeal = reportAppealRepository.saveAndFlush(ReportAppeal.builder()
+                    .reportId(report.getId())
+                    .postId(report.getReportedImageId())
+                    .appellantUserId(userId)
+                    .appellantUsername(username)
+                    .targetUserId(report.getReportedUserId())
+                    .reason(reason)
+                    .build());
+        } catch (DataIntegrityViolationException exception) {
+            if (isSubmittedAppealDuplicate(exception)) {
+                throw new MapException(MapErrorCode.REPORT_APPEAL_ALREADY_EXISTS);
+            }
+            throw exception;
+        }
 
         return new ReportAppealCreateResponse(
                 appeal.getId(),
@@ -104,11 +116,21 @@ public class ReportAppealService {
     }
 
     private boolean canSubmitAppeal(PostReport report) {
-        boolean acceptedReport = report.getStatus() == PostReportStatus.ACCEPTED;
-        boolean hiddenPost = mapImageRepository.findById(report.getReportedImageId())
-                .map(mapImage -> mapImage.getVisibilityStatus() == MapImageVisibilityStatus.AUTO_HIDDEN)
-                .orElse(false);
-        return acceptedReport || hiddenPost;
+        // 이미 적재된 사진이 다른 트랜잭션에서 복구되었어도 현재 DB 상태로 자격을 판단합니다.
+        return report.getStatus() == PostReportStatus.ACCEPTED
+                || mapImageRepository.existsByIdAndVisibilityStatus(
+                        report.getReportedImageId(), MapImageVisibilityStatus.AUTO_HIDDEN);
+    }
+
+    private boolean isSubmittedAppealDuplicate(Throwable exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException violation
+                    && "23505".equals(violation.getSQLState())
+                    && "uq_report_appeal_submitted".equals(violation.getConstraintName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

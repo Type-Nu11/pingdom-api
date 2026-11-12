@@ -46,6 +46,8 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
     @Query("SELECT image FROM MapImage image WHERE image.id = :imageId")
     Optional<MapImage> findByIdForUpdate(@Param("imageId") Long imageId);
 
+    boolean existsByIdAndVisibilityStatus(Long id, MapImageVisibilityStatus visibilityStatus);
+
     interface PlaceImageAggregateProjection {
         Long getPlaceId();
 
