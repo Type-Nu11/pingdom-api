@@ -19,6 +19,8 @@ import org.springframework.data.repository.query.Param;
  */
 public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, Long> {
 
+    Optional<PasswordResetToken> findByTokenHash(String tokenHash);
+
     @Modifying(flushAutomatically = true)
     @Query("DELETE FROM PasswordResetToken token WHERE token.user.id IN :userIds")
     int deleteAllByUserIds(@Param("userIds") Collection<Long> userIds);
