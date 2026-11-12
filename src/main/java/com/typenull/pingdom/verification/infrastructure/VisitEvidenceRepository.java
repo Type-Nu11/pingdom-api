@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 /** 체크인 증빙의 존재·소유자 조회와 만료 시각 기준 정리 대상을 제공. */
 public interface VisitEvidenceRepository extends JpaRepository<VisitEvidence, Long> {
+    boolean existsByS3Key(String s3Key);
     boolean existsByLocationCheckInId(Long locationCheckInId);
     /** 체크인과 사용자 두 조건으로 제한. 만료 시각 필터는 이 조회에서 제외. */
     Optional<VisitEvidence> findByLocationCheckInIdAndTouristUserId(Long locationCheckInId, Long touristUserId);
