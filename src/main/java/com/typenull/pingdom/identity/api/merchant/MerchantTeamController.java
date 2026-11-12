@@ -80,12 +80,12 @@ public class MerchantTeamController {
     }
 
     @PatchMapping("/places/{placeId}/members/{memberId}")
-    @Operation(summary = "Merchant 장소 팀원 권한 변경", description = "OWNER 또는 MANAGER가 활성 팀원의 역할을 변경합니다. OWNER 역할은 팀원에게 부여할 수 없으며, 비활성 팀원은 변경할 수 없습니다. 잘못된 역할은 MERCHANT_TEAM_INVITATION_INVALID_ROLE, 비활성 팀원은 MERCHANT_TEAM_MEMBER_NOT_ACTIVE, 대상 없음은 MERCHANT_TEAM_MEMBER_NOT_FOUND로 응답합니다.")
+    @Operation(summary = "Merchant 장소 팀원 권한 변경", description = "OWNER만 활성 팀원의 STAFF 또는 MANAGER 역할을 변경할 수 있습니다. 현재 OWNER의 역할 변경은 소유권 이전 전용 흐름으로 제한하며 MERCHANT_TEAM_PERMISSION_REQUIRED로 거절합니다. OWNER 역할 부여는 MERCHANT_TEAM_INVITATION_INVALID_ROLE, 비활성 팀원은 MERCHANT_TEAM_MEMBER_NOT_ACTIVE, 대상 없음은 MERCHANT_TEAM_MEMBER_NOT_FOUND로 응답합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "팀원 역할 변경 성공", content = @Content(schema = @Schema(implementation = MerchantTeamMemberResponse.class))),
             @ApiResponse(responseCode = "400", description = "입력 역할이 올바르지 않음", content = @Content(schema = @Schema(oneOf = {ErrorResponse.class, ValidationErrorResponse.class}))),
             @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "403", description = "OWNER 또는 MANAGER 권한 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "OWNER 역할 관리 권한이 없거나 현재 OWNER의 역할 변경 요청", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "장소의 팀원을 찾을 수 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "409", description = "비활성 팀원의 역할은 변경할 수 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples = @ExampleObject(name = "MERCHANT_TEAM_MEMBER_NOT_ACTIVE", value = "{\"message\":\"활성 상태의 Merchant 팀원만 변경할 수 있습니다.\",\"code\":\"MERCHANT_TEAM_MEMBER_NOT_ACTIVE\"}")))
     })

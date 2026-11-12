@@ -34,6 +34,7 @@ public class MerchantTeamService {
     private final MerchantPlaceInvitationRepository invitationRepository;
     private final MerchantOwnerPlaceRepository ownerPlaceRepository;
     private final UserRepository userRepository;
+    private final MerchantPlaceCapabilityPolicy capabilityPolicy;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -84,7 +85,8 @@ public class MerchantTeamService {
     }
 
     /**
-     * 장소 소유 행을 잠그고 관리 권한과 해당 장소 팀원을 확인한 뒤 역할을 변경해 반환.
+     * 장소 소유 행을 잠그고 OWNER의 역할 관리 권한과 해당 장소 팀원을 확인한 뒤 역할을 변경해 반환.
+     * 현재 OWNER 변경은 소유권 이전 전용 흐름으로 제한.
      * 비활성 팀원과 도메인이 허용하지 않는 역할 변경은 각각 팀원 상태·역할 오류로 변환.
      */
     @Transactional
@@ -92,10 +94,14 @@ public class MerchantTeamService {
     public MerchantTeamMemberResponse updateRole(Long actorId, Long placeId, Long memberId,
                                                   MerchantTeamRoleUpdateRequest request) {
         lockPlaceOwnership(placeId);
-        requireManager(actorId, placeId);
+        capabilityPolicy.require(actorId, placeId, MerchantPlaceCapability.TEAM_ROLE_MANAGE);
         MerchantPlaceMember member = memberRepository.findById(memberId)
                 .filter(candidate -> candidate.getPlaceId().equals(placeId))
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_MEMBER_NOT_FOUND));
+        if (member.getStatus() == MerchantPlaceMemberStatus.ACTIVE
+                && member.getRole() == MerchantPlaceMemberRole.OWNER) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_PERMISSION_REQUIRED);
+        }
         try {
             member.changeRole(request.role(), LocalDateTime.now(clock));
         } catch (IllegalStateException exception) {
