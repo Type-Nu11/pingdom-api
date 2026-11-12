@@ -56,7 +56,8 @@ class PlaceRecommendationUserSignalLoader {
         );
 
         Map<Long, Double> limitedSeedWeights = seedWeights.entrySet().stream()
-                .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
+                .sorted(Map.Entry.<Long, Double>comparingByValue().reversed()
+                        .thenComparing(Map.Entry.comparingByKey()))
                 .limit(MAX_PERSONAL_SEED_COUNT)
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
                         (left, ignored) -> left, LinkedHashMap::new));
