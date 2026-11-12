@@ -7,6 +7,7 @@ import com.typenull.pingdom.place.domain.recommendation.snapshot.PlaceSimilarity
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceSimilaritySnapshotRepository;
+import com.typenull.pingdom.shared.observability.RecommendationMetrics;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -15,6 +16,7 @@ import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -41,6 +43,7 @@ public class PlaceRecommendationSimilarityService {
     private final MapImageLikeRepository mapImageLikeRepository;
     private final PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
     private final PlaceSimilaritySnapshotRepository placeSimilaritySnapshotRepository;
+    private final RecommendationMetrics recommendationMetrics;
 
     private final Object bookmarkUserCountLock = new Object();
     private volatile long cachedTotalBookmarkUserCount;
@@ -59,8 +62,8 @@ public class PlaceRecommendationSimilarityService {
     }
 
     /**
-     * 대상 장소의 북마크·좋아요 사용자 집합과 추세를 일괄 조회해 유사도 계산 컨텍스트를 구성.
-     * 옵션이 true이면 대상 집합 안의 저장된 유사도도 읽고, 누락된 추세는 placeIndex의 사진 수로 보충.
+     * 저장 유사도에 없는 쌍의 양 끝 장소만 북마크·좋아요 사용자를 일괄 조회해 컨텍스트를 구성.
+     * 옵션이 false인 재동기화는 전체 원본 반응을 읽고, 누락된 추세는 placeIndex의 사진 수로 보충.
      * 대상 ID가 비면 사용자 총수는 0이며 그 외에는 전달된 사전 집계 또는 캐시된 전체 북마크 사용자 수를 사용.
      */
     public SimilarityContext buildContext(
@@ -75,27 +78,6 @@ public class PlaceRecommendationSimilarityService {
         Map<PlacePairKey, SimilarityScore> snapshotScoresByPair = new HashMap<>();
 
         if (!placeIds.isEmpty()) {
-            for (MapBookmarkRepository.PlaceBookmarkUserProjection projection :
-                    mapBookmarkRepository.findBookmarkUsersByPlaceIds(placeIds)) {
-                bookmarkUsersByPlace
-                        .computeIfAbsent(projection.getPlaceId(), ignored -> new HashSet<>())
-                        .add(projection.getUserId());
-            }
-
-            for (MapImageLikeRepository.PlaceLikeUserProjection projection :
-                    mapImageLikeRepository.findLikeUsersByPlaceIds(placeIds)) {
-                likeUsersByPlace
-                        .computeIfAbsent(projection.getPlaceId(), ignored -> new HashSet<>())
-                        .add(projection.getUserId());
-            }
-
-            for (PlaceRecommendationSnapshot snapshot : placeRecommendationSnapshotRepository.findByPlaceIdIn(placeIds)) {
-                trendProfilesByPlace.put(
-                        snapshot.getPlaceId(),
-                        TrendProfile.of(snapshot.getPhotoCount(), snapshot.getLatestPostCreatedAt())
-                );
-            }
-
             if (loadSimilaritySnapshots) {
                 for (PlaceSimilaritySnapshot snapshot : placeSimilaritySnapshotRepository.findByPlaceIdsWithin(placeIds)) {
                     snapshotScoresByPair.put(
@@ -109,6 +91,42 @@ public class PlaceRecommendationSimilarityService {
                             )
                     );
                 }
+            }
+
+            Set<Long> reactionPlaceIds = resolveReactionPlaceIds(
+                    new HashSet<>(placeIds), snapshotScoresByPair.keySet(), loadSimilaritySnapshots
+            );
+            if (!reactionPlaceIds.isEmpty()) {
+                long bookmarkQueryStartedAt = System.nanoTime();
+                List<MapBookmarkRepository.PlaceBookmarkUserProjection> bookmarkUsers =
+                        mapBookmarkRepository.findBookmarkUsersByPlaceIds(reactionPlaceIds);
+                recommendationMetrics.recordSimilarityBookmarkQuery(
+                        loadSimilaritySnapshots, bookmarkUsers.size(), System.nanoTime() - bookmarkQueryStartedAt
+                );
+                for (MapBookmarkRepository.PlaceBookmarkUserProjection projection : bookmarkUsers) {
+                    bookmarkUsersByPlace
+                            .computeIfAbsent(projection.getPlaceId(), ignored -> new HashSet<>())
+                            .add(projection.getUserId());
+                }
+
+                long likeQueryStartedAt = System.nanoTime();
+                List<MapImageLikeRepository.PlaceLikeUserProjection> likeUsers =
+                        mapImageLikeRepository.findLikeUsersByPlaceIds(reactionPlaceIds);
+                recommendationMetrics.recordSimilarityLikeQuery(
+                        loadSimilaritySnapshots, likeUsers.size(), System.nanoTime() - likeQueryStartedAt
+                );
+                for (MapImageLikeRepository.PlaceLikeUserProjection projection : likeUsers) {
+                    likeUsersByPlace
+                            .computeIfAbsent(projection.getPlaceId(), ignored -> new HashSet<>())
+                            .add(projection.getUserId());
+                }
+            }
+
+            for (PlaceRecommendationSnapshot snapshot : placeRecommendationSnapshotRepository.findByPlaceIdIn(placeIds)) {
+                trendProfilesByPlace.put(
+                        snapshot.getPlaceId(),
+                        TrendProfile.of(snapshot.getPhotoCount(), snapshot.getLatestPostCreatedAt())
+                );
             }
         }
 
@@ -127,6 +145,40 @@ public class PlaceRecommendationSimilarityService {
                 snapshotScoresByPair,
                 resolveTotalBookmarkUserCount(placeIds, totalBookmarkUserCount)
         );
+    }
+
+    private Set<Long> resolveReactionPlaceIds(
+            Set<Long> placeIds,
+            Set<PlacePairKey> snapshotPairs,
+            boolean loadSimilaritySnapshots
+    ) {
+        long totalPairCount = (long) placeIds.size() * (placeIds.size() - 1L) / 2L;
+        if (!loadSimilaritySnapshots) {
+            recommendationMetrics.recordSimilarityCoverage(false, 0L, totalPairCount);
+            return placeIds;
+        }
+
+        Map<Long, Integer> storedNeighborCounts = new HashMap<>();
+        long storedPairCount = 0L;
+        for (PlacePairKey pair : snapshotPairs) {
+            if (Objects.equals(pair.leftPlaceId(), pair.rightPlaceId())
+                    || !placeIds.contains(pair.leftPlaceId()) || !placeIds.contains(pair.rightPlaceId())) {
+                continue;
+            }
+            storedNeighborCounts.merge(pair.leftPlaceId(), 1, Integer::sum);
+            storedNeighborCounts.merge(pair.rightPlaceId(), 1, Integer::sum);
+            storedPairCount++;
+        }
+        recommendationMetrics.recordSimilarityCoverage(true, storedPairCount, totalPairCount - storedPairCount);
+
+        // 저장 이웃이 하나라도 부족한 장소는 누락 쌍의 양 끝 반응이 모두 있어야 교집합을 유지할 수 있다.
+        Set<Long> reactionPlaceIds = new HashSet<>();
+        for (Long placeId : placeIds) {
+            if (storedNeighborCounts.getOrDefault(placeId, 0) < placeIds.size() - 1) {
+                reactionPlaceIds.add(placeId);
+            }
+        }
+        return reactionPlaceIds;
     }
 
     private long resolveTotalBookmarkUserCount(Collection<Long> placeIds, Long precomputedTotalBookmarkUserCount) {
