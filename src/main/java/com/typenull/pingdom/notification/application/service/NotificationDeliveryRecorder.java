@@ -21,6 +21,7 @@ public class NotificationDeliveryRecorder {
     public static final String ERROR_FCM_SEND_FAILED = "FCM_SEND_FAILED";
     public static final String ERROR_EMAIL_SEND_FAILED = "EMAIL_SEND_FAILED";
     public static final String ERROR_EMAIL_PAYLOAD_INVALID = "EMAIL_PAYLOAD_INVALID";
+    public static final String ERROR_EMAIL_REQUEST_STALE = "EMAIL_REQUEST_STALE";
 
     private final NotificationDeliveryRecordWriter writer;
 
@@ -93,6 +94,21 @@ public class NotificationDeliveryRecorder {
         return writer.findFcmNotificationId(outboxEventId);
     }
 
+    public boolean isEmailDeliveryTerminal(String outboxEventId, String recipientEmail) {
+        // 성공 조회의 장애를 삼키면 이미 보낸 메일을 다시 발송할 수 있다.
+        return writer.isEmailDeliveryTerminal(outboxEventId, recipientEmail);
+    }
+
+    public void recordEmailStale(Long userId, String outboxEventId, OutboxEventType type, String recipientEmail) {
+        // 미발송 종료 근거가 커밋되어야 이후 상태 변경/수동 재처리에서도 과거 요청을 보내지 않는다.
+        writer.record(new NotificationDeliveryRecordRequest(
+                NotificationDeliveryChannel.EMAIL, NotificationDeliveryStatus.FAILED,
+                userId, null, null, outboxEventId, type.name(), recipientEmail,
+                null, null, ERROR_EMAIL_REQUEST_STALE,
+                "현재 요청을 확인할 수 없어 발송하지 않았습니다. 새 인증 요청이 필요합니다.", false
+        ));
+    }
+
     /**
      * 이메일 공급자 메시지 ID와 수신자·Outbox 정보를 성공 기록 요청으로 변환.
      * 앱 알림 ID는 없으며 저장 오류는 흡수. 이메일 발송 자체의 실행과 재시도는 처리 범위 외.
@@ -156,6 +172,12 @@ public class NotificationDeliveryRecorder {
         try {
             writer.record(request);
         } catch (RuntimeException exception) {
+            if (request.channel() == NotificationDeliveryChannel.EMAIL) {
+                // JDBC/Jackson/공급자 예외는 수신자·토큰을 포함할 수 있으므로 이메일 경로는 원문을 기록하지 않는다.
+                log.warn("이메일 발송 결과 기록 실패. outboxEventId={}, status={}, errorCode={}, exceptionType={}",
+                        request.outboxEventId(), request.status(), request.errorCode(), exception.getClass().getSimpleName());
+                return;
+            }
             log.warn(
                     "알림 발송 결과 기록에 실패했습니다. channel={}, outboxEventId={}, reason={}",
                     request.channel(),

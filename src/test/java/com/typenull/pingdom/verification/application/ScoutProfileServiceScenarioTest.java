@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
@@ -33,10 +34,16 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 class ScoutProfileServiceScenarioTest {
 
@@ -207,6 +214,36 @@ class ScoutProfileServiceScenarioTest {
                         assertThat(exception.getErrorCode()).isEqualTo(AdminErrorCode.ADMIN_PERMISSION_REQUIRED));
 
         verify(profileRepository, never()).findById(1L);
+    }
+
+    @Test
+    void rejectsUnauthorizedAdminListBeforeAnyLookup() {
+        doThrow(new AdminException(AdminErrorCode.ADMIN_PERMISSION_REQUIRED))
+                .when(authorizationService).requirePermission(9L, AdminPermission.SCOUT_REVIEW);
+
+        assertThatThrownBy(() -> service.listForAdmin(9L, null, 1, 20))
+                .isInstanceOfSatisfying(AdminException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(AdminErrorCode.ADMIN_PERMISSION_REQUIRED));
+
+        verifyNoInteractions(profileRepository, eligibilityRepository);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"0,0,0,1", "2,101,1,100"})
+    void preservesStatusFilterAndPageBounds(int page, int limit, int expectedPage, int expectedLimit) {
+        var pageable = PageRequest.of(expectedPage, expectedLimit,
+                Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("userId")));
+        when(profileRepository.findAllByStatus(ScoutProfileStatus.ACTIVE, pageable))
+                .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+
+        var result = service.listForAdmin(9L, ScoutProfileStatus.ACTIVE, page, limit);
+
+        assertThat(result.page()).isEqualTo(expectedPage + 1);
+        assertThat(result.limit()).isEqualTo(expectedLimit);
+        verify(authorizationService).requirePermission(9L, AdminPermission.SCOUT_REVIEW);
+        verify(profileRepository).findAllByStatus(ScoutProfileStatus.ACTIVE, pageable);
+        verify(profileRepository, never()).findAll(any(PageRequest.class));
+        verify(eligibilityRepository, never()).findAllById(any());
     }
 
     /** 본인 프로필 조회 결과가 없으면 SCOUT_PROFILE_NOT_FOUND를 반환. */

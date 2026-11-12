@@ -52,6 +52,7 @@ import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
@@ -290,6 +291,47 @@ class PlaceRecommendationQueryServiceImplTest {
                     && exposureEvent.placeIds().equals(List.of(candidate.getId()))
                     && exposureEvent.recommendationVersion().equals("place-rec-v1");
         }));
+    }
+
+    @Test
+    void loadsGlobalCountsOnceForARecommendation() {
+        MapPlace candidate = createPlace(202L, "combined-totals", 35.1800d, 128.1070d);
+        when(mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInBoundingBox(
+                anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDouble(),
+                any(PlaceOperatingStatus.class), any(PlaceDiscoveryStatus.class), any(Pageable.class)
+        )).thenReturn(List.of(candidate));
+        when(placeRecommendationPolicyService.resolve(any(), anyDouble(), anyDouble(), any()))
+                .thenReturn(stablePolicy(false));
+        var globalCounts = mock(PlaceRecommendationSnapshotRepository.GlobalCountsProjection.class);
+        when(globalCounts.getClickCount()).thenReturn(12L);
+        when(globalCounts.getExposureCount()).thenReturn(60L);
+        when(placeRecommendationSnapshotRepository.sumGlobalCounts()).thenReturn(globalCounts);
+
+        var response = placeRecommendationQueryService.recommendAndRecordObservations(
+                null, 35.1800d, 128.1070d, 1, 5.0d, null
+        );
+
+        assertThat(response.places()).extracting(place -> place.id()).containsExactly(candidate.getId());
+        verify(placeRecommendationSnapshotRepository).sumGlobalCounts();
+        verify(placeRecommendationSnapshotRepository, never()).sumClickCount();
+        verify(placeRecommendationSnapshotRepository, never()).sumExposureCount();
+        verify(placeRecommendationClickService, never()).countAllClicks();
+        verify(placeRecommendationExposureService, never()).countAllExposures();
+    }
+
+    @Test
+    void skipsGlobalCountsWhenThereAreNoCandidates() {
+        when(placeRecommendationPolicyService.resolve(any(), anyDouble(), anyDouble(), any()))
+                .thenReturn(stablePolicy(false));
+
+        var response = placeRecommendationQueryService.recommendAndRecordObservations(
+                null, 35.1800d, 128.1070d, 1, 5.0d, null
+        );
+
+        assertThat(response.places()).isEmpty();
+        verify(placeRecommendationSnapshotRepository, never()).sumGlobalCounts();
+        verify(placeRecommendationClickService, never()).countAllClicks();
+        verify(placeRecommendationExposureService, never()).countAllExposures();
     }
 
     /**

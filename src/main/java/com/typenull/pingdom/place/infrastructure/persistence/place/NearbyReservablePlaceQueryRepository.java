@@ -14,6 +14,19 @@ import org.springframework.data.repository.query.Param;
  */
 public interface NearbyReservablePlaceQueryRepository extends Repository<MapPlace, Long> {
 
+    // native 목록과 장소 기준 count가 같은 현재 점주 자격을 적용하도록 a alias를 공유한다.
+    String RESERVABLE_MERCHANT_PREDICATE = """
+                  AND EXISTS (SELECT 1 FROM merchant_owner_place op WHERE op.place_id = a.place_id
+                       AND op.merchant_owner_user_id = a.merchant_owner_user_id)
+                  AND EXISTS (SELECT 1 FROM merchant_owner_profile profile WHERE profile.user_id = a.merchant_owner_user_id
+                       AND profile.status = 'ACTIVE')
+                  AND EXISTS (SELECT 1 FROM merchant_verification verification WHERE verification.user_id = a.merchant_owner_user_id
+                       AND verification.identity_status = 'APPROVED' AND verification.business_status = 'APPROVED')
+                  AND EXISTS (SELECT 1 FROM users owner_user WHERE owner_user.id = a.merchant_owner_user_id
+                       AND owner_user.role = 'MERCHANT_OWNER' AND owner_user.status = 'ACTIVE'
+                       AND (owner_user.banned = FALSE OR (owner_user.ban_type = 'TEMPORARY' AND owner_user.ban_expires_at <= :now)))
+            """;
+
     @Query(value = """
             WITH reservable AS (
                 SELECT mp.map_place_id AS placeId, mp.place_name AS name, mp.category AS category,
@@ -36,15 +49,7 @@ public interface NearbyReservablePlaceQueryRepository extends Repository<MapPlac
                   AND (CAST(:touristCategory AS text) IS NULL OR EXISTS (SELECT 1 FROM map_place_tourist_category tc
                        WHERE tc.map_place_id = mp.map_place_id
                          AND tc.tourist_category = CAST(:touristCategory AS text)))
-                  AND EXISTS (SELECT 1 FROM merchant_owner_place op WHERE op.place_id = a.place_id
-                       AND op.merchant_owner_user_id = a.merchant_owner_user_id)
-                  AND EXISTS (SELECT 1 FROM merchant_owner_profile profile WHERE profile.user_id = a.merchant_owner_user_id
-                       AND profile.status = 'ACTIVE')
-                  AND EXISTS (SELECT 1 FROM merchant_verification verification WHERE verification.user_id = a.merchant_owner_user_id
-                       AND verification.identity_status = 'APPROVED' AND verification.business_status = 'APPROVED')
-                  AND EXISTS (SELECT 1 FROM users owner_user WHERE owner_user.id = a.merchant_owner_user_id
-                       AND owner_user.role = 'MERCHANT_OWNER' AND owner_user.status = 'ACTIVE'
-                       AND (owner_user.banned = FALSE OR (owner_user.ban_type = 'TEMPORARY' AND owner_user.ban_expires_at <= :now)))
+            """ + RESERVABLE_MERCHANT_PREDICATE + """
             )
             SELECT * FROM reservable WHERE slotRank = 1
             ORDER BY CASE WHEN :sort = 'EARLIEST_AVAILABLE' THEN availableStartsAt END ASC,
@@ -63,11 +68,7 @@ public interface NearbyReservablePlaceQueryRepository extends Repository<MapPlac
               AND a.booking_retired = FALSE
               AND (CAST(:category AS text) IS NULL OR LOWER(TRIM(mp.category)) = CAST(:category AS text))
               AND (CAST(:touristCategory AS text) IS NULL OR EXISTS (SELECT 1 FROM map_place_tourist_category tc WHERE tc.map_place_id = mp.map_place_id AND tc.tourist_category = CAST(:touristCategory AS text)))
-              AND EXISTS (SELECT 1 FROM merchant_owner_place op WHERE op.place_id = a.place_id AND op.merchant_owner_user_id = a.merchant_owner_user_id)
-              AND EXISTS (SELECT 1 FROM merchant_owner_profile profile WHERE profile.user_id = a.merchant_owner_user_id AND profile.status = 'ACTIVE')
-              AND EXISTS (SELECT 1 FROM merchant_verification verification WHERE verification.user_id = a.merchant_owner_user_id AND verification.identity_status = 'APPROVED' AND verification.business_status = 'APPROVED')
-              AND EXISTS (SELECT 1 FROM users owner_user WHERE owner_user.id = a.merchant_owner_user_id AND owner_user.role = 'MERCHANT_OWNER' AND owner_user.status = 'ACTIVE' AND (owner_user.banned = FALSE OR (owner_user.ban_type = 'TEMPORARY' AND owner_user.ban_expires_at <= :now)))
-            """, nativeQuery = true)
+            """ + RESERVABLE_MERCHANT_PREDICATE, nativeQuery = true)
     Page<NearbyReservablePlaceProjection> findNearbyReservablePlaces(
             @Param("latitude") double latitude, @Param("longitude") double longitude, @Param("radiusMeters") double radiusMeters,
             @Param("fromAt") LocalDateTime fromAt, @Param("toAt") LocalDateTime toAt, @Param("quantity") int quantity,

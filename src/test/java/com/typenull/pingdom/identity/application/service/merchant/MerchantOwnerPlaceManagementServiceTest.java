@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaCreateRequest;
@@ -59,15 +60,13 @@ class MerchantOwnerPlaceManagementServiceTest {
      */
     @BeforeEach
     void setUp() {
+        Clock clock = Clock.fixed(NOW.toInstant(ZoneOffset.UTC), ZoneOffset.UTC);
         service = new MerchantOwnerPlaceManagementService(
                 mapPlaceRepository,
-                placeMediaRepository,
-                mediaUploadRepository,
                 capabilityPolicy,
-                operatingHoursEvaluator,
-                s3ObjectStorage,
-                s3ObjectDeleteOutboxPublisher,
-                Clock.fixed(NOW.toInstant(ZoneOffset.UTC), ZoneOffset.UTC)
+                new MerchantOwnerPlaceOperatingService(mapPlaceRepository, capabilityPolicy, operatingHoursEvaluator, clock),
+                new MerchantOwnerPlaceMediaService(mapPlaceRepository, placeMediaRepository, mediaUploadRepository,
+                        capabilityPolicy, s3ObjectStorage, s3ObjectDeleteOutboxPublisher, clock)
         );
     }
 
@@ -224,6 +223,63 @@ class MerchantOwnerPlaceManagementServiceTest {
                 new MerchantOwnerMediaOrderUpdateRequest(0)
         )).isInstanceOfSatisfying(MapException.class, exception ->
                 assertThat(exception.getErrorCode()).isEqualTo(MapErrorCode.PLACE_MEDIA_NOT_FOUND));
+    }
+
+    @Test
+    void rejectsAlreadyRegisteredUploadBeforeS3Lookup() {
+        String key = "places/10/exploration/20/registered.jpg";
+        MerchantPlaceMediaUpload upload = MerchantPlaceMediaUpload.issue(
+                PLACE_ID, USER_ID, key, "image/jpeg", NOW.plusMinutes(10), NOW.minusMinutes(1));
+        upload.markRegistered(NOW.minusSeconds(1));
+        MapPlace place = place();
+        when(mapPlaceRepository.findByIdForUpdate(PLACE_ID)).thenReturn(Optional.of(place));
+        when(mediaUploadRepository.findByS3KeyForUpdate(key)).thenReturn(Optional.of(upload));
+
+        assertThatThrownBy(() -> service.createMedia(USER_ID, PLACE_ID, new MerchantOwnerMediaCreateRequest(key, null)))
+                .isInstanceOfSatisfying(MapException.class, error ->
+                        assertThat(error.getErrorCode()).isEqualTo(MapErrorCode.PLACE_MEDIA_INVALID_REQUEST));
+        verifyNoInteractions(s3ObjectStorage);
+    }
+
+    @Test
+    void headFailurePreservesIssuedUploadAndDoesNotCreateMedia() {
+        String key = "places/10/exploration/20/pending.jpg";
+        MerchantPlaceMediaUpload upload = MerchantPlaceMediaUpload.issue(
+                PLACE_ID, USER_ID, key, "image/jpeg", NOW.plusMinutes(10), NOW.minusMinutes(1));
+        MapPlace place = place();
+        when(mapPlaceRepository.findByIdForUpdate(PLACE_ID)).thenReturn(Optional.of(place));
+        when(mediaUploadRepository.findByS3KeyForUpdate(key)).thenReturn(Optional.of(upload));
+        when(s3ObjectStorage.headObject(key)).thenThrow(new S3ObjectStorage.S3StorageException(
+                S3ObjectStorage.S3StorageError.CONNECTION_ERROR, "unavailable", null));
+
+        assertThatThrownBy(() -> service.createMedia(USER_ID, PLACE_ID, new MerchantOwnerMediaCreateRequest(key, null)))
+                .isInstanceOfSatisfying(MapException.class, error ->
+                        assertThat(error.getErrorCode()).isEqualTo(MapErrorCode.S3_CONNECTION_ERROR));
+        assertThat(upload.getStatus()).isEqualTo(MerchantPlaceMediaUploadStatus.ISSUED);
+        verify(placeMediaRepository, never()).save(any(PlaceMedia.class));
+    }
+
+    @Test
+    void deletesRepresentativeAndPublishesBothOwnedStorageKeys() {
+        MapPlace place = place();
+        String imageUrl = "https://cdn.pingdom.test/original.jpg";
+        place.updateImageUrl(imageUrl);
+        PlaceMedia media = PlaceMedia.exploration(place, imageUrl,
+                "places/10/exploration/20/original.jpg", "https://cdn.pingdom.test/thumbnail.jpg",
+                "places/10/exploration/20/thumbnail.jpg", 0, NOW);
+        when(mapPlaceRepository.findByIdForUpdate(PLACE_ID)).thenReturn(Optional.of(place));
+        when(placeMediaRepository.findByIdAndPlace_IdAndPurpose(30L, PLACE_ID, PlaceMediaPurpose.EXPLORATION))
+                .thenReturn(Optional.of(media));
+
+        service.deleteMedia(USER_ID, PLACE_ID, 30L);
+
+        assertThat(place.getImageUrl()).isNull();
+        verify(capabilityPolicy).require(USER_ID, PLACE_ID, MerchantPlaceCapability.PLACE_INFO_EDIT);
+        verify(placeMediaRepository).delete(media);
+        verify(s3ObjectDeleteOutboxPublisher).publish("places/10/exploration/20/original.jpg", "PLACE_MEDIA", "30",
+                "MERCHANT_EXPLORATION_MEDIA_DELETED");
+        verify(s3ObjectDeleteOutboxPublisher).publish("places/10/exploration/20/thumbnail.jpg", "PLACE_MEDIA", "30",
+                "MERCHANT_EXPLORATION_MEDIA_THUMBNAIL_DELETED");
     }
 
     /**

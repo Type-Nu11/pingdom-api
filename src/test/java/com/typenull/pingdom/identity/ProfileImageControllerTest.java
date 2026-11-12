@@ -3,6 +3,7 @@ package com.typenull.pingdom.identity;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -77,9 +78,7 @@ class ProfileImageControllerTest {
     void uploadsAndPersistsProfileImage() throws Exception {
         User user = saveUser("profileImageOwner");
         String imageUrl = "https://bucket.s3.ap-northeast-2.amazonaws.com/users/profile-images/1/profile.jpg";
-        when(s3ObjectStorage.put(any(byte[].class), eq("profile.jpg"), eq("image/jpeg"),
-                eq("users/profile-images/" + user.getId())))
-                .thenReturn(new S3PutResult("users/profile-images/1/profile.jpg", imageUrl));
+        when(s3ObjectStorage.publicUrl(anyString())).thenReturn(imageUrl);
 
         mockMvc.perform(multipart("/users/me/profile-image")
                         .file(new MockMultipartFile("file", "photo.jpg", "image/jpeg", JPEG))
@@ -96,8 +95,7 @@ class ProfileImageControllerTest {
                 .get()
                 .extracting(User::getProfileImageUrl)
                 .isEqualTo(imageUrl);
-        verify(s3ObjectStorage).put(any(byte[].class), eq("profile.jpg"), eq("image/jpeg"),
-                eq("users/profile-images/" + user.getId()));
+        verify(s3ObjectStorage).putAtKey(any(byte[].class), eq("image/jpeg"), anyString(), any());
     }
 
     /**
@@ -122,8 +120,7 @@ class ProfileImageControllerTest {
     @Test
     void reportsProfileStorageFailure() throws Exception {
         User user = saveUser("profileImageStorageFailure");
-        when(s3ObjectStorage.put(any(byte[].class), eq("profile.jpg"), eq("image/jpeg"),
-                eq("users/profile-images/" + user.getId())))
+        when(s3ObjectStorage.publicUrl(anyString()))
                 .thenThrow(new S3StorageException(S3StorageError.CONNECTION_ERROR, "connection failed", null));
 
         mockMvc.perform(multipart("/users/me/profile-image")

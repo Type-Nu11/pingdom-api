@@ -8,14 +8,19 @@ import com.typenull.pingdom.integration.migration.fixture.FlywayBackfillFixtures
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.MigrationVersion;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -27,7 +32,27 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "140";
+    private static final List<MigrationVersion> MIGRATION_VERSIONS = migrationVersions();
+    private static final String LATEST_MIGRATION_VERSION = MIGRATION_VERSIONS.getLast().getVersion();
+
+    // 이슈별로 예약한 버전 사이의 빈 번호는 실제 적용 파일 수에 포함하지 않는다.
+    private static List<MigrationVersion> migrationVersions() {
+        try {
+            return Arrays.stream(new PathMatchingResourcePatternResolver()
+                            .getResources("classpath:db/migration/V*__*.sql"))
+                    .map(resource -> resource.getFilename())
+                    .map(name -> MigrationVersion.fromVersion(name.substring(1, name.indexOf("__"))))
+                    .sorted()
+                    .toList();
+        } catch (IOException exception) {
+            throw new ExceptionInInitializerError(exception);
+        }
+    }
+
+    private static int migrationCountAfter(String version) {
+        MigrationVersion baseline = MigrationVersion.fromVersion(version);
+        return Math.toIntExact(MIGRATION_VERSIONS.stream().filter(candidate -> candidate.compareTo(baseline) > 0).count());
+    }
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -86,7 +111,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(Integer.parseInt(LATEST_MIGRATION_VERSION));
+        assertThat(result.migrationsExecuted).isEqualTo(migrationCountAfter("0"));
 
         assertPostMigrationSchema();
     }
@@ -553,7 +578,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(Integer.parseInt(LATEST_MIGRATION_VERSION) - 89);
+        assertThat(result.migrationsExecuted).isEqualTo(migrationCountAfter("89"));
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -662,7 +687,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(Integer.parseInt(LATEST_MIGRATION_VERSION) - 2);
+        assertThat(result.migrationsExecuted).isEqualTo(migrationCountAfter("2"));
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -783,7 +808,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(Integer.parseInt(LATEST_MIGRATION_VERSION) - 27);
+        assertThat(result.migrationsExecuted).isEqualTo(migrationCountAfter("27"));
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1023,7 +1048,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(Integer.parseInt(LATEST_MIGRATION_VERSION) - 55);
+        assertThat(result.migrationsExecuted).isEqualTo(migrationCountAfter("55"));
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """

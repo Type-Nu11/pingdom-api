@@ -1,0 +1,32 @@
+{
+  "id": 101,
+  "name": "복구 장소",
+  "address": "서울시 종로구 복구로 10",
+  "roadAddress": "서울시 종로구 복구로 10",
+  "jibunAddress": "서울시 종로구 복구동 1",
+  "postalCode": "03000",
+  "geocodingSource": "ADMIN",
+  "operatingStatus": "TEMPORARILY_CLOSED",
+  "operatingStatusCheckedAt": "2026-08-01T10:20:30",
+  "category": "문화시설",
+  "imageUrl": "https://example.com/place.jpg",
+  "kakaoPlaceId": "kakao-101",
+  "latitude": 37.57,
+  "longitude": 126.98,
+  "userId": 17,
+  "registrant": "등록자",
+  "photoCount": 3,
+  "englishName": "Restored Place",
+  "touristSummary": "관광 정보",
+  "touristCategories": ["EXHIBITION"],
+  "regularOperatingHours": [
+    {"dayOfWeek": "MONDAY", "opensAt": "09:00:00", "closesAt": "18:00:00"}
+  ],
+  "operatingExceptions": [
+    {
+      "date": "2026-08-15",
+      "closed": false,
+      "hours": [{"opensAt": "10:00:00", "closesAt": "16:00:00"}]
+    }
+  ]
+}

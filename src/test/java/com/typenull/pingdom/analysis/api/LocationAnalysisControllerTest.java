@@ -2,11 +2,13 @@ package com.typenull.pingdom.analysis.api;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,13 +17,20 @@ import com.typenull.pingdom.analysis.application.LocationAnalysisReportService;
 import com.typenull.pingdom.analysis.application.LocationAnalysisReportArchiveService;
 import com.typenull.pingdom.analysis.application.LocationAnalysisReportGenerationLimiter;
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisRequest;
+import com.typenull.pingdom.analysis.api.dto.LocationAnalysisReportPageResponse;
+import com.typenull.pingdom.analysis.api.dto.LocationAnalysisReportResponse;
+import com.typenull.pingdom.analysis.infrastructure.LocationAnalysisReportRepository;
 import com.typenull.pingdom.analysis.infrastructure.LocationAnalysisReportGenerationProperties;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportErrorCode;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
 import com.typenull.pingdom.shared.exception.handler.GlobalExceptionHandler;
 import com.typenull.pingdom.shared.observability.AuthMetrics;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
+import java.time.Clock;
+import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -33,6 +42,76 @@ class LocationAnalysisControllerTest {
 
     private static final JwtAuthenticatedUser OWNER = new JwtAuthenticatedUser(1L, "owner");
 
+    @Test
+    void returnsDefaultSummaryPageWithMetadata() throws Exception {
+        LocationAnalysisReportArchiveService archiveService = mock(LocationAnalysisReportArchiveService.class);
+        when(archiveService.list(OWNER.userId(), 1, 20))
+                .thenReturn(new LocationAnalysisReportPageResponse(List.of(), 1, 20, 0, 0, false));
+        MockMvc mockMvc = mockMvcBuilder(mock(LocationAnalysisReportService.class), archiveService, accessPolicy()).build();
+
+        mockMvc.perform(get("/analysis/reports").param("email", "owner@example.com"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reports").isArray())
+                .andExpect(jsonPath("$.reports.length()").value(0))
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.limit").value(20))
+                .andExpect(jsonPath("$.totalCount").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0))
+                .andExpect(jsonPath("$.hasNext").value(false));
+        verify(archiveService).list(OWNER.userId(), 1, 20);
+    }
+
+    @Test
+    void forwardsExplicitPageAndRetainsSummaryFields() throws Exception {
+        LocationAnalysisReportArchiveService archiveService = mock(LocationAnalysisReportArchiveService.class);
+        var summary = LocationAnalysisReportResponse.fromSummary("report-1", "보고서", "카페", "서울",
+                null, null, "owner@example.com", true, null, null, null);
+        when(archiveService.list(OWNER.userId(), 2, 100))
+                .thenReturn(new LocationAnalysisReportPageResponse(List.of(summary), 2, 100, 101, 2, false));
+        MockMvc mockMvc = mockMvcBuilder(mock(LocationAnalysisReportService.class), archiveService, accessPolicy()).build();
+
+        mockMvc.perform(get("/analysis/reports").param("email", "owner@example.com")
+                        .param("page", "2").param("limit", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reports[0].reportId").value("report-1"))
+                .andExpect(jsonPath("$.reports[0].downloadPath").value("/analysis/reports/report-1/download"))
+                .andExpect(jsonPath("$.reports[0].htmlDebugPath").value("/analysis/reports/report-1/html"))
+                .andExpect(jsonPath("$.page").value(2))
+                .andExpect(jsonPath("$.limit").value(100))
+                .andExpect(jsonPath("$.totalCount").value(101))
+                .andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.reports[0].pdfContent").doesNotExist())
+                .andExpect(jsonPath("$.reports[0].htmlContent").doesNotExist());
+        verify(archiveService).list(OWNER.userId(), 2, 100);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"0,20", "-1,20", "1,0", "1,101", "2147483647,100"})
+    void rejectsInvalidPageWithJsonErrorBeforeQuery(int page, int limit) throws Exception {
+        LocationAnalysisReportRepository repository = mock(LocationAnalysisReportRepository.class);
+        LocationAnalysisReportArchiveService archiveService =
+                new LocationAnalysisReportArchiveService(repository, Clock.systemUTC());
+        MockMvc mockMvc = mockMvcBuilder(mock(LocationAnalysisReportService.class), archiveService, accessPolicy())
+                .setControllerAdvice(new GlobalExceptionHandler(mock(AuthMetrics.class))).build();
+
+        mockMvc.perform(get("/analysis/reports").param("email", "owner@example.com")
+                        .param("page", Integer.toString(page)).param("limit", Integer.toString(limit)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("ANALYSIS_REPORT_INVALID_PAGINATION"));
+        org.mockito.Mockito.verifyNoInteractions(repository);
+    }
+
+    @Test
+    void rejectsNonNumericPageParameter() throws Exception {
+        LocationAnalysisReportArchiveService archiveService = mock(LocationAnalysisReportArchiveService.class);
+        MockMvc mockMvc = mockMvcBuilder(mock(LocationAnalysisReportService.class), archiveService, accessPolicy())
+                .setControllerAdvice(new GlobalExceptionHandler(mock(AuthMetrics.class))).build();
+
+        mockMvc.perform(get("/analysis/reports").param("email", "owner@example.com").param("page", "invalid"))
+                .andExpect(status().isBadRequest());
+        org.mockito.Mockito.verifyNoInteractions(archiveService);
+    }
+
     /**
      * 이메일 소유 정책을 통과한 보관 HTML 조회가 200·text/html과 보고서 내용을 반환하는지 검증.
      */
@@ -41,7 +120,7 @@ class LocationAnalysisControllerTest {
         LocationAnalysisReportService reportService = mock(LocationAnalysisReportService.class);
         LocationAnalysisReportArchiveService archiveService = mock(LocationAnalysisReportArchiveService.class);
         LocationAnalysisReportAccessPolicy accessPolicy = accessPolicy();
-        when(archiveService.html("report-1", "owner@example.com"))
+        when(archiveService.html("report-1", OWNER.userId()))
                 .thenReturn("<!doctype html><html lang=\"ko\"><body>보고서</body></html>");
         MockMvc mockMvc = mockMvcBuilder(reportService, archiveService, accessPolicy).build();
 
@@ -50,6 +129,7 @@ class LocationAnalysisControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("보고서")));
+        verify(archiveService).html("report-1", OWNER.userId());
     }
 
     /**
@@ -80,6 +160,7 @@ class LocationAnalysisControllerTest {
                 .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"location-analysis-undated-foot-traffic-analysis-v1.pdf\""))
                 .andExpect(content().bytes(new byte[]{'%', 'P', 'D', 'F', '-'}));
+        verify(archiveService).archive(org.mockito.ArgumentMatchers.eq(OWNER.userId()), any(), any());
     }
 
     /**

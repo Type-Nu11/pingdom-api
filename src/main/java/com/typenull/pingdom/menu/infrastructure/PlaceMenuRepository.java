@@ -10,15 +10,15 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
 /**
- * 표시 순서와 ID로 메뉴 정렬을 고정하고 개별 변경 또는 전체 재정렬용 쓰기 잠금을 제공.
+ * 표시 순서 조회와 개별 변경 잠금을 제공하고, 전체 재정렬은 불변 ID 순으로 잠근다.
  * 잠금 조회의 사용 가능 여부와 수명은 호출 트랜잭션에 의존.
  */
 public interface PlaceMenuRepository extends JpaRepository<PlaceMenu, Long> {
     List<PlaceMenu> findAllByPlaceIdOrderByDisplayOrderAscIdAsc(Long placeId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select menu from PlaceMenu menu where menu.placeId = :placeId order by menu.displayOrder asc, menu.id asc")
-    List<PlaceMenu> findAllByPlaceIdOrderByDisplayOrderAscIdAscForUpdate(@Param("placeId") Long placeId);
+    @Query("select menu from PlaceMenu menu where menu.placeId = :placeId order by menu.id asc")
+    List<PlaceMenu> findAllByPlaceIdOrderByIdAscForUpdate(@Param("placeId") Long placeId);
 
     List<PlaceMenu> findAllByPlaceIdAndStatusInOrderByDisplayOrderAscIdAsc(Long placeId,
             Collection<PlaceMenuStatus> statuses);

@@ -71,7 +71,9 @@ class UnknownPathRedirectFilterTest {
                         .methods(RequestMethod.POST).consumes("application/json").params("required")
                         .options(options).build(),
                 this, getClass().getDeclaredMethod("mappedEndpoint"));
-        return new UnknownPathRedirectFilter(() -> mapping);
+        KnownMvcPathIndex knownPaths = new KnownMvcPathIndex(() -> mapping);
+        knownPaths.afterSingletonsInstantiated();
+        return new UnknownPathRedirectFilter(knownPaths);
     }
 
     private void assertContinues(UnknownPathRedirectFilter filter, MockHttpServletRequest request) throws Exception {

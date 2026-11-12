@@ -4,11 +4,14 @@ import com.typenull.pingdom.place.application.service.recommendation.similarity.
 import com.typenull.pingdom.place.application.service.recommendation.similarity.PlaceRecommendationSimilarityService;
 
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -108,6 +111,161 @@ class PlaceRecommendationGraphAffinityServiceTest {
 
         verify(placeRecommendationSimilarityService, atMost(2016))
                 .similarity(anyLong(), anyLong(), same(context));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {63, 64})
+    void reservesCandidateSpaceWhenSeedsReachNodeLimit(int seedCount) {
+        var context = emptyContext();
+        Map<Long, Double> seeds = descendingSeedWeights(seedCount);
+        stubBidirectionalSimilarity(context, 1L, 1_000L, 0.8d);
+        stubBidirectionalSimilarity(context, 1L, 1_001L, 0.7d);
+
+        Map<Long, Double> scores = placeRecommendationGraphAffinityService.score(
+                List.of(1_000L, 1_001L), seeds, context
+        );
+
+        assertTrue(scores.get(1_000L) > 0d);
+        assertTrue(scores.get(1_001L) > 0d);
+        verify(placeRecommendationSimilarityService, times(2_016))
+                .similarity(anyLong(), anyLong(), same(context));
+        verify(placeRecommendationSimilarityService, never())
+                .similarity(eq(63L), anyLong(), same(context));
+        verify(placeRecommendationSimilarityService, never())
+                .similarity(anyLong(), eq(63L), same(context));
+    }
+
+    @Test
+    void duplicateCandidatesDoNotConsumeRemainingNodeBudget() {
+        var context = emptyContext();
+        stubBidirectionalSimilarity(context, 1L, 1_000L, 0.8d);
+        stubBidirectionalSimilarity(context, 1L, 1_001L, 0.7d);
+
+        Map<Long, Double> scores = placeRecommendationGraphAffinityService.score(
+                List.of(1_000L, 1_000L, 1_001L), descendingSeedWeights(62), context
+        );
+
+        assertEquals(2, scores.size());
+        assertTrue(scores.get(1_000L) > 0d);
+        assertTrue(scores.get(1_001L) > 0d);
+        verify(placeRecommendationSimilarityService, times(2_016))
+                .similarity(anyLong(), anyLong(), same(context));
+    }
+
+    @Test
+    void overlappingCandidatesDoNotConsumeNewCandidateSpace() {
+        var context = emptyContext();
+        stubBidirectionalSimilarity(context, 1L, 1_000L, 0.8d);
+
+        Map<Long, Double> scores = placeRecommendationGraphAffinityService.score(
+                List.of(1L, 1_000L, 1_000L, 1_001L), descendingSeedWeights(64), context
+        );
+
+        assertTrue(scores.get(1_000L) > 0d);
+        assertTrue(scores.get(1L) > 0d);
+        assertEquals(0d, scores.get(1_001L));
+        verify(placeRecommendationSimilarityService, times(2_016))
+                .similarity(anyLong(), anyLong(), same(context));
+    }
+
+    @Test
+    void preservesAllSeedNodesWhenCandidatesAlreadyBelongToSeeds() {
+        var context = emptyContext();
+        stubBidirectionalSimilarity(context, 1L, 64L, 0.8d);
+
+        Map<Long, Double> scores = placeRecommendationGraphAffinityService.score(
+                List.of(1L, 64L), descendingSeedWeights(64), context
+        );
+
+        assertTrue(scores.get(64L) > 0d);
+        verify(placeRecommendationSimilarityService, times(2_016))
+                .similarity(anyLong(), anyLong(), same(context));
+        verify(placeRecommendationSimilarityService).similarity(1L, 64L, context);
+    }
+
+    @Test
+    void keepsDisconnectedCandidatesAtZeroWithFullSeedBudget() {
+        var context = emptyContext();
+
+        Map<Long, Double> scores = placeRecommendationGraphAffinityService.score(
+                List.of(1_000L, 1_001L), descendingSeedWeights(64), context
+        );
+
+        assertEquals(Map.of(1_000L, 0d, 1_001L, 0d), scores);
+    }
+
+    @Test
+    void sharesFullGraphBudgetAndSelectsEqualSeedsById() {
+        var context = emptyContext();
+        Map<Long, Double> seeds = new LinkedHashMap<>();
+        for (long id = 64; id >= 1; id--) {
+            seeds.put(id, 1d);
+        }
+        List<Long> candidates = IntStream.range(1_000, 1_040).mapToObj(Long::valueOf).toList();
+        stubBidirectionalSimilarity(context, 1L, 1_000L, 0.8d);
+        stubBidirectionalSimilarity(context, 64L, 1_001L, 0.8d);
+
+        Map<Long, Double> scores = placeRecommendationGraphAffinityService.score(candidates, seeds, context);
+
+        assertEquals(40, scores.size());
+        assertTrue(scores.get(1_000L) > 0d);
+        assertEquals(0d, scores.get(1_001L));
+        assertEquals(0d, scores.get(1_032L));
+        verify(placeRecommendationSimilarityService, times(2_016))
+                .similarity(anyLong(), anyLong(), same(context));
+        verify(placeRecommendationSimilarityService, never())
+                .similarity(eq(33L), anyLong(), same(context));
+        verify(placeRecommendationSimilarityService, never())
+                .similarity(anyLong(), eq(33L), same(context));
+    }
+
+    @Test
+    void usesUnusedSeedBudgetForCandidatesAndBreaksNeighborTiesById() {
+        var context = emptyContext();
+        List<Long> candidates = IntStream.iterate(70, id -> id - 1).limit(70).mapToObj(Long::valueOf).toList();
+        for (long candidateId = 1; candidateId <= 70; candidateId++) {
+            stubBidirectionalSimilarity(context, 100L, candidateId, 0.8d);
+        }
+
+        Map<Long, Double> scores = placeRecommendationGraphAffinityService.score(
+                candidates, Map.of(100L, 1d), context
+        );
+
+        assertEquals(70, scores.size());
+        assertTrue(scores.get(8L) > 0d);
+        assertEquals(0d, scores.get(7L));
+        assertEquals(0d, scores.get(70L));
+        verify(placeRecommendationSimilarityService, times(2_016))
+                .similarity(anyLong(), anyLong(), same(context));
+    }
+
+    @Test
+    void ignoresNonPositiveAndNullSeedWeights() {
+        var context = emptyContext();
+        Map<Long, Double> seeds = new LinkedHashMap<>();
+        seeds.put(1L, -1d);
+        seeds.put(2L, 0d);
+        seeds.put(1_000L, null);
+
+        Map<Long, Double> scores = placeRecommendationGraphAffinityService.score(
+                List.of(1_000L, 1_001L), seeds, context
+        );
+
+        assertEquals(Map.of(1_000L, 0d, 1_001L, 0d), scores);
+    }
+
+    private PlaceRecommendationSimilarityService.SimilarityContext emptyContext() {
+        return new PlaceRecommendationSimilarityService.SimilarityContext(
+                Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), 0L
+        );
+    }
+
+    private Map<Long, Double> descendingSeedWeights(int count) {
+        Map<Long, Double> seeds = new LinkedHashMap<>();
+        for (long id = 1; id <= count; id++) {
+            seeds.put(id, (double) (count + 1 - id));
+        }
+        return seeds;
     }
 
     /**

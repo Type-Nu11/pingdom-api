@@ -184,8 +184,14 @@ class MerchantReservationServiceTest {
         reservation.confirm(25L, "기존 관리자 승인", NOW.minusMinutes(1));
         var history = ReservationStatusHistory.of(3L, ReservationStatus.CONFIRMED, 25L,
                 "기존 관리자 승인", NOW.minusMinutes(1));
-        when(histories.findAllByReservationIdOrderByChangedAtAscIdAsc(3L)).thenReturn(List.of(history));
-        when(users.findById(8L)).thenReturn(Optional.of(User.builder().id(8L).username("현재 점주").build()));
+        when(histories.findAllByReservationIdInOrderByReservationIdAscChangedAtAscIdAsc(List.of(3L)))
+                .thenReturn(List.of(history));
+        PlaceAvailability slot = slots.findById(9L).orElseThrow();
+        ReflectionTestUtils.setField(slot, "id", 9L);
+        when(slots.findAllById(List.of(9L))).thenReturn(List.of(slot));
+        when(owners.findAllByPlaceIdIn(List.of(11L))).thenReturn(List.of(
+                MerchantOwnerPlace.builder().placeId(11L).merchantOwnerUserId(8L).createdAt(NOW).build()));
+        when(users.findAllById(any())).thenReturn(List.of(User.builder().id(8L).username("현재 점주").build()));
         when(reservations.findAllForAdmin(isNull(), isNull(), eq(8L), isNull(), eq(false), isNull(),
                 eq(false), isNull(), any())).thenReturn(new PageImpl<>(List.of(reservation)));
 

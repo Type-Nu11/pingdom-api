@@ -197,7 +197,7 @@ class AdminOutboxEventSecurityIntegrationTest extends AuthRegressionIntegrationT
                 "10",
                 now.minusMinutes(1)
         );
-        event.claim(now.minusSeconds(30));
+        event.claim("test-token", now.minusSeconds(30), now.minusSeconds(30).plusMinutes(5));
         event.fail(now, 1, now, "provider unavailable");
         return outboxEventRepository.saveAndFlush(event);
     }

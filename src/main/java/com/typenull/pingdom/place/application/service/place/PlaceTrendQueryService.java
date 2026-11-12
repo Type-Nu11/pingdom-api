@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,13 +46,18 @@ public class PlaceTrendQueryService {
         LocalDateTime periodStart = requestedStart.isAfter(tracking.getStartedAt())
                 ? requestedStart
                 : tracking.getStartedAt();
-        long totalElements = placeTrendQueryRepository.countTrends(periodStart, generatedAt);
-        List<PlaceTrendQueryRepository.PlaceTrendProjection> trends = placeTrendQueryRepository.findTrends(
+        List<PlaceTrendQueryRepository.PlaceTrendProjection> pageRows = placeTrendQueryRepository.findTrendPage(
                 periodStart,
                 generatedAt,
                 userId,
-                PageRequest.of(safePage - 1, safeLimit)
+                (long) (safePage - 1) * safeLimit,
+                safeLimit
         );
+        long totalElements = pageRows.getFirst().getTotalElements();
+        // total LEFT JOIN page의 빈 장소 행은 메타데이터만 보존하고 응답 항목에서는 제외한다.
+        List<PlaceTrendQueryRepository.PlaceTrendProjection> trends = pageRows.stream()
+                .filter(row -> row.getPlaceId() != null)
+                .toList();
         int totalPages = Math.max(1, (int) Math.ceil((double) totalElements / safeLimit));
         List<PlaceTrendResponse.Item> places = java.util.stream.IntStream.range(0, trends.size())
                 .mapToObj(index -> toItem(trends.get(index), ((safePage - 1) * safeLimit) + index + 1))

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
+import com.typenull.pingdom.identity.application.service.merchant.MerchantApplicationApprovalService;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.admin.AdminPermission;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerPlace;
@@ -23,17 +24,17 @@ import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogSe
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
+import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationOperatingDay;
 import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplication;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationAttachment;
-import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationOperatingDay;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.registration.MerchantPlaceApplicationReviewHistoryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationApplicationRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationAttachmentRepository;
-import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import com.typenull.pingdom.shared.security.access.UserAccessStatusService;
+import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -44,13 +45,15 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class MerchantPlaceApplicationAdminServiceTest {
@@ -75,7 +78,6 @@ class MerchantPlaceApplicationAdminServiceTest {
     @Mock private ObjectMapper objectMapper;
     @Mock private Clock clock;
 
-    @InjectMocks
     private MerchantPlaceApplicationService service;
 
     /**
@@ -85,6 +87,21 @@ class MerchantPlaceApplicationAdminServiceTest {
     void setUpClock() {
         org.mockito.Mockito.lenient().when(clock.instant()).thenReturn(Instant.parse("2026-08-24T00:00:00Z"));
         org.mockito.Mockito.lenient().when(clock.getZone()).thenReturn(ZoneOffset.UTC);
+        var adminAttachments = new MerchantPlaceApplicationAdminAttachmentService(
+                applicationRepository, attachmentRepository, authorizationService, auditLogService, storage, clock
+        );
+        var adminQuery = new MerchantPlaceApplicationAdminQueryService(
+                applicationRepository, verificationCipher, authorizationService, auditLogService, adminAttachments, objectMapper
+        );
+        var identityApproval = new MerchantApplicationApprovalService(
+                profileRepository, verificationRepository, userRepository, ownerPlaceRepository, memberRepository, invitationRepository
+        );
+        service = new MerchantPlaceApplicationService(
+                applicationRepository, placeRepository, legacyPlaceRegistrationService, ownerPlaceRepository,
+                memberRepository, invitationRepository, userRepository, userAccessStatusService, verificationCipher,
+                authorizationService, auditLogService, touristOfferRepository, reviewHistoryRepository, objectMapper, clock,
+                adminQuery, adminAttachments, new MerchantPlaceApplicationReviewSnapshotSerializer(objectMapper), identityApproval
+        );
     }
 
     /**
@@ -297,6 +314,94 @@ class MerchantPlaceApplicationAdminServiceTest {
                 Map.of(),
                 Map.of("applicationId", 12L)
         );
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, 2, 3})
+    void rejectsEveryAdminReadBeforeSensitiveAccess(int entryPoint) {
+        var denied = new com.typenull.pingdom.moderation.domain.exception.AdminException(
+                com.typenull.pingdom.moderation.domain.exception.AdminErrorCode.ADMIN_PERMISSION_REQUIRED);
+        org.mockito.Mockito.doThrow(denied).when(authorizationService)
+                .requirePermission(99L, AdminPermission.MERCHANT_REVIEW);
+
+        assertThatThrownBy(() -> {
+            switch (entryPoint) {
+                case 0 -> service.listForAdmin(99L, null, null, null, null, null, 1, 20);
+                case 1 -> service.getForAdmin(99L, 12L);
+                case 2 -> service.listAttachmentsForAdmin(99L, 12L);
+                default -> service.downloadAttachmentForAdmin(99L, 12L, 44L);
+            }
+        }).isSameAs(denied);
+
+        org.mockito.Mockito.verifyNoInteractions(applicationRepository, attachmentRepository,
+                verificationCipher, storage, auditLogService);
+    }
+
+    @Test
+    void auditsDetailAndItsAttachmentExactlyOnce() {
+        PlaceRegistrationApplication application = application(12L);
+        PlaceRegistrationAttachment attachment = attachment(application, null);
+        when(applicationRepository.findById(12L)).thenReturn(Optional.of(application));
+        when(application.getEncryptedBusinessRegistrationNumber()).thenReturn("encrypted-number");
+        when(verificationCipher.decrypt("encrypted-number")).thenReturn("1234567890");
+        when(attachmentRepository.findAllByApplicationIdOrderByDocumentTypeAscDisplayOrderAscIdAsc(12L))
+                .thenReturn(List.of(attachment));
+
+        assertThat(service.getForAdmin(99L, 12L).attachments()).hasSize(1);
+
+        verify(auditLogService).record(99L, AdminAuditAction.MERCHANT_PLACE_APPLICATION_VIEWED,
+                AdminAuditTargetType.MERCHANT_PLACE_APPLICATION, 12L,
+                "통합 신청 민감정보 상세 조회", Map.of(), Map.of());
+        verify(auditLogService).record(99L, AdminAuditAction.MERCHANT_PLACE_APPLICATION_ATTACHMENT_VIEWED,
+                AdminAuditTargetType.MERCHANT_PLACE_APPLICATION_ATTACHMENT, 44L,
+                "통합 신청 민감 첨부 메타데이터 조회: BUSINESS_REGISTRATION", Map.of(), Map.of("applicationId", 12L));
+        org.mockito.Mockito.verifyNoMoreInteractions(auditLogService);
+        verify(authorizationService).requirePermission(99L, AdminPermission.MERCHANT_REVIEW);
+    }
+
+    @Test
+    void rejectsAttachmentAtRetentionBoundaryBeforeStorageOrAudit() {
+        PlaceRegistrationApplication application = application(12L);
+        PlaceRegistrationAttachment attachment = attachment(application, LocalDateTime.of(2026, 8, 24, 0, 0));
+        when(applicationRepository.findById(12L)).thenReturn(Optional.of(application));
+        when(attachmentRepository.findByIdAndApplicationId(44L, 12L)).thenReturn(Optional.of(attachment));
+
+        assertThatThrownBy(() -> service.downloadAttachmentForAdmin(99L, 12L, 44L))
+                .isInstanceOfSatisfying(com.typenull.pingdom.place.domain.exception.PlaceRegistrationException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(
+                                com.typenull.pingdom.place.domain.exception.PlaceRegistrationErrorCode.ATTACHMENT_RETENTION_EXPIRED));
+
+        org.mockito.Mockito.verifyNoInteractions(storage, auditLogService);
+    }
+
+    @Test
+    void rejectsInactiveAttachmentBeforeStorageOrAudit() {
+        PlaceRegistrationApplication application = application(12L);
+        PlaceRegistrationAttachment attachment = attachment(application, null);
+        attachment.markDeleted(LocalDateTime.of(2026, 8, 23, 0, 0));
+        when(applicationRepository.findById(12L)).thenReturn(Optional.of(application));
+        when(attachmentRepository.findByIdAndApplicationId(44L, 12L)).thenReturn(Optional.of(attachment));
+
+        assertThatThrownBy(() -> service.downloadAttachmentForAdmin(99L, 12L, 44L))
+                .isInstanceOfSatisfying(com.typenull.pingdom.place.domain.exception.PlaceRegistrationException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(
+                                com.typenull.pingdom.place.domain.exception.PlaceRegistrationErrorCode.ATTACHMENT_NOT_FOUND));
+
+        org.mockito.Mockito.verifyNoInteractions(storage, auditLogService);
+    }
+
+    @Test
+    void propagatesStorageFailureWithoutRecordingSuccessfulDownload() {
+        PlaceRegistrationApplication application = application(12L);
+        PlaceRegistrationAttachment attachment = attachment(application, null);
+        var failure = new IllegalStateException("storage unavailable");
+        when(applicationRepository.findById(12L)).thenReturn(Optional.of(application));
+        when(attachmentRepository.findByIdAndApplicationId(44L, 12L)).thenReturn(Optional.of(attachment));
+        when(storage.getBytes(attachment.getStorageKey())).thenThrow(failure);
+
+        assertThatThrownBy(() -> service.downloadAttachmentForAdmin(99L, 12L, 44L)).isSameAs(failure);
+
+        org.mockito.Mockito.verifyNoInteractions(auditLogService);
     }
 
     /**
@@ -516,5 +621,14 @@ class MerchantPlaceApplicationAdminServiceTest {
         PlaceRegistrationApplication application = org.mockito.Mockito.mock(PlaceRegistrationApplication.class);
         org.mockito.Mockito.lenient().when(application.getId()).thenReturn(id);
         return application;
+    }
+
+    private PlaceRegistrationAttachment attachment(PlaceRegistrationApplication application, LocalDateTime expiresAt) {
+        PlaceRegistrationAttachment attachment = PlaceRegistrationAttachment.create(application, null,
+                com.typenull.pingdom.place.domain.registration.PlaceRegistrationAttachmentType.BUSINESS_REGISTRATION,
+                "private/applications/12/license.pdf", "license.pdf", "application/pdf", 10L, "a".repeat(64),
+                10L, LocalDateTime.of(2026, 8, 23, 0, 0), expiresAt, 0);
+        ReflectionTestUtils.setField(attachment, "id", 44L);
+        return attachment;
     }
 }

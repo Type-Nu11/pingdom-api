@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
@@ -21,6 +22,75 @@ import org.springframework.data.repository.query.Param;
  * 배치 query의 lock timeout -2는 Hibernate의 잠긴 행 건너뛰기 힌트이며 실제 SQL은 DB dialect에 따름.
  */
 public interface OutboxEventRepository extends JpaRepository<OutboxEvent, String> {
+
+    @Query(value = "SELECT clock_timestamp() AT TIME ZONE 'UTC'", nativeQuery = true)
+    LocalDateTime databaseNow();
+
+    @Query(value = """
+            SELECT * FROM outbox_event
+            WHERE event_id = :eventId AND claim_token = :token AND status = 'PROCESSING'
+              AND lease_until > (clock_timestamp() AT TIME ZONE 'UTC')
+            """, nativeQuery = true)
+    Optional<OutboxEvent> findOwnedProcessingEvent(
+            @Param("eventId") String eventId, @Param("token") String token);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            UPDATE outbox_event SET status = 'SUCCEEDED',
+                processed_at = (clock_timestamp() AT TIME ZONE 'UTC'),
+                updated_at = (clock_timestamp() AT TIME ZONE 'UTC'),
+                processing_started_at = NULL, claim_token = NULL, lease_until = NULL,
+                last_error = NULL, version = version + 1
+            WHERE event_id = :eventId AND claim_token = :token AND status = 'PROCESSING'
+              AND lease_until > (clock_timestamp() AT TIME ZONE 'UTC')
+            """, nativeQuery = true)
+    int completeClaim(@Param("eventId") String eventId, @Param("token") String token);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            UPDATE outbox_event SET
+                status = CASE WHEN attempt_count + 1 >= :maxAttempts THEN 'FAILED' ELSE 'RETRY' END,
+                attempt_count = attempt_count + 1,
+                next_attempt_at = (clock_timestamp() AT TIME ZONE 'UTC')
+                    + CASE WHEN attempt_count + 1 >= :maxAttempts THEN INTERVAL '0 milliseconds'
+                           ELSE :delayMillis * INTERVAL '1 millisecond' END,
+                updated_at = (clock_timestamp() AT TIME ZONE 'UTC'),
+                last_error = :error, processing_started_at = NULL,
+                claim_token = NULL, lease_until = NULL, version = version + 1
+            WHERE event_id = :eventId AND claim_token = :token AND status = 'PROCESSING'
+              AND lease_until > (clock_timestamp() AT TIME ZONE 'UTC')
+            """, nativeQuery = true)
+    int failClaim(@Param("eventId") String eventId, @Param("token") String token,
+            @Param("maxAttempts") int maxAttempts, @Param("delayMillis") long delayMillis,
+            @Param("error") String error);
+
+    /** 업무를 시작하지 못한 선점 반환은 실패 예산을 사용하지 않는다. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            UPDATE outbox_event SET status = 'RETRY',
+                next_attempt_at = (clock_timestamp() AT TIME ZONE 'UTC'),
+                updated_at = (clock_timestamp() AT TIME ZONE 'UTC'),
+                processing_started_at = NULL, claim_token = NULL, lease_until = NULL,
+                version = version + 1
+            WHERE event_id = :eventId AND claim_token = :token AND status = 'PROCESSING'
+              AND lease_until > (clock_timestamp() AT TIME ZONE 'UTC')
+            """, nativeQuery = true)
+    int releaseClaim(@Param("eventId") String eventId, @Param("token") String token);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            UPDATE outbox_event SET
+                lease_until = LEAST(
+                    (clock_timestamp() AT TIME ZONE 'UTC') + :leaseMillis * INTERVAL '1 millisecond',
+                    processing_started_at + :maxExecutionMillis * INTERVAL '1 millisecond'),
+                updated_at = (clock_timestamp() AT TIME ZONE 'UTC'), version = version + 1
+            WHERE event_id = :eventId AND claim_token = :token AND status = 'PROCESSING'
+              AND lease_until > (clock_timestamp() AT TIME ZONE 'UTC')
+              AND processing_started_at + :maxExecutionMillis * INTERVAL '1 millisecond'
+                    > (clock_timestamp() AT TIME ZONE 'UTC')
+            """, nativeQuery = true)
+    int renewClaim(@Param("eventId") String eventId, @Param("token") String token,
+            @Param("leaseMillis") long leaseMillis, @Param("maxExecutionMillis") long maxExecutionMillis);
 
     boolean existsByDeduplicationKey(String deduplicationKey);
 
@@ -81,15 +151,15 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, String
             Pageable pageable
     );
 
-    /** 처리 시작 시각이 임계값보다 엄격히 이전인 지정 상태의 행을 오래된 순서로 잠금 조회. */
+    /** 만료 lease 및 전환 전 남은 토큰 없는 선점을 복구한다. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @QueryHints(@jakarta.persistence.QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2"))
     @Query("""
             SELECT event
             FROM OutboxEvent event
             WHERE event.status = :status
-              AND event.processingStartedAt < :threshold
-            ORDER BY event.processingStartedAt
+              AND (event.leaseUntil IS NULL OR event.leaseUntil <= :threshold)
+            ORDER BY event.leaseUntil, event.eventId
             """)
     List<OutboxEvent> findStaleProcessingEventsForUpdate(
             @Param("status") OutboxEventStatus status,

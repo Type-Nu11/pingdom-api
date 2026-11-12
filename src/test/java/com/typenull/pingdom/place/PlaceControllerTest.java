@@ -125,7 +125,17 @@ class PlaceControllerTest {
         @Bean
         @Primary
         EmailSender emailSender() {
-            return (recipientEmail, verificationCode) -> EmailSendResult.sent(null);
+            return new EmailSender() {
+                @Override
+                public EmailSendResult sendVerificationEmail(String recipientEmail, String verificationCode) {
+                    return EmailSendResult.sent(null);
+                }
+
+                @Override
+                public EmailSendResult sendPasswordResetEmail(String recipientEmail, String resetToken, LocalDateTime expiresAt) {
+                    return EmailSendResult.sent(null);
+                }
+            };
         }
     }
 

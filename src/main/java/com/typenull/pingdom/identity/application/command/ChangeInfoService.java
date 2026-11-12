@@ -9,10 +9,13 @@ import com.typenull.pingdom.identity.api.dto.profile.ChangeUsernameRequest;
 import com.typenull.pingdom.identity.domain.exception.UsersErrorCode;
 import com.typenull.pingdom.identity.domain.exception.UsersException;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
-import com.typenull.pingdom.shared.support.S3ObjectStorage.S3PutResult;
 import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageException;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,12 +30,12 @@ import org.springframework.web.multipart.MultipartFile;
 @Slf4j
 public class ChangeInfoService {
 
-    private static final String PROFILE_IMAGE_PREFIX = "users/profile-images";
-
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final ProfileImageFileValidator profileImageFileValidator;
     private final S3ObjectStorage s3ObjectStorage;
+    private final ProfileImageUploadService profileImages;
+    private final ProfileImageStorageProperties profileImageStorageProperties;
 
     private User getUser(Long userId) {
         return userRepository.findById(userId)
@@ -41,17 +44,41 @@ public class ChangeInfoService {
 
     /**
      * 회원을 찾아 요청 이름으로 변경. 회원이 없으면 USER_NOT_FOUND를 반환.
-     * 현재 이름과 요청 이름이 같고 해당 이름이 이미 존재하면 USERNAME_ALREADY_EXISTS로 거절.
+     * 현재 이름 유지는 허용하고 다른 회원의 이름 또는 DB 유일 제약 경쟁은 같은 중복 오류로 거절.
      */
     @Transactional
     public void changeUsername(ChangeUsernameRequest request, Long userId) {
         User user = getUser(userId);
 
-        if(user.getUsername().equals(request.newUsername()) && userRepository.existsByUsername(request.newUsername())){
+        if (user.getUsername().equals(request.newUsername())) {
+            return;
+        }
+        if (userRepository.existsByUsername(request.newUsername())) {
             throw new UsersException(UsersErrorCode.USERNAME_ALREADY_EXISTS);
         }
 
         user.changeUsername(request.newUsername());
+        try {
+            // 커밋 전에 경쟁 실패를 관찰해야 변경 API의 기존 도메인 오류 계약을 보존할 수 있습니다.
+            userRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            if (isUsernameUniqueViolation(exception)) {
+                throw new UsersException(UsersErrorCode.USERNAME_ALREADY_EXISTS);
+            }
+            throw exception;
+        }
+    }
+
+    private boolean isUsernameUniqueViolation(Throwable exception) {
+        Set<Throwable> visited = new HashSet<>();
+        for (Throwable cause = exception; cause != null && visited.add(cause); cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException violation
+                    && "23505".equals(violation.getSQLState())
+                    && "uk_users_username".equals(violation.getConstraintName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -71,43 +98,20 @@ public class ChangeInfoService {
     }
 
     /**
-     * 새 이미지를 업로드한 뒤 URL을 flush하며, 여기서 관찰한 DB 실패에는 업로드 객체 삭제를 시도.
-     * 삭제 실패 시에도 원래 예외는 유지. 메서드 반환 뒤 커밋 실패와 이전 이미지 정리는 이 보상 범위에서 제외.
+     * 별도 커밋한 소유 key에 업로드하고 User version 검사와 원장 연결을 기존 수정 TX로 확정.
+     * flush/실제 commit 실패 시 선등록 원장이 남아 14일 유예 후 현재 참조를 재검증하여 정리합니다.
      */
     @Transactional
     public String changeProfileImage(MultipartFile file, Long userId) {
         User user = getUser(userId);
         ProfileImageFileValidator.ValidatedProfileImage validated = profileImageFileValidator.validate(file);
-        S3PutResult uploaded = upload(validated, userId);
-
         try {
-            user.changeProfileImageUrl(uploaded.url());
-            userRepository.saveAndFlush(user);
-            return uploaded.url();
-        } catch (RuntimeException exception) {
-            cleanupUploadedObject(uploaded.key());
-            throw exception;
-        }
-    }
-
-    private S3PutResult upload(ProfileImageFileValidator.ValidatedProfileImage image, Long userId) {
-        try {
-            return s3ObjectStorage.put(
-                    image.bytes(),
-                    "profile." + image.extension(),
-                    image.contentType(),
-                    PROFILE_IMAGE_PREFIX + "/" + userId
-            );
+            var prepared = profileImages.prepare(userId, validated.extension());
+            s3ObjectStorage.putAtKey(validated.bytes(), validated.contentType(), prepared.key(),
+                    profileImageStorageProperties.uploadTimeout());
+            return profileImages.complete(prepared.intentId(), user);
         } catch (S3StorageException exception) {
             throw new UsersException(UsersErrorCode.PROFILE_IMAGE_STORAGE_UNAVAILABLE);
-        }
-    }
-
-    private void cleanupUploadedObject(String key) {
-        try {
-            s3ObjectStorage.delete(key);
-        } catch (RuntimeException exception) {
-            log.warn("프로필 이미지 DB 저장 실패 후 S3 객체 정리에 실패했습니다. key={}", key, exception);
         }
     }
 }

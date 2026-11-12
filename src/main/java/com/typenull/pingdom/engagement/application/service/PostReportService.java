@@ -4,7 +4,7 @@ import com.typenull.pingdom.engagement.domain.PostReport;
 import com.typenull.pingdom.engagement.event.PostReportCreatedEvent;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.post.domain.MapImage;
-import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.post.application.service.MapImageStateLockService;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.time.Clock;
@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class PostReportService {
 
-    private final MapImageRepository mapImageRepository;
+    private final MapImageStateLockService imageStateLockService;
     private final PostReportRepository postReportRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final ReportPolicyService reportPolicyService;
@@ -33,10 +33,12 @@ public class PostReportService {
     @Transactional
     public void report(Long imageId, Long reporterUserId, String reporterUsername, String reason) {
         LocalDateTime now = LocalDateTime.now(clock);
-        reportPolicyService.validateCanReport(reporterUserId, now);
+        reportPolicyService.lockForSubmission(reporterUserId, reporterUsername, now);
 
-        MapImage mapImage = mapImageRepository.findById(imageId)
-                .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
+        // FK 검사가 사진 KEY SHARE를 취득하므로 INSERT 전에 장소→사진 잠금을 마칩니다.
+        MapImage mapImage = imageStateLockService.findForUpdate(imageId)
+                .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND))
+                .image();
 
         if (!mapImage.isVisible()) {
             throw new MapException(MapErrorCode.IMAGE_NOT_FOUND);

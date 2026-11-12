@@ -237,7 +237,7 @@ public class AdminTrustScoreService {
      */
     @Transactional
     public AdminTrustScoreInterventionEvaluationResponse evaluateReporter(Long reporterUserId, Long adminUserId) {
-        ReporterModerationPolicy policy = reporterModerationPolicyRepository.findById(reporterUserId)
+        ReporterModerationPolicy policy = reporterModerationPolicyRepository.findByReporterUserIdForUpdate(reporterUserId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.TRUST_SCORE_REPORTER_POLICY_NOT_FOUND));
 
         return trustScoreInterventionRuleRepository.findByEnabledTrueOrderByPriorityAscIdAsc().stream()

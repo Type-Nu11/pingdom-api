@@ -19,121 +19,111 @@ import org.springframework.mock.web.MockMultipartFile;
 
 class VisitEvidenceServiceTest {
     private static final Instant NOW = Instant.parse("2026-07-21T00:00:00Z");
-    private final VisitEvidencePersistenceService persistenceService = mock(VisitEvidencePersistenceService.class);
-    private final S3ObjectStorage objectStorage = mock(S3ObjectStorage.class);
+    private static final String ID = "8a7e3f69-b920-4aad-8eb8-8862dfd6e152";
+    private static final String KEY = "visit-evidence/tracked/" + ID + ".jpg";
+    private final VisitEvidencePersistenceService persistence = mock(VisitEvidencePersistenceService.class);
+    private final VisitEvidenceUploadIntentService intents = mock(VisitEvidenceUploadIntentService.class);
+    private final S3ObjectStorage storage = mock(S3ObjectStorage.class);
+    private final VisitEvidenceOrphanProperties orphan = new VisitEvidenceOrphanProperties(null, null, null);
     private VisitEvidenceService service;
 
-    /**
-     * 시계를 고정하고 보관 기간 30일·최대 파일 크기 1KB로 서비스를 구성.
-     * S3는 고정 key를 반환하고 저장 mock은 전달받은 메타데이터로 증빙을 만들어,
-     * 실제 외부 저장소 없이 업로드와 저장에 전달되는 값을 확인할 수 있게 함.
-     */
     @BeforeEach
     void setUp() {
         VisitEvidenceProperties properties = new VisitEvidenceProperties(Duration.ofDays(30), 1024L, 10, 10);
-        service = new VisitEvidenceService(persistenceService, new VisitEvidenceFileValidator(properties), properties,
-                objectStorage, Clock.fixed(NOW, ZoneOffset.UTC));
-        when(objectStorage.put(any(byte[].class), anyString(), eq("image/jpeg"), eq("visit-evidence")))
-                .thenReturn(new S3ObjectStorage.S3PutResult("visit-evidence/key", "unused"));
-        when(persistenceService.save(eq(1L), eq(2L), anyString(), anyString(), eq("image/jpeg"),
-                anyLong(), eq(NOW), eq(NOW.plus(Duration.ofDays(30)))))
-                .thenAnswer(invocation -> VisitEvidence.create(2L, 1L, invocation.getArgument(2),
-                        invocation.getArgument(3), invocation.getArgument(4), invocation.getArgument(5),
-                        invocation.getArgument(6), invocation.getArgument(7)));
+        service = new VisitEvidenceService(persistence, new VisitEvidenceFileValidator(properties), properties,
+                storage, Clock.fixed(NOW, ZoneOffset.UTC), intents, orphan);
     }
 
-    /**
-     * JPEG 업로드 결과가 체크인 2와 연결되고 고정 시각으로부터 30일 후 만료되는지 검증.
-     * S3가 반환한 key와 JPEG 콘텐츠 타입, 생성·만료 시각이 저장 서비스에 전달되어야 함.
-     */
     @Test
-    void uploadWithRetention() throws Exception {
+    void registerKeyBeforeUploadAndPreserveActiveRetention() throws Exception {
+        prepare();
+        VisitEvidence saved = VisitEvidence.create(2L, 1L, KEY, "visit.jpg", "image/jpeg", 4,
+                NOW, NOW.plus(Duration.ofDays(30)));
+        when(intents.complete(eq(ID), eq(1L), eq(2L), anyString(), eq("image/jpeg"), anyLong(),
+                eq(NOW), eq(NOW.plus(Duration.ofDays(30))))).thenReturn(saved);
+
         var response = service.upload(1L, 2L, jpeg());
 
-        assertThat(response.locationCheckInId()).isEqualTo(2L);
         assertThat(response.expiresAt()).isEqualTo(NOW.plus(Duration.ofDays(30)));
-        verify(persistenceService).save(eq(1L), eq(2L), eq("visit-evidence/key"), anyString(),
-                eq("image/jpeg"), anyLong(), eq(NOW), eq(NOW.plus(Duration.ofDays(30))));
+        var ordered = inOrder(intents, storage);
+        ordered.verify(intents).prepare(1L, 2L, "jpg");
+        ordered.verify(storage).putAtKey(any(byte[].class), eq("image/jpeg"), eq(KEY), eq(orphan.uploadTimeout()));
+        ordered.verify(intents).complete(eq(ID), eq(1L), eq(2L), anyString(), eq("image/jpeg"), anyLong(), any(), any());
+        verify(storage, never()).delete(anyString());
     }
 
-    /**
-     * 소유권 확인이 CHECK_IN_NOT_FOUND로 실패하면 같은 오류를 호출자에게 전달.
-     * S3와 어떤 상호작용도 발생하지 않아 권한 확인 전에 파일이 업로드되는 회귀를 방지.
-     */
     @Test
-    void rejectUnownedCheckIn() throws Exception {
+    void rejectUnownedCheckInBeforeCreatingIntent() throws Exception {
         doThrow(new VisitorVerificationException(VisitorVerificationErrorCode.CHECK_IN_NOT_FOUND))
-                .when(persistenceService).requireOwnedCheckIn(1L, 3L);
-
+                .when(persistence).requireOwnedCheckIn(1L, 3L);
         assertError(() -> service.upload(1L, 3L, jpeg()), VisitorVerificationErrorCode.CHECK_IN_NOT_FOUND);
-        verifyNoInteractions(objectStorage);
+        verifyNoInteractions(storage, intents);
     }
 
-    /**
-     * S3 업로드 후 저장이 중복 증빙 오류로 실패하면 업로드한 key를 삭제 요청하는지 검증.
-     * 보상 처리를 하더라도 호출자에게는 VISIT_EVIDENCE_ALREADY_EXISTS를 전달해야 함.
-     */
     @Test
-    void cleanUpFailedSave() throws Exception {
-        when(persistenceService.save(eq(1L), eq(2L), anyString(), anyString(), anyString(), anyLong(), any(), any()))
+    void failedSaveRecordsOrphanWithoutImmediateDelete() throws Exception {
+        prepare();
+        when(intents.complete(eq(ID), eq(1L), eq(2L), anyString(), anyString(), anyLong(), any(), any()))
                 .thenThrow(new VisitorVerificationException(VisitorVerificationErrorCode.VISIT_EVIDENCE_ALREADY_EXISTS));
-
-        assertError(() -> service.upload(1L, 2L, jpeg()),
-                VisitorVerificationErrorCode.VISIT_EVIDENCE_ALREADY_EXISTS);
-        verify(objectStorage).delete("visit-evidence/key");
+        assertError(() -> service.upload(1L, 2L, jpeg()), VisitorVerificationErrorCode.VISIT_EVIDENCE_ALREADY_EXISTS);
+        verify(intents).abandon(ID);
+        verify(storage, never()).delete(anyString());
     }
 
-    /**
-     * 중복 증빙 저장 실패에 이어 S3 삭제까지 연결 오류로 실패하는 상황을 구성.
-     * 삭제 시도는 수행하되 정리 오류가 최초 중복 증빙 오류를 덮어쓰지 않아야 함.
-     */
     @Test
-    void preserveOriginalSaveError() throws Exception {
-        when(persistenceService.save(eq(1L), eq(2L), anyString(), anyString(), anyString(), anyLong(), any(), any()))
+    void preserveOriginalSaveErrorWhenAbandonFails() throws Exception {
+        prepare();
+        when(intents.complete(eq(ID), eq(1L), eq(2L), anyString(), anyString(), anyLong(), any(), any()))
                 .thenThrow(new VisitorVerificationException(VisitorVerificationErrorCode.VISIT_EVIDENCE_ALREADY_EXISTS));
-        doThrow(new S3StorageException(S3StorageError.CONNECTION_ERROR, "cleanup failure", null))
-                .when(objectStorage).delete("visit-evidence/key");
-
-        assertError(() -> service.upload(1L, 2L, jpeg()),
-                VisitorVerificationErrorCode.VISIT_EVIDENCE_ALREADY_EXISTS);
-        verify(objectStorage).delete("visit-evidence/key");
+        doThrow(new IllegalStateException("database unavailable")).when(intents).abandon(ID);
+        assertError(() -> service.upload(1L, 2L, jpeg()), VisitorVerificationErrorCode.VISIT_EVIDENCE_ALREADY_EXISTS);
+        verify(storage, never()).delete(anyString());
     }
 
-    /**
-     * 첫 S3 업로드의 연결 실패에 대한 저장소 사용 불가 오류 변환과 DB 저장 미호출 확인.
-     * 호출자가 다시 업로드하면 새 S3 key로 증빙이 저장되어야 함.
-     * 서비스 내부의 자동 재시도가 아니라 두 번의 명시적 호출을 검증.
-     */
     @Test
-    void retryFailedUpload() throws Exception {
-        when(objectStorage.put(any(byte[].class), anyString(), eq("image/jpeg"), eq("visit-evidence")))
-                .thenThrow(new S3StorageException(S3StorageError.CONNECTION_ERROR, "temporary failure", null))
-                .thenReturn(new S3ObjectStorage.S3PutResult("visit-evidence/retry-key", "unused"));
-
-        assertError(() -> service.upload(1L, 2L, jpeg()),
-                VisitorVerificationErrorCode.VISIT_EVIDENCE_STORAGE_UNAVAILABLE);
-        verify(persistenceService, never()).save(anyLong(), anyLong(), anyString(), anyString(), anyString(),
-                anyLong(), any(), any());
-
-        var retried = service.upload(1L, 2L, jpeg());
-
-        assertThat(retried.locationCheckInId()).isEqualTo(2L);
-        verify(persistenceService).save(eq(1L), eq(2L), eq("visit-evidence/retry-key"), anyString(),
-                eq("image/jpeg"), anyLong(), eq(NOW), eq(NOW.plus(Duration.ofDays(30))));
+    void failedUploadLeavesTrackedKeyAndDoesNotComplete() throws Exception {
+        prepare();
+        when(storage.putAtKey(any(byte[].class), anyString(), eq(KEY), eq(orphan.uploadTimeout())))
+                .thenThrow(new S3StorageException(S3StorageError.CONNECTION_ERROR, "upload failed", null));
+        assertError(() -> service.upload(1L, 2L, jpeg()), VisitorVerificationErrorCode.VISIT_EVIDENCE_STORAGE_UNAVAILABLE);
+        verify(intents).abandon(ID);
+        verify(intents, never()).complete(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyLong(), any(), any());
     }
 
-    /** 이미지 디코딩 검사를 통과하는 2×2 RGB JPEG를 메모리에서 만들어 업로드 입력으로 사용. */
+    @Test
+    void retryUsesIndependentTrackedIntent() throws Exception {
+        String retryId = "d4c03bdb-24bf-4657-abda-98db6648434e";
+        String retryKey = "visit-evidence/tracked/" + retryId + ".jpg";
+        when(intents.prepare(1L, 2L, "jpg"))
+                .thenReturn(new VisitEvidenceUploadIntentService.PreparedUpload(ID, KEY),
+                        new VisitEvidenceUploadIntentService.PreparedUpload(retryId, retryKey));
+        when(storage.putAtKey(any(byte[].class), anyString(), eq(KEY), eq(orphan.uploadTimeout())))
+                .thenThrow(new S3StorageException(S3StorageError.CONNECTION_ERROR, "late put possible", null));
+        var saved = VisitEvidence.create(2L, 1L, retryKey, "visit.jpg", "image/jpeg", 4,
+                NOW, NOW.plus(Duration.ofDays(30)));
+        when(intents.complete(eq(retryId), eq(1L), eq(2L), anyString(), anyString(), anyLong(), any(), any()))
+                .thenReturn(saved);
+
+        assertError(() -> service.upload(1L, 2L, jpeg()), VisitorVerificationErrorCode.VISIT_EVIDENCE_STORAGE_UNAVAILABLE);
+        assertThat(service.upload(1L, 2L, jpeg()).locationCheckInId()).isEqualTo(2L);
+        verify(intents).abandon(ID);
+        verify(storage).putAtKey(any(byte[].class), eq("image/jpeg"), eq(retryKey), eq(orphan.uploadTimeout()));
+        verify(storage, never()).delete(anyString());
+    }
+
+    private void prepare() {
+        when(intents.prepare(1L, 2L, "jpg")).thenReturn(new VisitEvidenceUploadIntentService.PreparedUpload(ID, KEY));
+    }
+
     private MockMultipartFile jpeg() throws Exception {
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        ImageIO.write(new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB), "jpg", output);
-        return new MockMultipartFile("file", "visit.jpg", "image/jpeg", output.toByteArray());
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB), "jpg", bytes);
+        return new MockMultipartFile("file", "visit.jpg", "image/jpeg", bytes.toByteArray());
     }
 
-    /** 실행 결과가 방문 인증 예외인지 확인하고 내부 오류 코드까지 기대값과 대조. */
     private void assertError(org.assertj.core.api.ThrowableAssert.ThrowingCallable callable,
             VisitorVerificationErrorCode expected) {
         assertThatThrownBy(callable).isInstanceOf(VisitorVerificationException.class)
-                .extracting(exception -> ((VisitorVerificationException) exception).getErrorCode())
-                .isEqualTo(expected);
+                .extracting(exception -> ((VisitorVerificationException) exception).getErrorCode()).isEqualTo(expected);
     }
 }

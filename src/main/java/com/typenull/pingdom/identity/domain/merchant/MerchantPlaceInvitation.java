@@ -94,6 +94,14 @@ public class MerchantPlaceInvitation {
         respondedAt = now;
     }
 
+    public boolean expireIfPending(LocalDateTime now) {
+        if (status != MerchantPlaceInvitationStatus.PENDING || now.isBefore(expiresAt)) {
+            return false;
+        }
+        status = MerchantPlaceInvitationStatus.EXPIRED;
+        return true;
+    }
+
     private void requirePending() {
         if (status != MerchantPlaceInvitationStatus.PENDING) {
             throw new IllegalStateException("대기 중인 팀원 초대만 처리할 수 있습니다.");

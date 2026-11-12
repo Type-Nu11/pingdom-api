@@ -1,15 +1,14 @@
 package com.typenull.pingdom.shared.outbox.application;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.DefaultValue;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import org.springframework.validation.annotation.Validated;
 
-/**
- * 선점/정리 배치 크기, worker 동시성·큐 용량, 실패 한도와 시간 간격 설정.
- * Duration 값은 null만 검증하며 양수 및 상호 크기 관계는 이 record의 검증 대상에서 제외.
- */
 @Validated
 @ConfigurationProperties(prefix = "outbox")
 public record OutboxProperties(
@@ -21,6 +20,33 @@ public record OutboxProperties(
         @NotNull Duration baseBackoff,
         @NotNull Duration maxBackoff,
         @NotNull Duration processingTimeout,
-        @NotNull Duration retention
+        @NotNull Duration retention,
+        @DefaultValue("PT30S") @NotNull Duration heartbeatInterval,
+        @DefaultValue("PT30M") @NotNull Duration maxExecutionTime
 ) {
+    @ConstructorBinding
+    public OutboxProperties {
+    }
+
+    /** 기존 명시적 생성자 호출도 운영 기본 heartbeat 계약을 사용한다. */
+    public OutboxProperties(int batchSize, int workerConcurrency, int workerQueueCapacity,
+            int cleanupBatchSize, int maxAttempts, Duration baseBackoff, Duration maxBackoff,
+            Duration processingTimeout, Duration retention) {
+        this(batchSize, workerConcurrency, workerQueueCapacity, cleanupBatchSize, maxAttempts,
+                baseBackoff, maxBackoff, processingTimeout, retention,
+                Duration.ofSeconds(30), Duration.ofMinutes(30));
+    }
+
+    @AssertTrue(message = "Outbox 기간은 양수이며 heartbeat < lease <= 최대 실행 시간이어야 합니다.")
+    public boolean isTimingValid() {
+        return positive(baseBackoff) && positive(maxBackoff) && positive(processingTimeout)
+                && positive(retention) && positive(heartbeatInterval) && positive(maxExecutionTime)
+                && baseBackoff.compareTo(maxBackoff) <= 0
+                && heartbeatInterval.compareTo(processingTimeout) < 0
+                && processingTimeout.compareTo(maxExecutionTime) <= 0;
+    }
+
+    private static boolean positive(Duration value) {
+        return value != null && !value.isZero() && !value.isNegative() && value.toMillis() > 0;
+    }
 }

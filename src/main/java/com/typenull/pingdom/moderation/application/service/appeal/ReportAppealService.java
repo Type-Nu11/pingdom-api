@@ -25,16 +25,21 @@ import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.moderation.infrastructure.persistence.ReportAppealRepository;
+import com.typenull.pingdom.moderation.infrastructure.persistence.ReportAppealRepository.AppealReference;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
+import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -43,7 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 피신고자의 이의제기를 접수하고 관리자 검토 결과를 신고·사진 노출·제재·감사 기록에 반영.
- * 이의제기 행 잠금 없이 일반 조회로 접수 가능 여부·미처리 여부 확인.
+ * 최종 처리는 원본 신고→이의제기→사용자→장소→사진 순서로 보호하고 거절은 이의제기만 잠금.
  */
 @Service
 @RequiredArgsConstructor
@@ -57,6 +62,7 @@ public class ReportAppealService {
     private final UserSanctionCommandService userSanctionCommandService;
     private final AdminAuditLogService adminAuditLogService;
     private final AdminRoleAuthorizationService authorizationService;
+    private final EntityManager entityManager;
     private final Clock clock;
 
     /**
@@ -65,8 +71,10 @@ public class ReportAppealService {
      */
     @Transactional
     public ReportAppealCreateResponse submit(Long reportId, String reason, Long userId, String username) {
-        PostReport report = postReportRepository.findById(reportId)
+        PostReport report = postReportRepository.findByIdForUpdate(reportId)
                 .orElseThrow(() -> new MapException(MapErrorCode.REPORT_NOT_FOUND));
+        // 최종 승인과 같은 신고 잠금을 사용하고, 잠금 전 적재된 상태도 다시 확인합니다.
+        entityManager.refresh(report);
         if (!report.getReportedUserId().equals(userId)) {
             throw new MapException(MapErrorCode.REPORT_APPEAL_NOT_ALLOWED);
         }
@@ -81,14 +89,22 @@ public class ReportAppealService {
             throw new MapException(MapErrorCode.REPORT_APPEAL_ALREADY_EXISTS);
         }
 
-        ReportAppeal appeal = reportAppealRepository.saveAndFlush(ReportAppeal.builder()
-                .reportId(report.getId())
-                .postId(report.getReportedImageId())
-                .appellantUserId(userId)
-                .appellantUsername(username)
-                .targetUserId(report.getReportedUserId())
-                .reason(reason)
-                .build());
+        ReportAppeal appeal;
+        try {
+            appeal = reportAppealRepository.saveAndFlush(ReportAppeal.builder()
+                    .reportId(report.getId())
+                    .postId(report.getReportedImageId())
+                    .appellantUserId(userId)
+                    .appellantUsername(username)
+                    .targetUserId(report.getReportedUserId())
+                    .reason(reason)
+                    .build());
+        } catch (DataIntegrityViolationException exception) {
+            if (isSubmittedAppealDuplicate(exception)) {
+                throw new MapException(MapErrorCode.REPORT_APPEAL_ALREADY_EXISTS);
+            }
+            throw exception;
+        }
 
         return new ReportAppealCreateResponse(
                 appeal.getId(),
@@ -100,11 +116,21 @@ public class ReportAppealService {
     }
 
     private boolean canSubmitAppeal(PostReport report) {
-        boolean acceptedReport = report.getStatus() == PostReportStatus.ACCEPTED;
-        boolean hiddenPost = mapImageRepository.findById(report.getReportedImageId())
-                .map(mapImage -> mapImage.getVisibilityStatus() == MapImageVisibilityStatus.AUTO_HIDDEN)
-                .orElse(false);
-        return acceptedReport || hiddenPost;
+        // 이미 적재된 사진이 다른 트랜잭션에서 복구되었어도 현재 DB 상태로 자격을 판단합니다.
+        return report.getStatus() == PostReportStatus.ACCEPTED
+                || mapImageRepository.existsByIdAndVisibilityStatus(
+                        report.getReportedImageId(), MapImageVisibilityStatus.AUTO_HIDDEN);
+    }
+
+    private boolean isSubmittedAppealDuplicate(Throwable exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException violation
+                    && "23505".equals(violation.getSQLState())
+                    && "uq_report_appeal_submitted".equals(violation.getConstraintName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -145,11 +171,17 @@ public class ReportAppealService {
         authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
         // 승인에 포함된 사용자 제재 변경도 작업 시작 전에 인가.
         authorizationService.requirePermission(adminUserId, AdminPermission.USER_SANCTION);
-        ReportAppeal appeal = getSubmittedAppeal(appealId);
-        PostReport report = postReportRepository.findById(appeal.getReportId())
+        AppealReference reference = reportAppealRepository.findReferenceById(appealId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.APPEAL_NOT_FOUND));
+        PostReport report = postReportRepository.findByIdForUpdate(reference.getReportId())
                 .orElseThrow(() -> new AdminException(AdminErrorCode.REPORT_NOT_FOUND));
-        User targetUser = userRepository.findById(appeal.getTargetUserId())
+        entityManager.refresh(report);
+        ReportAppeal appeal = getSubmittedAppeal(appealId);
+        validateReference(reference, appeal, report);
+        // 신뢰 점수는 복구 범위가 아니므로 정책 잠금 없이 제재 대상 사용자만 먼저 확보합니다.
+        User targetUser = userRepository.findByIdForUpdate(appeal.getTargetUserId())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        entityManager.refresh(targetUser);
         LocalDateTime now = LocalDateTime.now(clock);
         Map<String, Object> beforeState = appealState(appeal);
 
@@ -240,12 +272,24 @@ public class ReportAppealService {
     }
 
     private ReportAppeal getSubmittedAppeal(Long appealId) {
-        ReportAppeal appeal = reportAppealRepository.findById(appealId)
+        ReportAppeal appeal = reportAppealRepository.findByIdForUpdate(appealId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.APPEAL_NOT_FOUND));
+        // 이미 적재된 행도 잠금 대기 중 완료된 결과를 기준으로 판단합니다.
+        entityManager.refresh(appeal);
         if (!appeal.isSubmitted()) {
             throw new AdminException(AdminErrorCode.APPEAL_ALREADY_PROCESSED);
         }
         return appeal;
+    }
+
+    private void validateReference(AppealReference reference, ReportAppeal appeal, PostReport report) {
+        if (!Objects.equals(reference.getReportId(), appeal.getReportId())
+                || !Objects.equals(reference.getPostId(), appeal.getPostId())
+                || !Objects.equals(reference.getTargetUserId(), appeal.getTargetUserId())
+                || !Objects.equals(report.getReportedImageId(), appeal.getPostId())
+                || !Objects.equals(report.getReportedUserId(), appeal.getTargetUserId())) {
+            throw new AdminException(AdminErrorCode.APPEAL_NOT_FOUND);
+        }
     }
 
     private AdminReportAppealItem toItem(ReportAppeal appeal) {

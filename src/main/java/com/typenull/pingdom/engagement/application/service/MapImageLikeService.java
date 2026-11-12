@@ -11,6 +11,7 @@ import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommen
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import com.typenull.pingdom.post.application.query.PostQueryService;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotService;
+import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotWriteLock;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
@@ -34,6 +35,7 @@ public class MapImageLikeService {
     private static final String MAP_IMAGE_LIKE_UNIQUE_CONSTRAINT = "uk_map_image_like_user_image";
 
     private final MapImageLikeRepository mapImageLikeRepository;
+    private final PlaceRecommendationSnapshotWriteLock snapshotWriteLock;
     private final MapImageRepository mapImageRepository;
     private final PostQueryService postQueryService;
     private final OutboxEventPublisher outboxEventPublisher;
@@ -56,6 +58,7 @@ public class MapImageLikeService {
 
         MapImage mapImage = mapImageRepository.findWithMapPlaceById(mapImageId)
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
+        lockRecommendationPlace(mapImage);
         Long ownerId = mapImage.getUserId();
 
         MapImageLike mapImageLike = MapImageLike.builder()
@@ -99,6 +102,7 @@ public class MapImageLikeService {
 
         MapImage mapImage = mapImageRepository.findWithMapPlaceById(mapImageId)
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
+        lockRecommendationPlace(mapImage);
         mapImageLikeRepository.deleteByUserIdAndMapImageId(userId, mapImageId);
         mapImageRepository.decreaseLikeCount(mapImageId);
         if (mapImage.getMapPlace() != null) {
@@ -122,6 +126,12 @@ public class MapImageLikeService {
 
         notification.markAsRead();
 
+    }
+
+    private void lockRecommendationPlace(MapImage mapImage) {
+        if (mapImage.getMapPlace() != null) {
+            snapshotWriteLock.requirePlace(mapImage.getMapPlace().getId());
+        }
     }
 
     private MapImageLike saveLike(MapImageLike mapImageLike) {

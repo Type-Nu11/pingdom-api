@@ -10,13 +10,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /**
  * 장소 전체 집계 스냅샷과 합계를 읽음.
  * 명시적 잠금 메서드는 기존 행에 PESSIMISTIC_READ를 적용하며 없는 행 생성과 쓰기 직렬화는 보장 범위에서 제외.
- * 전체 SUM 결과는 행이 없으면 null일 수 있어 서비스가 0으로 보완.
+ * 전체 SUM 결과는 행이 없으면 null이며 호출 서비스의 기존 fallback 규칙으로 보완.
  */
 public interface PlaceRecommendationSnapshotRepository extends JpaRepository<PlaceRecommendationSnapshot, Long> {
     List<PlaceRecommendationSnapshot> findByPlaceIdIn(Collection<Long> placeIds);
@@ -39,6 +40,18 @@ public interface PlaceRecommendationSnapshotRepository extends JpaRepository<Pla
 
     Page<PlaceRecommendationSnapshot> findByUpdatedAtGreaterThanEqual(LocalDateTime updatedAt, Pageable pageable);
 
+    interface GlobalCountsProjection {
+        Long getClickCount();
+
+        Long getExposureCount();
+    }
+
+    @Query("""
+            SELECT SUM(s.clickCount) AS clickCount, SUM(s.exposureCount) AS exposureCount
+            FROM PlaceRecommendationSnapshot s
+            """)
+    GlobalCountsProjection sumGlobalCounts();
+
     @Query("""
             SELECT SUM(s.clickCount)
             FROM PlaceRecommendationSnapshot s
@@ -50,4 +63,13 @@ public interface PlaceRecommendationSnapshotRepository extends JpaRepository<Pla
             FROM PlaceRecommendationSnapshot s
             """)
     Long sumExposureCount();
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM PlaceRecommendationSnapshot s WHERE s.placeId IN :ids "
+            + "AND NOT EXISTS (SELECT p.id FROM MapPlace p WHERE p.id = s.placeId)")
+    int deleteOrphans(@Param("ids") Collection<Long> ids);
+
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM PlaceRecommendationSnapshot s "
+            + "WHERE NOT EXISTS (SELECT p.id FROM MapPlace p WHERE p.id = s.placeId)")
+    int deleteAllOrphans();
 }

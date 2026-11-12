@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.application.service.recommendation.feedback;
 
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotService;
+import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotWriteLock;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationVersionSnapshotService;
 
 import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommendationClick;
@@ -32,6 +33,7 @@ public class PlaceRecommendationClickService {
 
     private final PlaceRecommendationClickRepository placeRecommendationClickRepository;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
+    private final PlaceRecommendationSnapshotWriteLock snapshotWriteLock;
     private final PlaceRecommendationVersionSnapshotService placeRecommendationVersionSnapshotService;
     private final MapPlaceRepository mapPlaceRepository;
 
@@ -41,6 +43,7 @@ public class PlaceRecommendationClickService {
      */
     @Transactional
     public void recordClick(Long userId, Long placeId, String recommendationVersion, String requestId) {
+        snapshotWriteLock.requirePlace(placeId);
         if (!mapPlaceRepository.existsByIdAndOperatingStatusAndDiscoveryStatus(
                 placeId,
                 PlaceOperatingStatus.OPERATING,

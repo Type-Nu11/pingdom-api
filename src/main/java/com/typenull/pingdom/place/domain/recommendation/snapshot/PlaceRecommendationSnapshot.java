@@ -76,6 +76,20 @@ public class PlaceRecommendationSnapshot {
         this.updatedAt = updatedAt;
     }
 
+    public void synchronizeContent(
+            long photoCount,
+            long bookmarkCount,
+            long totalLikeCount,
+            LocalDateTime latestPostCreatedAt,
+            LocalDateTime updatedAt
+    ) {
+        this.photoCount = photoCount;
+        this.bookmarkCount = bookmarkCount;
+        this.totalLikeCount = totalLikeCount;
+        this.latestPostCreatedAt = latestPostCreatedAt;
+        this.updatedAt = updatedAt;
+    }
+
     public void increaseClickCount(long delta, LocalDateTime updatedAt) {
         this.clickCount += delta;
         this.updatedAt = updatedAt;

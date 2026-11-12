@@ -2,14 +2,20 @@ package com.typenull.pingdom.identity.api.merchant;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaCreateRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaOrderUpdateRequest;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerOperatingScheduleUpdateRequest;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerOperatingScheduleResponse;
+import com.typenull.pingdom.place.api.dto.place.operating.PlaceRegularOperatingHourResponse;
 import com.typenull.pingdom.identity.application.service.merchant.MerchantOwnerPlaceManagementService;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaItem;
 import com.typenull.pingdom.place.domain.place.media.PlaceMediaPurpose;
@@ -18,6 +24,11 @@ import com.typenull.pingdom.shared.observability.AuthMetrics;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import java.time.LocalDateTime;
+import java.time.DayOfWeek;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.Set;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -135,5 +146,47 @@ class MerchantOwnerPlaceControllerTest {
                 .andExpect(jsonPath("$.errors.displayOrder").value("노출 순서는 0 이상이어야 합니다."));
 
         verifyNoInteractions(service);
+    }
+
+    @Test
+    void bindsExistingScheduleJsonToMerchantInputTypes() throws Exception {
+        var request = new MerchantOwnerOperatingScheduleUpdateRequest(Set.of(
+                new MerchantOwnerOperatingScheduleUpdateRequest.RegularHourRequest(
+                        DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(18, 0))), null);
+        when(service.updateOperatingSchedule(20L, 10L, request)).thenReturn(new MerchantOwnerOperatingScheduleResponse(
+                10L, List.of(new PlaceRegularOperatingHourResponse(
+                        DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(18, 0))), List.of(), "변경됨"));
+
+        mockMvc.perform(put("/merchant-owner/places/10/operating-schedule")
+                        .contentType("application/json")
+                        .content("""
+                                {"regularHours":[{"dayOfWeek":"MONDAY","opensAt":"09:00:00","closesAt":"18:00:00"}]}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.regularHours[0].dayOfWeek").value("MONDAY"))
+                .andExpect(jsonPath("$.operatingExceptions").isEmpty());
+    }
+
+    @Test
+    void validatesNestedMerchantScheduleFieldsBeforeService() throws Exception {
+        mockMvc.perform(put("/merchant-owner/places/10/operating-schedule")
+                        .contentType("application/json")
+                        .content("""
+                                {"regularHours":[{"dayOfWeek":"MONDAY","closesAt":"18:00:00"}]}
+                                """))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void keepsOmittedScheduleCollectionsAsNullInputs() throws Exception {
+        mockMvc.perform(put("/merchant-owner/places/10/operating-schedule")
+                        .contentType("application/json").content("{}"))
+                .andExpect(status().isOk());
+
+        var captor = ArgumentCaptor.forClass(MerchantOwnerOperatingScheduleUpdateRequest.class);
+        verify(service).updateOperatingSchedule(eq(20L), eq(10L), captor.capture());
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().regularHours()).isNull();
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().exceptions()).isNull();
     }
 }

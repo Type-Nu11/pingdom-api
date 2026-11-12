@@ -8,6 +8,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationConversionRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationExposureRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationVersionSnapshotRepository;
+import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +38,9 @@ class PlaceRecommendationVersionSnapshotServiceTest {
     private MapPlaceRepository mapPlaceRepository;
 
     @Mock
+    private EntityManager entityManager;
+
+    @Mock
     private PlaceRecommendationExposureRepository placeRecommendationExposureRepository;
 
     @Mock
@@ -57,7 +61,8 @@ class PlaceRecommendationVersionSnapshotServiceTest {
                 mapPlaceRepository,
                 placeRecommendationExposureRepository,
                 placeRecommendationClickRepository,
-                placeRecommendationConversionRepository
+                placeRecommendationConversionRepository,
+                new PlaceRecommendationSnapshotWriteLock(mapPlaceRepository, entityManager)
         );
     }
 
@@ -78,13 +83,7 @@ class PlaceRecommendationVersionSnapshotServiceTest {
                 .build();
 
         when(placeRecommendationVersionSnapshotRepository.findByPlaceIdInAndRecommendationVersion(
-                any(),
-                eq(RECOMMENDATION_VERSION)
-        )).thenReturn(List.of());
-        when(placeRecommendationVersionSnapshotRepository.findByPlaceIdInAndRecommendationVersionForReadLock(
-                any(),
-                eq(RECOMMENDATION_VERSION)
-        )).thenReturn(List.of(snapshot));
+                any(), eq(RECOMMENDATION_VERSION))).thenReturn(List.of(snapshot));
         when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(createPlace(1L)));
 
         placeRecommendationVersionSnapshotService.increaseExposureCounts(List.of(1L), RECOMMENDATION_VERSION);

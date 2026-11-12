@@ -9,12 +9,14 @@ import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.place.domain.review.PlaceReview;
 import com.typenull.pingdom.place.domain.review.PlaceReviewRecommendReason;
+import com.typenull.pingdom.place.domain.review.PlaceReviewMediaUpload;
 import com.typenull.pingdom.place.domain.review.PlaceReviewVisibilityStatus;
 import com.typenull.pingdom.place.api.dto.review.PlaceReviewCreateRequest;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceReviewRepository;
 import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Assertions;
 import org.mockito.ArgumentCaptor;
@@ -56,7 +58,7 @@ class PlaceReviewServiceTest {
     }
 
     /**
-     * 공개 리뷰 목록이 VISIBLE 조건으로만 저장소를 조회하는지 확인.
+     * 공개 목록이 공개 필터·페이지를 유지하며 추천 사유와 세 사진의 순서 및 빈 사진 응답을 보존하는지 확인.
      */
     @Test
     void loadsVisiblePublicReviews() {
@@ -64,12 +66,34 @@ class PlaceReviewServiceTest {
         PlaceReviewRepository reviewRepository = mock(PlaceReviewRepository.class);
         PlaceReviewMediaService reviewMediaService = mock(PlaceReviewMediaService.class);
         PlaceReviewService service = new PlaceReviewService(placeRepository, reviewRepository, reviewMediaService, mock(com.typenull.pingdom.place.infrastructure.persistence.place.PlaceReviewDeletionRequestRepository.class), Clock.systemUTC());
+        MapPlace place = mock(MapPlace.class);
+        when(place.getId()).thenReturn(1L);
+        LocalDateTime now = LocalDateTime.of(2026, 11, 12, 12, 0);
+        List<PlaceReviewRecommendReason> reasons = List.of(PlaceReviewRecommendReason.CLEAN, PlaceReviewRecommendReason.FRIENDLY);
+        PlaceReview pictured = PlaceReview.create(place, 7L, "CLEAN", reasons, "사진 리뷰", List.of(), now);
+        for (int order = 0; order < 3; order++) {
+            String key = "reviews/" + order;
+            PlaceReviewMediaUpload media = PlaceReviewMediaUpload.upload(
+                    1L, 7L, key, "https://cdn.test/" + key, "image/jpeg", 10, now.plusDays(1), now);
+            media.connect(pictured, order, now);
+            pictured.addMediaUpload(media);
+        }
+        PlaceReview withoutPhotos = PlaceReview.create(place, 7L, "FRIENDLY", List.of(), "사진 없는 리뷰", List.of(), now);
         when(placeRepository.existsById(1L)).thenReturn(true);
         when(reviewRepository.findAllByPlace_IdAndVisibilityStatus(eq(1L), eq(PlaceReviewVisibilityStatus.VISIBLE), any()))
-                .thenReturn(new PageImpl<PlaceReview>(java.util.List.of()));
+                .thenReturn(new PageImpl<>(List.of(pictured, withoutPhotos), org.springframework.data.domain.PageRequest.of(1, 2), 5));
 
-        service.list(1L, 1, 20);
+        var response = service.list(1L, 2, 2);
 
+        assertThat(response.getNumber()).isEqualTo(1);
+        assertThat(response.getTotalElements()).isEqualTo(5);
+        assertThat(response.hasNext()).isTrue();
+        var item = response.getContent().getFirst();
+        assertThat(item.recommendReasons()).containsExactlyElementsOf(reasons);
+        assertThat(item.imageUrls()).containsExactly("https://cdn.test/reviews/0", "https://cdn.test/reviews/1", "https://cdn.test/reviews/2");
+        assertThat(item.reviewMedia()).extracting(media -> media.imageUrl()).containsExactlyElementsOf(item.imageUrls());
+        assertThat(response.getContent().get(1).imageUrls()).isEmpty();
+        assertThat(response.getContent().get(1).reviewMedia()).isEmpty();
         verify(reviewRepository).findAllByPlace_IdAndVisibilityStatus(
                 eq(1L), eq(PlaceReviewVisibilityStatus.VISIBLE), any());
     }

@@ -154,7 +154,7 @@ class AdminTrustScoreServiceTest {
                 .priority(10)
                 .reason("허위 신고 누적")
                 .build();
-        when(reporterModerationPolicyRepository.findById(10L)).thenReturn(Optional.of(policy));
+        when(reporterModerationPolicyRepository.findByReporterUserIdForUpdate(10L)).thenReturn(Optional.of(policy));
         when(trustScoreInterventionRuleRepository.findByEnabledTrueOrderByPriorityAscIdAsc())
                 .thenReturn(List.of(rule));
 

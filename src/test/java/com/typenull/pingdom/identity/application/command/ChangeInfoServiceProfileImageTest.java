@@ -1,101 +1,74 @@
 package com.typenull.pingdom.identity.application.command;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.exception.*;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
-import com.typenull.pingdom.shared.support.S3ObjectStorage.S3PutResult;
+import java.time.Duration;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 class ChangeInfoServiceProfileImageTest {
+    @Mock private UserRepository userRepository;
+    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private ProfileImageFileValidator profileImageFileValidator;
+    @Mock private S3ObjectStorage storage;
+    @Mock private ProfileImageUploadService profileImages;
+    @Mock private ProfileImageStorageProperties properties;
+    @InjectMocks private ChangeInfoService service;
 
-    @Mock
-    private UserRepository userRepository;
-
-    @Mock
-    private PasswordEncoder passwordEncoder;
-
-    @Mock
-    private ProfileImageFileValidator profileImageFileValidator;
-
-    @Mock
-    private S3ObjectStorage s3ObjectStorage;
-
-    @InjectMocks
-    private ChangeInfoService changeInfoService;
-
-    /**
-     * 검증·S3 업로드 후 사용자 저장이 실패하면 무결성 예외를 전파하고 방금 올린 객체의 삭제를 시도하는지 검증.
-     */
     @Test
-    void compensatesFailedProfileImageSave() {
-        User user = user();
-        MockMultipartFile file = new MockMultipartFile("file", "profile.jpg", "image/jpeg", new byte[]{1});
-        ProfileImageFileValidator.ValidatedProfileImage image =
-                new ProfileImageFileValidator.ValidatedProfileImage(new byte[]{1}, "image/jpeg", "jpg");
-        S3PutResult uploaded = new S3PutResult("users/profile-images/1/profile.jpg", "https://example.com/profile.jpg");
-        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
-        when(profileImageFileValidator.validate(file)).thenReturn(image);
-        when(s3ObjectStorage.put(any(byte[].class), eq("profile.jpg"), eq("image/jpeg"),
-                eq("users/profile-images/" + user.getId()))).thenReturn(uploaded);
-        when(userRepository.saveAndFlush(user)).thenThrow(new DataIntegrityViolationException("save failed"));
-
-        assertThatThrownBy(() -> changeInfoService.changeProfileImage(file, user.getId()))
-                .isInstanceOf(DataIntegrityViolationException.class);
-
-        verify(s3ObjectStorage).delete(uploaded.key());
+    void registersBeforeUploadAndCompletesWithoutUnconditionalDelete() {
+        User user = prepare();
+        when(profileImages.complete("intent", user)).thenReturn("https://example.com/new.jpg");
+        assertThat(service.changeProfileImage(file(), 1L)).isEqualTo("https://example.com/new.jpg");
+        var order = inOrder(profileImages, storage);
+        order.verify(profileImages).prepare(1L, "jpg");
+        order.verify(storage).putAtKey(any(byte[].class), eq("image/jpeg"), eq("owned-key"), any());
+        order.verify(profileImages).complete("intent", user);
+        verify(storage, never()).delete(anyString());
     }
 
-    /**
-     * 검증된 프로필 이미지의 업로드 URL을 사용자에 반영해 saveAndFlush하고 동일 URL을 반환하는지 검증.
-     */
     @Test
-    void persistsUploadedProfileImageUrl() {
-        User user = user();
-        MockMultipartFile file = new MockMultipartFile("file", "profile.jpg", "image/jpeg", new byte[]{1});
-        ProfileImageFileValidator.ValidatedProfileImage image =
-                new ProfileImageFileValidator.ValidatedProfileImage(new byte[]{1}, "image/jpeg", "jpg");
-        S3PutResult uploaded = new S3PutResult("users/profile-images/1/profile.jpg", "https://example.com/profile.jpg");
-        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
-        when(profileImageFileValidator.validate(file)).thenReturn(image);
-        when(s3ObjectStorage.put(any(byte[].class), eq("profile.jpg"), eq("image/jpeg"),
-                eq("users/profile-images/" + user.getId()))).thenReturn(uploaded);
-        when(userRepository.saveAndFlush(user)).thenReturn(user);
-
-        String profileImageUrl = changeInfoService.changeProfileImage(file, user.getId());
-
-        assertThat(profileImageUrl).isEqualTo(uploaded.url());
-        assertThat(user.getProfileImageUrl()).isEqualTo(uploaded.url());
-        verify(userRepository).saveAndFlush(user);
+    void optimisticFailureKeepsDurableIntentInsteadOfDeletingPossiblyCommittedObject() {
+        User user = prepare();
+        var failure = new ObjectOptimisticLockingFailureException(User.class, 1L);
+        when(profileImages.complete("intent", user)).thenThrow(failure);
+        assertThatThrownBy(() -> service.changeProfileImage(file(), 1L)).isSameAs(failure);
+        verify(storage, never()).delete(anyString());
     }
 
-    /**
-     * 프로필 업로드 경로와 소유자 조회에 사용할 ID 1의 필수 정보가 채워진 사용자를 생성.
-     */
-    private User user() {
-        return User.builder()
-                .id(1L)
-                .username("profileImageOwner")
-                .email("profile-image-owner@example.com")
-                .password("password")
-                .birthYear(1998)
-                .language("ko")
-                .country("KR")
-                .build();
+    @Test
+    void partialUploadFailurePreservesIntentAndOriginalStorageResponse() {
+        prepare();
+        doThrow(new S3ObjectStorage.S3StorageException(S3ObjectStorage.S3StorageError.CONNECTION_ERROR, "unavailable", null))
+                .when(storage).putAtKey(any(byte[].class), anyString(), anyString(), any());
+        assertThatThrownBy(() -> service.changeProfileImage(file(), 1L)).isInstanceOfSatisfying(UsersException.class,
+                ex -> assertThat(ex.getErrorCode()).isEqualTo(UsersErrorCode.PROFILE_IMAGE_STORAGE_UNAVAILABLE));
+        verify(profileImages, never()).complete(anyString(), any());
+        verify(storage, never()).delete(anyString());
     }
+
+    private User prepare() {
+        User user = User.builder().id(1L).profileImageUrl("https://external.example/current.jpg").build();
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(profileImageFileValidator.validate(any())).thenReturn(
+                new ProfileImageFileValidator.ValidatedProfileImage(new byte[]{1}, "image/jpeg", "jpg"));
+        when(profileImages.prepare(1L, "jpg")).thenReturn(new ProfileImageUploadService.PreparedUpload("intent", "owned-key"));
+        when(properties.uploadTimeout()).thenReturn(Duration.ofMinutes(2));
+        return user;
+    }
+
+    private MockMultipartFile file() { return new MockMultipartFile("file", "profile.jpg", "image/jpeg", new byte[]{1}); }
 }
