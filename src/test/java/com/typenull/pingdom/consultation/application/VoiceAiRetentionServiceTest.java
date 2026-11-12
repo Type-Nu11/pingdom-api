@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 import com.typenull.pingdom.consultation.infrastructure.gemini.GeminiProperties;
 import com.typenull.pingdom.consultation.infrastructure.persistence.VoiceAiRetentionRepository;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -17,7 +18,7 @@ class VoiceAiRetentionServiceTest {
     private final Clock clock = Clock.fixed(Instant.parse("2026-11-12T03:00:00Z"), ZoneId.of("Asia/Seoul"));
     private final LocalDateTime now = LocalDateTime.now(clock);
     private final LocalDateTime cutoff = now.minusDays(14);
-    private final GeminiProperties gemini = new GeminiProperties(false, null, null, null, null, null);
+    private final GeminiProperties gemini = mock(GeminiProperties.class);
 
     @Test
     void sharesOneReplayBudgetAcrossSessionsAndDoesNotCascadeRemainingChildren() {
@@ -60,6 +61,8 @@ class VoiceAiRetentionServiceTest {
     }
 
     private VoiceAiRetentionService service(int rows) {
+        when(gemini.connectTimeout()).thenReturn(Duration.ofSeconds(2));
+        when(gemini.readTimeout()).thenReturn(Duration.ofSeconds(5));
         return new VoiceAiRetentionService(repository, new VoiceAiRetentionProperties(10, rows, 3), gemini, clock);
     }
 }

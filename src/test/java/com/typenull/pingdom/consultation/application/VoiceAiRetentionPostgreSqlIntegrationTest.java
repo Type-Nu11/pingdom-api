@@ -1,11 +1,14 @@
 package com.typenull.pingdom.consultation.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.consultation.infrastructure.gemini.GeminiProperties;
 import com.typenull.pingdom.consultation.infrastructure.persistence.VoiceAiRetentionRepository;
 import java.sql.Connection;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
@@ -144,8 +147,11 @@ class VoiceAiRetentionPostgreSqlIntegrationTest {
     }
 
     private VoiceAiRetentionService.CleanupResult cleanup(int rows) {
+        GeminiProperties gemini = mock(GeminiProperties.class);
+        when(gemini.connectTimeout()).thenReturn(Duration.ofSeconds(2));
+        when(gemini.readTimeout()).thenReturn(Duration.ofSeconds(5));
         var service = new VoiceAiRetentionService(repository, new VoiceAiRetentionProperties(10, rows, 2),
-                new GeminiProperties(false, null, null, null, null, null),
+                gemini,
                 Clock.fixed(NOW.toInstant(ZoneOffset.UTC), ZoneOffset.UTC));
         return transactions.execute(status -> service.cleanupBatch());
     }

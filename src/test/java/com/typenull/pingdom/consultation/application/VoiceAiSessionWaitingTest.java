@@ -17,6 +17,7 @@ import java.sql.SQLException;
 import java.util.stream.Stream;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -27,11 +28,20 @@ import org.springframework.dao.QueryTimeoutException;
 class VoiceAiSessionWaitingTest {
     private final VoiceAiReplayTransactionService transactions = mock(VoiceAiReplayTransactionService.class);
     private final GeminiVoiceClient provider = mock(GeminiVoiceClient.class);
+    private final GeminiProperties gemini = mock(GeminiProperties.class);
     private final AtomicLong nanos = new AtomicLong();
     private final VoiceAiSessionService service = new VoiceAiSessionService(
-            mock(VoiceAiSessionRepository.class), new GeminiProperties(true, "test-key", null, null, null, null),
+            mock(VoiceAiSessionRepository.class), gemini,
             provider, new ProviderEnvelopeValidator(), transactions, Clock.systemUTC(),
             () -> new VoiceAiReplayWait(nanos::get, nanos::addAndGet));
+
+    @BeforeEach
+    void configureGemini() {
+        when(gemini.enabled()).thenReturn(true);
+        when(gemini.apiKey()).thenReturn("test-key");
+        when(gemini.connectTimeout()).thenReturn(Duration.ofSeconds(2));
+        when(gemini.readTimeout()).thenReturn(Duration.ofSeconds(5));
+    }
 
     @AfterEach
     void clearInterrupt() {
