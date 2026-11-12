@@ -29,6 +29,7 @@ import com.typenull.pingdom.notification.domain.FcmDeviceToken;
 import com.typenull.pingdom.notification.domain.NotificationType;
 import com.typenull.pingdom.notification.domain.Notifications;
 import com.typenull.pingdom.notification.outbox.PasswordResetOutboxPayload;
+import com.typenull.pingdom.notification.outbox.EmailVerificationOutboxPayload;
 import com.typenull.pingdom.notification.infrastructure.persistence.FcmDeviceTokenRepository;
 import com.typenull.pingdom.notification.infrastructure.persistence.NotificationsRepository;
 import com.typenull.pingdom.place.domain.place.core.MapBookmark;
@@ -200,6 +201,11 @@ class AuthControllerTest {
         User user = userRepository.findByUsername("tester01").orElseThrow();
         org.junit.jupiter.api.Assertions.assertNotNull(user.getEmailVerificationCode());
         org.junit.jupiter.api.Assertions.assertFalse(user.isEmailVerified());
+        EmailVerificationOutboxPayload payload = objectMapper.readValue(
+                outboxEventRepository.findAll().getFirst().getPayload(), EmailVerificationOutboxPayload.class);
+        org.junit.jupiter.api.Assertions.assertEquals(user.getId(), payload.userId());
+        org.junit.jupiter.api.Assertions.assertEquals(user.getEmailVerificationExpiresAt(), payload.expiresAt());
+        org.junit.jupiter.api.Assertions.assertEquals(0, payload.expiresAt().getNano() % 1000);
         org.junit.jupiter.api.Assertions.assertEquals(
                 OutboxEventType.EMAIL_VERIFICATION_REQUESTED,
                 outboxEventRepository.findAll().getFirst().getEventType()

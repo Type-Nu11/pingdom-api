@@ -320,7 +320,7 @@ public class AuthServiceImpl implements AuthService {
     private void issueEmailVerification(User user) {
         user.issueEmailVerification(
                 generateVerificationCode(),
-                now().plusMinutes(EMAIL_VERIFICATION_EXPIRATION_MINUTES)
+                now().truncatedTo(java.time.temporal.ChronoUnit.MICROS).plusMinutes(EMAIL_VERIFICATION_EXPIRATION_MINUTES)
         );
     }
 
@@ -333,7 +333,7 @@ public class AuthServiceImpl implements AuthService {
                             user.getEmailVerificationExpiresAt()
                     ),
                     OutboxEventType.EMAIL_VERIFICATION_REQUESTED,
-                    new EmailVerificationOutboxPayload(user.getId(), user.getEmail(), user.getEmailVerificationCode()),
+                    new EmailVerificationOutboxPayload(user.getId(), user.getEmail(), user.getEmailVerificationCode(), user.getEmailVerificationExpiresAt()),
                     "USER",
                     String.valueOf(user.getId())
             );
@@ -345,7 +345,7 @@ public class AuthServiceImpl implements AuthService {
      * 전달용 원문 토큰은 이메일 발송을 위한 outbox payload에 포함됨.
      */
     private void issuePasswordReset(User user) {
-        LocalDateTime issuedAt = now();
+        LocalDateTime issuedAt = now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         LocalDateTime expiresAt = issuedAt.plusMinutes(PASSWORD_RESET_EXPIRATION_MINUTES);
         String resetToken = generatePasswordResetToken();
         String tokenHash = passwordResetTokenHash(resetToken);
