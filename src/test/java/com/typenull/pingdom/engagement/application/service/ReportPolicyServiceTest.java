@@ -3,11 +3,14 @@ package com.typenull.pingdom.engagement.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.engagement.domain.policy.ReporterModerationPolicy;
+import com.typenull.pingdom.engagement.domain.PostReport;
+import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import com.typenull.pingdom.engagement.domain.policy.TrustScoreAnomaly;
 import com.typenull.pingdom.engagement.domain.policy.TrustScoreAnomalyType;
 import com.typenull.pingdom.engagement.domain.policy.TrustScoreInterventionAction;
@@ -18,6 +21,10 @@ import com.typenull.pingdom.engagement.infrastructure.persistence.ReporterModera
 import com.typenull.pingdom.engagement.infrastructure.persistence.TrustScoreAnomalyRepository;
 import com.typenull.pingdom.engagement.infrastructure.persistence.TrustScoreInterventionRuleRepository;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
+import com.typenull.pingdom.post.application.service.MapImageStateLockService;
+import com.typenull.pingdom.post.application.service.MapImageStateLockService.LockedImage;
+import com.typenull.pingdom.post.domain.MapImage;
+import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.time.Clock;
 import java.time.Instant;
@@ -49,6 +56,8 @@ class ReportPolicyServiceTest {
     private TrustScoreInterventionRuleRepository trustScoreInterventionRuleRepository;
     @Mock
     private PlaceGrowthService placeGrowthService;
+    @Mock
+    private MapImageStateLockService imageStateLockService;
 
     private ReportPolicyService service;
 
@@ -63,6 +72,7 @@ class ReportPolicyServiceTest {
                 trustScoreAnomalyRepository,
                 trustScoreInterventionRuleRepository,
                 placeGrowthService,
+                imageStateLockService,
                 CLOCK
         );
         lenient().when(trustScoreAnomalyRepository.findByReporterUserIdAndResolvedAtIsNullOrderByDetectedAtDescIdDesc(REPORTER_ID))
@@ -209,6 +219,65 @@ class ReportPolicyServiceTest {
 
         assertThat(policy.getSubmittedCount()).isEqualTo(4);
         verify(reporterPolicyRepository, never()).save(policy);
+    }
+
+    @Test
+    void locksEveryReporterInIdOrderRegardlessOfReportOrder() {
+        PostReport first = PostReport.builder().reporterUserId(50L).reporterUsername("later").build();
+        PostReport second = PostReport.builder().reporterUserId(20L).reporterUsername("earlier").build();
+        when(reporterPolicyRepository.findByReporterUserIdForUpdate(20L))
+                .thenReturn(Optional.of(ReporterModerationPolicy.create(20L, "earlier")));
+        when(reporterPolicyRepository.findByReporterUserIdForUpdate(50L))
+                .thenReturn(Optional.of(ReporterModerationPolicy.create(50L, "later")));
+
+        service.lockForModeration(List.of(first, second, first));
+
+        var order = inOrder(reporterPolicyRepository);
+        order.verify(reporterPolicyRepository).findByReporterUserIdForUpdate(20L);
+        order.verify(reporterPolicyRepository).findByReporterUserIdForUpdate(50L);
+        order.verifyNoMoreInteractions();
+    }
+
+    @Test
+    void submissionCreatesAndValidatesPolicyBeforePhotoCanBeLocked() {
+        ReporterModerationPolicy restricted = ReporterModerationPolicy.builder()
+                .reporterUserId(REPORTER_ID).reporterUsername("reporter")
+                .restrictedUntil(NOW.plusDays(1)).build();
+        when(reporterPolicyRepository.findByReporterUserIdForUpdate(REPORTER_ID))
+                .thenReturn(Optional.empty(), Optional.of(restricted));
+
+        assertThatThrownBy(() -> service.lockForSubmission(REPORTER_ID, "reporter", NOW))
+                .isInstanceOf(MapException.class);
+
+        verify(reporterPolicyRepository).insertIfAbsent(REPORTER_ID, "reporter");
+        verify(reporterPolicyRepository, never()).save(restricted);
+    }
+
+    @Test
+    void autoHideUsesLockedPhotoAndAlreadyLockedPlaceForCounter() {
+        MapPlace place = MapPlace.builder().id(10L).build();
+        MapImage stalePhoto = MapImage.builder().id(3L).build();
+        MapImage currentPhoto = MapImage.builder().id(3L).mapPlace(place).build();
+        when(imageStateLockService.findForUpdate(3L))
+                .thenReturn(Optional.of(new LockedImage(currentPhoto, place)));
+        List<PostReport> active = List.of(
+                PostReport.builder().reporterUserId(1L).build(),
+                PostReport.builder().reporterUserId(2L).build(),
+                PostReport.builder().reporterUserId(3L).build());
+        when(postReportRepository.findAllByMapImage_IdAndStatusIn(3L,
+                List.of(PostReportStatus.PENDING, PostReportStatus.ACCEPTED))).thenReturn(active);
+
+        assertThat(service.autoHideIfNeeded(stalePhoto, NOW)).isTrue();
+
+        assertThat(currentPhoto.isVisible()).isFalse();
+        assertThat(stalePhoto.isVisible()).isTrue();
+        verify(placeGrowthService).decreasePhotoCount(place);
+        verify(placeGrowthService, never()).decreasePhotoCount(10L);
+        var order = inOrder(imageStateLockService, postReportRepository, placeGrowthService);
+        order.verify(imageStateLockService).findForUpdate(3L);
+        order.verify(postReportRepository).findAllByMapImage_IdAndStatusIn(3L,
+                List.of(PostReportStatus.PENDING, PostReportStatus.ACCEPTED));
+        order.verify(placeGrowthService).decreasePhotoCount(place);
     }
 
     /**
