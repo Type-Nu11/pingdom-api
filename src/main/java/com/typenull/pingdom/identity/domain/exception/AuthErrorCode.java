@@ -23,6 +23,7 @@ public enum AuthErrorCode implements ErrorCode {
     EMAIL_ALREADY_VERIFIED(HttpStatus.CONFLICT, "이미 이메일 인증이 완료된 사용자입니다."),
     DUPLICATE_USERNAME(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다."),
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
+    PROFILE_IMAGE_URL_RESERVED(HttpStatus.BAD_REQUEST, "서버 업로드 전용 프로필 이미지 URL은 가입 입력으로 사용할 수 없습니다."),
     OAUTH_EMAIL_CONFLICT(HttpStatus.CONFLICT, "이미 로컬 계정으로 가입된 이메일입니다."),
     OAUTH_EMAIL_MISMATCH(HttpStatus.CONFLICT, "현재 계정 이메일과 OAuth 계정 이메일이 일치하지 않습니다."),
     OAUTH_ACCOUNT_ALREADY_LINKED(HttpStatus.CONFLICT, "이미 다른 계정에 연결된 OAuth 계정입니다."),

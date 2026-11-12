@@ -7,6 +7,7 @@ import com.typenull.pingdom.identity.api.dto.email.EmailVerifyRequest;
 import com.typenull.pingdom.identity.api.dto.passwordreset.PasswordResetConfirmRequest;
 import com.typenull.pingdom.identity.api.dto.passwordreset.PasswordResetRequest;
 import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.ProfileImageUploadIntent;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.login.LoginResponse;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
@@ -72,6 +73,10 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     // 이메일 포함 회원가입 저장 기능
     public UserResponse signup(SignupRequest request) {
+        // tracked key는 업로드 intent 확정으로만 연결해야 정리 직전 조회 이후의 새 참조 경합도 막을 수 있습니다.
+        if (ProfileImageUploadIntent.isReservedProfileUrl(request.profileImageUrl())) {
+            throw new AuthException(AuthErrorCode.PROFILE_IMAGE_URL_RESERVED);
+        }
         if (userRepository.existsByUsername(request.username())) {
             throw new AuthException(AuthErrorCode.DUPLICATE_USERNAME);
         }
