@@ -16,23 +16,21 @@ import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.moderation.domain.place.AdminPlaceMergeHistory;
+import com.typenull.pingdom.moderation.domain.place.PlaceMergeSnapshot;
+import com.typenull.pingdom.moderation.domain.place.PlaceMergeSnapshot.RegularOperatingHourSnapshot;
+import com.typenull.pingdom.moderation.domain.place.PlaceMergeSnapshot.OperatingExceptionSnapshot;
 import com.typenull.pingdom.moderation.domain.place.PlaceDuplicateCandidate;
 import com.typenull.pingdom.moderation.domain.place.PlaceDuplicateDecisionStatus;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminPlaceMergeHistoryRepository;
 import com.typenull.pingdom.moderation.infrastructure.persistence.PlaceDuplicateCandidateRepository;
+import com.typenull.pingdom.moderation.infrastructure.persistence.PlaceMergeRestoreRepository;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotResyncService;
 import com.typenull.pingdom.place.application.service.localhot.PlaceAdministrativeRegionService;
 import com.typenull.pingdom.place.domain.place.core.MapBookmark;
-import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
-import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
-import com.typenull.pingdom.place.domain.place.information.PlaceInformationSourceType;
-import com.typenull.pingdom.place.domain.place.information.PlaceInformationVerificationStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingException;
-import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingTimeRange;
 import com.typenull.pingdom.place.domain.place.operating.PlaceRegularOperatingHour;
-import com.typenull.pingdom.place.domain.place.category.TouristCategory;
 import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommendationConversion;
 import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.infrastructure.persistence.event.PlaceEventRepository;
@@ -49,10 +47,7 @@ import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.verification.infrastructure.LocationCheckInRepository;
 import com.typenull.pingdom.verification.infrastructure.ScoutFieldReportRepository;
 import java.time.Clock;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -99,6 +94,8 @@ public class AdminPlaceMergeService {
     private final AdminPlaceMergeHistoryRepository adminPlaceMergeHistoryRepository;
     private final PlaceDuplicateCandidateRepository placeDuplicateCandidateRepository;
     private final ObjectMapper objectMapper;
+    private final PlaceMergeSnapshotCodec placeMergeSnapshotCodec;
+    private final PlaceMergeRestoreRepository placeMergeRestoreRepository;
     private final JdbcTemplate jdbcTemplate;
     private final Clock clock;
 
@@ -149,8 +146,8 @@ public class AdminPlaceMergeService {
         }
         Map<String, Object> beforeState = placeMergeBeforeState(sourcePlace, targetPlace);
         MergeExecutionContext mergeExecutionContext = new MergeExecutionContext(
-                placeSnapshot(sourcePlace),
-                placeSnapshot(targetPlace)
+                placeMergeSnapshotCodec.capture(sourcePlace),
+                placeMergeSnapshotCodec.capture(targetPlace)
         );
 
         transferKakaoPlaceIdIfNeeded(sourcePlace, targetPlace);
@@ -251,10 +248,8 @@ public class AdminPlaceMergeService {
             throw new AdminException(AdminErrorCode.PLACE_MERGE_ALREADY_RESTORED);
         }
 
-        PlaceSnapshot sourceSnapshot = readValue(history.getSourcePlaceSnapshot(), new TypeReference<>() {
-        });
-        PlaceSnapshot targetSnapshot = readValue(history.getTargetPlaceSnapshot(), new TypeReference<>() {
-        });
+        PlaceMergeSnapshot sourceSnapshot = placeMergeSnapshotCodec.read(history.getSourcePlaceSnapshot());
+        PlaceMergeSnapshot targetSnapshot = placeMergeSnapshotCodec.read(history.getTargetPlaceSnapshot());
 
         if (mapPlaceRepository.existsById(sourceSnapshot.id())) {
             throw new AdminException(AdminErrorCode.PLACE_MERGE_RESTORE_NOT_ALLOWED);
@@ -521,75 +516,12 @@ public class AdminPlaceMergeService {
         targetPlace.updateKakaoPlaceId(sourceKakaoPlaceId);
     }
 
-    private PlaceSnapshot placeSnapshot(MapPlace place) {
-        return new PlaceSnapshot(
-                place.getId(),
-                place.getName(),
-                place.getAddress(),
-                place.getRoadAddress(),
-                place.getJibunAddress(),
-                place.getPostalCode(),
-                place.getGeocodingSource(),
-                place.getOperatingStatus(),
-                place.getOperatingStatusCheckedAt(),
-                place.getCategory(),
-                place.getImageUrl(),
-                place.getKakaoPlaceId(),
-                place.getLatitude(),
-                place.getLongitude(),
-                place.getUserId(),
-                place.getRegistrant(),
-                place.currentPhotoCount(),
-                place.getEnglishName(),
-                place.getTouristSummary(),
-                AdminPlaceServiceSupport.normalizeTouristCategories(place.currentTouristCategories()),
-                regularOperatingHourSnapshots(place),
-                operatingExceptionSnapshots(place)
-        );
-    }
-
     private void restoreImages(MapPlace restoredSourcePlace, List<Long> movedImageIds) {
         mapImageRepository.findAllById(movedImageIds).forEach(image -> image.reassignPlace(restoredSourcePlace));
     }
 
-    private MapPlace insertRestoredPlace(PlaceSnapshot sourceSnapshot) {
-        jdbcTemplate.update(
-                """
-                INSERT INTO map_place (
-                    map_place_id, place_name, address, road_address, jibun_address, postal_code, geocoding_source,
-                    operating_status, operating_status_checked_at, category, image_url, kakao_place_id,
-                    latitude, longitude, user_id, registrant, photo_count, english_name, tourist_summary,
-                    discovery_status, primary_information_source, information_verification_status, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                sourceSnapshot.id(),
-                sourceSnapshot.name(),
-                sourceSnapshot.address(),
-                sourceSnapshot.roadAddress(),
-                sourceSnapshot.jibunAddress(),
-                sourceSnapshot.postalCode(),
-                (sourceSnapshot.geocodingSource() == null
-                        ? GeocodingSource.LEGACY
-                        : sourceSnapshot.geocodingSource()).name(),
-                (sourceSnapshot.operatingStatus() == null
-                        ? PlaceOperatingStatus.OPERATING
-                        : sourceSnapshot.operatingStatus()).name(),
-                sourceSnapshot.operatingStatusCheckedAt(),
-                sourceSnapshot.category(),
-                sourceSnapshot.imageUrl(),
-                sourceSnapshot.kakaoPlaceId(),
-                sourceSnapshot.latitude(),
-                sourceSnapshot.longitude(),
-                sourceSnapshot.userId(),
-                sourceSnapshot.registrant(),
-                sourceSnapshot.photoCount() == null ? 0L : sourceSnapshot.photoCount(),
-                sourceSnapshot.englishName(),
-                sourceSnapshot.touristSummary(),
-                PlaceDiscoveryStatus.VISIBLE.name(),
-                PlaceInformationSourceType.LEGACY.name(),
-                PlaceInformationVerificationStatus.UNVERIFIED.name(),
-                now()
-        );
+    private MapPlace insertRestoredPlace(PlaceMergeSnapshot sourceSnapshot) {
+        placeMergeRestoreRepository.insert(sourceSnapshot, now());
         MapPlace restoredSourcePlace = mapPlaceRepository.findById(sourceSnapshot.id())
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_MERGE_RESTORE_NOT_ALLOWED));
         restoredSourcePlace.updateCoordinates(
@@ -608,28 +540,6 @@ public class AdminPlaceMergeService {
                 operatingExceptions(restoredSourcePlace, sourceSnapshot.operatingExceptions())
         );
         return restoredSourcePlace;
-    }
-
-    private List<RegularOperatingHourSnapshot> regularOperatingHourSnapshots(MapPlace place) {
-        return place.currentRegularOperatingHours().stream()
-                .map(hour -> new RegularOperatingHourSnapshot(
-                        hour.getDayOfWeek(),
-                        hour.getOpensAt(),
-                        hour.getClosesAt()
-                ))
-                .toList();
-    }
-
-    private List<OperatingExceptionSnapshot> operatingExceptionSnapshots(MapPlace place) {
-        return place.currentOperatingExceptions().stream()
-                .map(exception -> new OperatingExceptionSnapshot(
-                        exception.getExceptionDate(),
-                        exception.isClosed(),
-                        exception.currentHours().stream()
-                                .map(hour -> new OperatingTimeRangeSnapshot(hour.getOpensAt(), hour.getClosesAt()))
-                                .toList()
-                ))
-                .toList();
     }
 
     private Set<PlaceRegularOperatingHour> regularOperatingHours(
@@ -727,8 +637,8 @@ public class AdminPlaceMergeService {
     private void restoreKakaoPlaceIds(
             MapPlace restoredSourcePlace,
             MapPlace targetPlace,
-            PlaceSnapshot sourceSnapshot,
-            PlaceSnapshot targetSnapshot
+            PlaceMergeSnapshot sourceSnapshot,
+            PlaceMergeSnapshot targetSnapshot
     ) {
         restoredSourcePlace.updateKakaoPlaceId(sourceSnapshot.kakaoPlaceId());
         targetPlace.updateKakaoPlaceId(targetSnapshot.kakaoPlaceId());
@@ -736,8 +646,8 @@ public class AdminPlaceMergeService {
 
     private void prepareTargetBeforeRestore(
             MapPlace targetPlace,
-            PlaceSnapshot sourceSnapshot,
-            PlaceSnapshot targetSnapshot
+            PlaceMergeSnapshot sourceSnapshot,
+            PlaceMergeSnapshot targetSnapshot
     ) {
         if (sourceSnapshot.kakaoPlaceId() == null || targetSnapshot.kakaoPlaceId() != null) {
             return;
@@ -770,8 +680,8 @@ public class AdminPlaceMergeService {
     }
 
     private final class MergeExecutionContext {
-        private final PlaceSnapshot sourcePlaceSnapshot;
-        private final PlaceSnapshot targetPlaceSnapshot;
+        private final PlaceMergeSnapshot sourcePlaceSnapshot;
+        private final PlaceMergeSnapshot targetPlaceSnapshot;
         private final List<Long> movedImageIds = new ArrayList<>();
         private final List<Long> movedBookmarkIds = new ArrayList<>();
         private final List<BookmarkSnapshot> deletedBookmarks = new ArrayList<>();
@@ -781,7 +691,7 @@ public class AdminPlaceMergeService {
         private final List<Long> movedExposureIds = new ArrayList<>();
         private final List<Long> movedFeatureLogIds = new ArrayList<>();
 
-        private MergeExecutionContext(PlaceSnapshot sourcePlaceSnapshot, PlaceSnapshot targetPlaceSnapshot) {
+        private MergeExecutionContext(PlaceMergeSnapshot sourcePlaceSnapshot, PlaceMergeSnapshot targetPlaceSnapshot) {
             this.sourcePlaceSnapshot = sourcePlaceSnapshot;
             this.targetPlaceSnapshot = targetPlaceSnapshot;
         }
@@ -800,8 +710,8 @@ public class AdminPlaceMergeService {
                     .sourcePlaceId(sourcePlaceSnapshot.id())
                     .targetPlaceId(targetPlaceSnapshot.id())
                     .adminUserId(adminUserId)
-                    .sourcePlaceSnapshot(writeValue(sourcePlaceSnapshot))
-                    .targetPlaceSnapshot(writeValue(targetPlaceSnapshot))
+                    .sourcePlaceSnapshot(placeMergeSnapshotCodec.write(sourcePlaceSnapshot))
+                    .targetPlaceSnapshot(placeMergeSnapshotCodec.write(targetPlaceSnapshot))
                     .movedImageIds(writeValue(movedImageIds))
                     .movedBookmarkIds(writeValue(movedBookmarkIds))
                     .deletedBookmarks(writeValue(deletedBookmarks))
@@ -813,45 +723,6 @@ public class AdminPlaceMergeService {
                     .mergedAt(now())
                     .build();
         }
-    }
-
-    private record PlaceSnapshot(
-            Long id,
-            String name,
-            String address,
-            String roadAddress,
-            String jibunAddress,
-            String postalCode,
-            GeocodingSource geocodingSource,
-            PlaceOperatingStatus operatingStatus,
-            LocalDateTime operatingStatusCheckedAt,
-            String category,
-            String imageUrl,
-            String kakaoPlaceId,
-            Double latitude,
-            Double longitude,
-            Long userId,
-            String registrant,
-            Long photoCount,
-            String englishName,
-            String touristSummary,
-            Set<TouristCategory> touristCategories,
-            List<RegularOperatingHourSnapshot> regularOperatingHours,
-            List<OperatingExceptionSnapshot> operatingExceptions
-    ) {
-    }
-
-    private record RegularOperatingHourSnapshot(DayOfWeek dayOfWeek, LocalTime opensAt, LocalTime closesAt) {
-    }
-
-    private record OperatingExceptionSnapshot(
-            LocalDate date,
-            boolean closed,
-            List<OperatingTimeRangeSnapshot> hours
-    ) {
-    }
-
-    private record OperatingTimeRangeSnapshot(LocalTime opensAt, LocalTime closesAt) {
     }
 
     private record BookmarkSnapshot(Long userId) {
