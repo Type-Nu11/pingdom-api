@@ -2,13 +2,17 @@ package com.typenull.pingdom.identity.application.service.merchant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantTeamMemberResponse;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantTeamInvitationResponse;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantTeamInviteRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantTeamRoleUpdateRequest;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerErrorCode;
@@ -32,6 +36,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.InOrder;
 
 class MerchantTeamServiceTest {
 
@@ -50,6 +56,122 @@ class MerchantTeamServiceTest {
             capabilityPolicy,
             clock
     );
+
+    @ParameterizedTest
+    @ValueSource(ints = {-1, 0})
+    void expiresPreviousInvitationBeforeSavingReinvitation(int expiryOffsetSeconds) {
+        allowInviting();
+        LocalDateTime now = LocalDateTime.now(clock);
+        MerchantPlaceInvitation previous = invitationExpiringAt(now.plusSeconds(expiryOffsetSeconds));
+        when(invitationRepository.findByPlaceIdAndInviteeUserIdAndStatusForUpdate(
+                1L, 10L, MerchantPlaceInvitationStatus.PENDING)).thenReturn(Optional.of(previous));
+
+        MerchantTeamInvitationResponse response = service.invite(
+                20L, 1L, new MerchantTeamInviteRequest(10L, MerchantPlaceMemberRole.STAFF, null));
+
+        assertThat(previous.getStatus()).isEqualTo(MerchantPlaceInvitationStatus.EXPIRED);
+        assertThat(previous.getRespondedAt()).isNull();
+        assertThat(response.status()).isEqualTo(MerchantPlaceInvitationStatus.PENDING);
+        assertThat(response.expiresAt()).isEqualTo(now.plusDays(7));
+        assertThat(response.createdAt()).isEqualTo(now);
+        InOrder order = inOrder(ownerPlaceRepository, invitationRepository);
+        order.verify(ownerPlaceRepository).findByPlaceIdForUpdate(1L);
+        order.verify(invitationRepository).findByPlaceIdAndInviteeUserIdAndStatusForUpdate(
+                1L, 10L, MerchantPlaceInvitationStatus.PENDING);
+        order.verify(invitationRepository).flush();
+        order.verify(invitationRepository).save(any(MerchantPlaceInvitation.class));
+    }
+
+    @Test
+    void invitesWithoutPendingInvitationAndKeepsRequestedExpiration() {
+        allowInviting();
+        LocalDateTime expiresAt = LocalDateTime.now(clock).plusHours(1);
+
+        MerchantTeamInvitationResponse response = service.invite(
+                20L, 1L, new MerchantTeamInviteRequest(10L, MerchantPlaceMemberRole.MANAGER, expiresAt));
+
+        assertThat(response.role()).isEqualTo(MerchantPlaceMemberRole.MANAGER);
+        assertThat(response.expiresAt()).isEqualTo(expiresAt);
+        verify(invitationRepository, never()).flush();
+    }
+
+    @Test
+    void rejectsReinvitationWhilePreviousInvitationIsStillValid() {
+        allowInviting();
+        MerchantPlaceInvitation previous = invitationExpiringAt(LocalDateTime.now(clock).plusSeconds(1));
+        when(invitationRepository.findByPlaceIdAndInviteeUserIdAndStatusForUpdate(
+                1L, 10L, MerchantPlaceInvitationStatus.PENDING)).thenReturn(Optional.of(previous));
+
+        assertInvitationRejected(new MerchantTeamInviteRequest(10L, MerchantPlaceMemberRole.STAFF, null),
+                MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_ALREADY_EXISTS);
+
+        assertThat(previous.getStatus()).isEqualTo(MerchantPlaceInvitationStatus.PENDING);
+        verify(invitationRepository, never()).flush();
+        verify(invitationRepository, never()).save(any(MerchantPlaceInvitation.class));
+    }
+
+    @Test
+    void invalidNewExpirationDoesNotExpirePreviousInvitation() {
+        allowInviting();
+        LocalDateTime now = LocalDateTime.now(clock);
+        MerchantPlaceInvitation previous = invitationExpiringAt(now.minusSeconds(1));
+        when(invitationRepository.findByPlaceIdAndInviteeUserIdAndStatusForUpdate(
+                1L, 10L, MerchantPlaceInvitationStatus.PENDING)).thenReturn(Optional.of(previous));
+
+        assertInvitationRejected(new MerchantTeamInviteRequest(10L, MerchantPlaceMemberRole.STAFF, now),
+                MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_INVALID_EXPIRATION);
+
+        assertThat(previous.getStatus()).isEqualTo(MerchantPlaceInvitationStatus.PENDING);
+        verify(invitationRepository, never()).flush();
+        verify(invitationRepository, never()).save(any(MerchantPlaceInvitation.class));
+    }
+
+    @Test
+    void unauthorizedActorCannotExpirePendingInvitation() {
+        allowActiveActor();
+        MerchantPlaceMember staff = MerchantPlaceMember.create(
+                1L, 20L, MerchantPlaceMemberRole.STAFF, 30L, LocalDateTime.now(clock));
+        when(memberRepository.findByPlaceIdAndUserId(1L, 20L)).thenReturn(Optional.of(staff));
+
+        assertInvitationRejected(new MerchantTeamInviteRequest(10L, MerchantPlaceMemberRole.STAFF, null),
+                MerchantOwnerErrorCode.MERCHANT_TEAM_PERMISSION_REQUIRED);
+
+        verify(invitationRepository, never()).findByPlaceIdAndInviteeUserIdAndStatusForUpdate(any(), any(), any());
+        verify(invitationRepository, never()).flush();
+    }
+
+    @Test
+    void activeMemberCannotBeReinvited() {
+        allowInviting();
+        MerchantPlaceMember member = MerchantPlaceMember.create(
+                1L, 10L, MerchantPlaceMemberRole.STAFF, 20L, LocalDateTime.now(clock));
+        when(memberRepository.findByPlaceIdAndUserId(1L, 10L)).thenReturn(Optional.of(member));
+
+        assertInvitationRejected(new MerchantTeamInviteRequest(10L, MerchantPlaceMemberRole.STAFF, null),
+                MerchantOwnerErrorCode.MERCHANT_TEAM_MEMBER_ALREADY_EXISTS);
+
+        verify(invitationRepository, never()).findByPlaceIdAndInviteeUserIdAndStatusForUpdate(any(), any(), any());
+        verify(invitationRepository, never()).flush();
+    }
+
+    private void allowInviting() {
+        allowOwner();
+        User invitee = mock(User.class);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(invitee));
+        when(invitationRepository.save(any(MerchantPlaceInvitation.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    private MerchantPlaceInvitation invitationExpiringAt(LocalDateTime expiresAt) {
+        return MerchantPlaceInvitation.pending(
+                1L, 10L, 20L, MerchantPlaceMemberRole.STAFF, expiresAt, LocalDateTime.now(clock).minusDays(1));
+    }
+
+    private void assertInvitationRejected(MerchantTeamInviteRequest request, MerchantOwnerErrorCode code) {
+        assertThatThrownBy(() -> service.invite(20L, 1L, request))
+                .isInstanceOfSatisfying(MerchantOwnerException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(code));
+    }
 
     @ParameterizedTest
     @CsvSource({"STAFF, MANAGER", "MANAGER, STAFF"})
@@ -226,7 +348,7 @@ class MerchantTeamServiceTest {
     }
 
     /**
-     * 수락 시점에 만료된 대기 초대는 초대 만료 오류를 반환하고 상태를 EXPIRED로 전환하는지 검증.
+     * 만료 수락의 오류와 메모리 상태만 검증하며, 트랜잭션 종료 후 저장 결과는 DB 통합 검증에서 확인.
      */
     @Test
     void rejectsExpiredInvitationAcceptance() {

@@ -47,7 +47,7 @@ public class MerchantTeamService {
 
     /**
      * 장소 소유 행을 잠그고 OWNER·MANAGER 권한을 확인해 기본 7일 유효한 팀 초대를 저장·반환.
-     * OWNER 초대, 탈퇴 회원, 기존 활성 팀원·대기 초대 및 과거 만료 시각은 거절하고 저장 제약 오류는 중복 초대로 변환.
+     * 만료된 대기 초대는 종료해 재초대를 허용하고, 유효한 대기 초대·활성 팀원·잘못된 입력은 거절.
      */
     @Transactional
     // 초대 대상과 역할을 검증한 뒤 만료 시각이 있는 팀 초대를 생성.
@@ -67,15 +67,23 @@ public class MerchantTeamService {
                 throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_MEMBER_ALREADY_EXISTS);
             }
         });
-        if (invitationRepository.existsByPlaceIdAndInviteeUserIdAndStatus(
-                placeId, request.inviteeUserId(), MerchantPlaceInvitationStatus.PENDING)) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        var pendingInvitation = invitationRepository.findByPlaceIdAndInviteeUserIdAndStatusForUpdate(
+                placeId, request.inviteeUserId(), MerchantPlaceInvitationStatus.PENDING);
+        if (pendingInvitation.filter(invitation -> invitation.getExpiresAt().isAfter(now)).isPresent()) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_ALREADY_EXISTS);
         }
-        LocalDateTime now = LocalDateTime.now(clock);
         LocalDateTime expiresAt = request.expiresAt() == null ? now.plusDays(7) : request.expiresAt();
         if (!expiresAt.isAfter(now)) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_INVALID_EXPIRATION);
         }
+        pendingInvitation.ifPresent(invitation -> {
+            if (!invitation.expireIfPending(now)) {
+                throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_ALREADY_EXISTS);
+            }
+            // PENDING 유일 슬롯을 먼저 비워 IDENTITY INSERT 전에 상태 변경을 DB에 반영합니다.
+            invitationRepository.flush();
+        });
         try {
             return MerchantTeamInvitationResponse.from(invitationRepository.save(
                     MerchantPlaceInvitation.pending(placeId, request.inviteeUserId(), actorId, request.role(), expiresAt, now)));
