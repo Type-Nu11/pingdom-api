@@ -150,7 +150,9 @@ class UsernameChangePostgreSqlIntegrationTest {
 
     private ChangeInfoService service(UserRepository repository) {
         return new ChangeInfoService(repository, mock(PasswordEncoder.class),
-                mock(ProfileImageFileValidator.class), mock(S3ObjectStorage.class));
+                mock(ProfileImageFileValidator.class), mock(S3ObjectStorage.class),
+                mock(com.typenull.pingdom.identity.application.command.ProfileImageUploadService.class),
+                new com.typenull.pingdom.identity.application.command.ProfileImageStorageProperties(null, null, null));
     }
 
     private User user(String username) {
