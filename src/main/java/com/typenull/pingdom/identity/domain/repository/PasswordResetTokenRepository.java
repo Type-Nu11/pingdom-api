@@ -4,6 +4,7 @@ import com.typenull.pingdom.identity.domain.PasswordResetToken;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.QueryHint;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -17,6 +18,10 @@ import org.springframework.data.repository.query.Param;
  * 활성 토큰 갱신은 미사용이면서 now보다 늦게 만료되는 행만 포함하고 실행 전 변경 내용을 flush함.
  */
 public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, Long> {
+
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM PasswordResetToken token WHERE token.user.id IN :userIds")
+    int deleteAllByUserIds(@Param("userIds") Collection<Long> userIds);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2"))
