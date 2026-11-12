@@ -150,4 +150,163 @@ class PlaceMenuServiceTest {
                 .isInstanceOfSatisfying(PlaceMenuException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(PlaceMenuErrorCode.MENU_FORBIDDEN));
     }
+
+    @Test
+    void returnsOwnedMenuWithoutWriteLock() {
+        PlaceMenu menu = menu(10L);
+        when(menuRepository.findById(20L)).thenReturn(Optional.of(menu));
+
+        PlaceMenuResponse response = service.getOwned(7L, 10L, 20L);
+
+        assertThat(response).isEqualTo(PlaceMenuResponse.from(menu));
+        verify(capabilityPolicy).require(7L, 10L, MerchantPlaceCapability.PRODUCT_MANAGE);
+        verify(menuRepository).findById(20L);
+        verify(menuRepository, never()).findByIdForUpdate(anyLong());
+    }
+
+    @Test
+    void rejectsMissingMenuInOwnedDetail() {
+        when(menuRepository.findById(20L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getOwned(7L, 10L, 20L))
+                .isInstanceOfSatisfying(PlaceMenuException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(PlaceMenuErrorCode.MENU_NOT_FOUND));
+
+        verify(menuRepository, never()).findByIdForUpdate(anyLong());
+    }
+
+    @Test
+    void rejectsMenuFromAnotherPlaceInOwnedDetail() {
+        when(menuRepository.findById(20L)).thenReturn(Optional.of(menu(11L)));
+
+        assertThatThrownBy(() -> service.getOwned(7L, 10L, 20L))
+                .isInstanceOfSatisfying(PlaceMenuException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(PlaceMenuErrorCode.MENU_NOT_FOUND));
+
+        verify(menuRepository, never()).findByIdForUpdate(anyLong());
+    }
+
+    @Test
+    void rejectsMissingPlaceBeforeReadingMenuDetail() {
+        when(placeRepository.findById(10L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getOwned(7L, 10L, 20L))
+                .isInstanceOfSatisfying(PlaceMenuException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(PlaceMenuErrorCode.MENU_PLACE_NOT_FOUND));
+
+        verifyNoInteractions(capabilityPolicy, menuRepository);
+    }
+
+    @Test
+    void rejectsDeniedMenuDetailBeforeReadingMenu() {
+        doThrow(new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_PERMISSION_REQUIRED)).when(capabilityPolicy)
+                .require(99L, 10L, MerchantPlaceCapability.PRODUCT_MANAGE);
+
+        assertThatThrownBy(() -> service.getOwned(99L, 10L, 20L))
+                .isInstanceOfSatisfying(PlaceMenuException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(PlaceMenuErrorCode.MENU_FORBIDDEN));
+
+        verifyNoInteractions(menuRepository);
+    }
+
+    @Test
+    void updatesMenuWithWriteLock() {
+        PlaceMenu menu = menu(10L);
+        when(menuRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(menu));
+
+        PlaceMenuResponse response = service.update(7L, 10L, 20L,
+                new PlaceMenuUpdateRequest("수정 메뉴", "수정 설명", 2000L, MenuCurrency.USD, null));
+
+        assertThat(response.name()).isEqualTo("수정 메뉴");
+        assertThat(response.priceAmount()).isEqualTo(2000L);
+        assertThat(response.currency()).isEqualTo(MenuCurrency.USD);
+        verify(menuRepository).findByIdForUpdate(20L);
+        verify(menuRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    void changesMenuStatusWithWriteLock() {
+        when(menuRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(menu(10L)));
+
+        PlaceMenuResponse response = service.changeStatus(7L, 10L, 20L, PlaceMenuStatus.SOLD_OUT);
+
+        assertThat(response.status()).isEqualTo(PlaceMenuStatus.SOLD_OUT);
+        verify(menuRepository).findByIdForUpdate(20L);
+        verify(menuRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    void deactivatesMenuWithWriteLock() {
+        PlaceMenu menu = menu(10L);
+        when(menuRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(menu));
+
+        service.deactivate(7L, 10L, 20L);
+
+        assertThat(menu.getStatus()).isEqualTo(PlaceMenuStatus.INACTIVE);
+        verify(menuRepository).findByIdForUpdate(20L);
+        verify(menuRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    void reordersMenuWithExistingWriteLocks() {
+        PlaceMenu target = menu(10L);
+        PlaceMenu other = menu(10L);
+        other.changeDisplayOrder(1, LocalDateTime.now(clock));
+        when(menuRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(target));
+        when(menuRepository.findAllByPlaceIdOrderByDisplayOrderAscIdAscForUpdate(10L))
+                .thenReturn(new ArrayList<>(List.of(target, other)));
+
+        PlaceMenuResponse response = service.reorder(7L, 10L, 20L, new PlaceMenuOrderRequest(1));
+
+        assertThat(response.displayOrder()).isEqualTo(1);
+        assertThat(other.getDisplayOrder()).isZero();
+        verify(menuRepository).findByIdForUpdate(20L);
+        verify(menuRepository).findAllByPlaceIdOrderByDisplayOrderAscIdAscForUpdate(10L);
+        verify(menuRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    void rejectsMissingMenuDuringUpdate() {
+        when(menuRepository.findByIdForUpdate(20L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.update(7L, 10L, 20L,
+                new PlaceMenuUpdateRequest("수정 메뉴", null, 2000L, MenuCurrency.KRW, null)))
+                .isInstanceOfSatisfying(PlaceMenuException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(PlaceMenuErrorCode.MENU_NOT_FOUND));
+
+        verify(menuRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    void rejectsOtherPlaceMenuDuringUpdateWithoutChangingIt() {
+        PlaceMenu menu = menu(11L);
+        when(menuRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(menu));
+
+        assertThatThrownBy(() -> service.update(7L, 10L, 20L,
+                new PlaceMenuUpdateRequest("수정 메뉴", null, 2000L, MenuCurrency.KRW, null)))
+                .isInstanceOfSatisfying(PlaceMenuException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(PlaceMenuErrorCode.MENU_NOT_FOUND));
+
+        assertThat(menu.getName()).isEqualTo("메뉴");
+        assertThat(menu.getPriceAmount()).isEqualTo(1000L);
+    }
+
+    @Test
+    void rejectsInactiveMenuUpdateWithExistingStateConflict() {
+        PlaceMenu menu = menu(10L);
+        menu.changeStatus(PlaceMenuStatus.INACTIVE, LocalDateTime.now(clock));
+        when(menuRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(menu));
+
+        assertThatThrownBy(() -> service.update(7L, 10L, 20L,
+                new PlaceMenuUpdateRequest("수정 메뉴", null, 2000L, MenuCurrency.KRW, null)))
+                .isInstanceOfSatisfying(PlaceMenuException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(PlaceMenuErrorCode.MENU_STATE_CONFLICT));
+
+        assertThat(menu.getName()).isEqualTo("메뉴");
+    }
+
+    private PlaceMenu menu(Long placeId) {
+        return PlaceMenu.create(placeId, 7L, "메뉴", "설명", 1000L, MenuCurrency.KRW,
+                "https://cdn.example/menu.jpg", 0, LocalDateTime.now(clock));
+    }
 }
