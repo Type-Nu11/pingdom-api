@@ -3,6 +3,7 @@ package com.typenull.pingdom.moderation.application.service.appeal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
 import com.typenull.pingdom.engagement.domain.PostReport;
@@ -25,6 +26,8 @@ import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
+import com.typenull.pingdom.shared.exception.MapErrorCode;
+import com.typenull.pingdom.shared.exception.MapException;
 import java.time.LocalDateTime;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -75,7 +78,7 @@ class ReportAppealConcurrencyPostgreSqlIntegrationTest {
     }
 
     @Autowired private ReportAppealService service;
-    @Autowired private ReportAppealRepository appeals;
+    @SpyBean private ReportAppealRepository appeals;
     @Autowired private PostReportRepository reports;
     @Autowired private MapImageRepository images;
     @Autowired private MapPlaceRepository places;
@@ -107,6 +110,130 @@ class ReportAppealConcurrencyPostgreSqlIntegrationTest {
     @Test
     void rejectionWinsWithoutLeavingRestorationEffects() throws Exception {
         assertCompetingDecision(ReportAppealStatus.REJECTED, true);
+    }
+
+    @Test
+    void concurrentSubmissionsSerializeOnReportAndLeaveOnePendingAppeal() throws Exception {
+        Fixture fixture = fixture();
+        appeals.deleteById(fixture.appealId());
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        CountDownLatch followerStarted = new CountDownLatch(1);
+        AtomicReference<Future<Throwable>> follower = new AtomicReference<>();
+        try {
+            new TransactionTemplate(transactions).executeWithoutResult(status -> {
+                service.submit(fixture.reportId(), "first", fixture.targetId(), "target");
+                follower.set(executor.submit(() -> {
+                    followerStarted.countDown();
+                    try {
+                        service.submit(fixture.reportId(), "second", fixture.targetId(), "target");
+                        return null;
+                    } catch (Throwable failure) {
+                        return failure;
+                    }
+                }));
+                await(followerStarted);
+                assertThatThrownBy(() -> follower.get().get(200, TimeUnit.MILLISECONDS))
+                        .isInstanceOf(TimeoutException.class);
+            });
+
+            assertThat(follower.get().get(5, TimeUnit.SECONDS)).isInstanceOfSatisfying(MapException.class,
+                    failure -> assertThat(failure.getErrorCode()).isEqualTo(MapErrorCode.REPORT_APPEAL_ALREADY_EXISTS));
+            assertThat(jdbc.queryForObject("""
+                    SELECT COUNT(*) FROM report_appeal
+                    WHERE report_id = ? AND appellant_user_id = ? AND status = 'SUBMITTED'
+                    """, Long.class, fixture.reportId(), fixture.targetId())).isEqualTo(1);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void actualUniqueIndexViolationUsesExistingConflictEvenIfPrecheckMissesIt() {
+        Fixture fixture = fixture();
+        // 잠금을 따르지 않는 writer의 삽입도 DB 제약이 막는 fallback 경로를 실제 제약명으로 검증합니다.
+        doReturn(false).when(appeals).existsByReportIdAndAppellantUserIdAndStatus(
+                fixture.reportId(), fixture.targetId(), ReportAppealStatus.SUBMITTED);
+
+        assertThatThrownBy(() -> service.submit(fixture.reportId(), "duplicate", fixture.targetId(), "target"))
+                .isInstanceOfSatisfying(MapException.class,
+                        failure -> assertThat(failure.getErrorCode()).isEqualTo(MapErrorCode.REPORT_APPEAL_ALREADY_EXISTS));
+        assertThat(appeals.count()).isEqualTo(1);
+    }
+
+    @Test
+    void rejectedAppealDoesNotPreventAnotherEligibleSubmission() {
+        Fixture fixture = fixture();
+        service.reject(fixture.appealId(), "reject", fixture.adminId());
+
+        var response = service.submit(fixture.reportId(), "retry", fixture.targetId(), "target");
+
+        assertThat(response.appealId()).isNotEqualTo(fixture.appealId());
+        assertThat(response.status()).isEqualTo(ReportAppealStatus.SUBMITTED);
+        assertThat(appeals.findById(fixture.appealId()).orElseThrow().getStatus()).isEqualTo(ReportAppealStatus.REJECTED);
+        assertThat(appeals.count()).isEqualTo(2);
+    }
+
+    @Test
+    void submissionRechecksEligibilityAfterConcurrentApprovalCommits() throws Exception {
+        Fixture fixture = fixture();
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        CountDownLatch followerStarted = new CountDownLatch(1);
+        AtomicReference<Future<Throwable>> follower = new AtomicReference<>();
+        try {
+            new TransactionTemplate(transactions).executeWithoutResult(status -> {
+                service.approve(fixture.appealId(), "restore", fixture.adminId());
+                follower.set(executor.submit(() -> {
+                    followerStarted.countDown();
+                    try {
+                        service.submit(fixture.reportId(), "retry", fixture.targetId(), "target");
+                        return null;
+                    } catch (Throwable failure) {
+                        return failure;
+                    }
+                }));
+                await(followerStarted);
+                assertThatThrownBy(() -> follower.get().get(200, TimeUnit.MILLISECONDS))
+                        .isInstanceOf(TimeoutException.class);
+            });
+
+            assertThat(follower.get().get(5, TimeUnit.SECONDS)).isInstanceOfSatisfying(MapException.class,
+                    failure -> assertThat(failure.getErrorCode()).isEqualTo(MapErrorCode.REPORT_APPEAL_NOT_ALLOWED));
+            assertThat(appeals.count()).isEqualTo(1);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void submissionDoesNotUseHiddenPhotoStateFromFirstLevelCache() throws Exception {
+        Fixture fixture = fixture();
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            new TransactionTemplate(transactions).executeWithoutResult(status -> {
+                MapImage previouslyLoaded = images.findById(fixture.postId()).orElseThrow();
+                reports.findById(fixture.reportId()).orElseThrow();
+                Future<?> decision = executor.submit(
+                        () -> service.approve(fixture.appealId(), "restore", fixture.adminId()));
+                try {
+                    decision.get(5, TimeUnit.SECONDS);
+                } catch (Exception exception) {
+                    throw new IllegalStateException("동시 승인 완료 실패", exception);
+                }
+                assertThat(previouslyLoaded.getVisibilityStatus()).isEqualTo(MapImageVisibilityStatus.AUTO_HIDDEN);
+
+                assertThatThrownBy(() -> service.submit(fixture.reportId(), "retry", fixture.targetId(), "target"))
+                        .isInstanceOfSatisfying(MapException.class,
+                                failure -> assertThat(failure.getErrorCode()).isEqualTo(MapErrorCode.REPORT_APPEAL_NOT_ALLOWED));
+                // 접수 서비스의 예외가 참여 트랜잭션을 rollback-only로 만든 결과를 명시적으로 종료합니다.
+                status.setRollbackOnly();
+            });
+
+            assertThat(appeals.count()).isEqualTo(1);
+            assertThat(appeals.findById(fixture.appealId()).orElseThrow().getStatus())
+                    .isEqualTo(ReportAppealStatus.APPROVED);
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     @Test
