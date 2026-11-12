@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class PlaceMenuServiceTest {
     private final PlaceMenuRepository menuRepository = mock(PlaceMenuRepository.class);
@@ -248,21 +249,99 @@ class PlaceMenuServiceTest {
     }
 
     @Test
-    void reordersMenuWithExistingWriteLocks() {
-        PlaceMenu target = menu(10L);
-        PlaceMenu other = menu(10L);
-        other.changeDisplayOrder(1, LocalDateTime.now(clock));
-        when(menuRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(target));
-        when(menuRepository.findAllByPlaceIdOrderByDisplayOrderAscIdAscForUpdate(10L))
-                .thenReturn(new ArrayList<>(List.of(target, other)));
+    void reordersFromCurrentDisplayOrderAfterLockingAllMenusWithoutTargetLock() {
+        PlaceMenu firstId = menuWithIdAndOrder(20L, 2);
+        PlaceMenu secondId = menuWithIdAndOrder(21L, 0);
+        PlaceMenu target = menuWithIdAndOrder(22L, 1);
+        when(menuRepository.findAllByPlaceIdOrderByIdAscForUpdate(10L))
+                .thenReturn(List.of(firstId, secondId, target));
 
-        PlaceMenuResponse response = service.reorder(7L, 10L, 20L, new PlaceMenuOrderRequest(1));
+        PlaceMenuResponse response = service.reorder(7L, 10L, 22L, new PlaceMenuOrderRequest(0));
 
-        assertThat(response.displayOrder()).isEqualTo(1);
-        assertThat(other.getDisplayOrder()).isZero();
-        verify(menuRepository).findByIdForUpdate(20L);
-        verify(menuRepository).findAllByPlaceIdOrderByDisplayOrderAscIdAscForUpdate(10L);
+        assertThat(response.displayOrder()).isZero();
+        assertThat(secondId.getDisplayOrder()).isEqualTo(1);
+        assertThat(firstId.getDisplayOrder()).isEqualTo(2);
+        verify(capabilityPolicy).require(7L, 10L, MerchantPlaceCapability.PRODUCT_MANAGE);
+        verify(menuRepository).findAllByPlaceIdOrderByIdAscForUpdate(10L);
+        verify(menuRepository, never()).findByIdForUpdate(anyLong());
         verify(menuRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    void preservesIdTieBreakAndIncludesInactiveMenusWhenClampingDestination() {
+        PlaceMenu first = menuWithIdAndOrder(20L, 5);
+        PlaceMenu second = menuWithIdAndOrder(21L, 5);
+        PlaceMenu inactive = menuWithIdAndOrder(22L, 9);
+        inactive.changeStatus(PlaceMenuStatus.INACTIVE, LocalDateTime.now(clock));
+        when(menuRepository.findAllByPlaceIdOrderByIdAscForUpdate(10L))
+                .thenReturn(List.of(first, second, inactive));
+
+        PlaceMenuResponse response = service.reorder(7L, 10L, 20L, new PlaceMenuOrderRequest(99));
+
+        assertThat(response.displayOrder()).isEqualTo(2);
+        assertThat(second.getDisplayOrder()).isZero();
+        assertThat(inactive.getDisplayOrder()).isEqualTo(1);
+        assertThat(inactive.getStatus()).isEqualTo(PlaceMenuStatus.INACTIVE);
+    }
+
+    @Test
+    void reordersAnInactiveTargetAndNormalizesSingleMenuOrder() {
+        PlaceMenu target = menuWithIdAndOrder(20L, 8);
+        target.changeStatus(PlaceMenuStatus.INACTIVE, LocalDateTime.now(clock));
+        when(menuRepository.findAllByPlaceIdOrderByIdAscForUpdate(10L)).thenReturn(List.of(target));
+
+        PlaceMenuResponse response = service.reorder(7L, 10L, 20L, new PlaceMenuOrderRequest(99));
+
+        assertThat(response.displayOrder()).isZero();
+        assertThat(response.status()).isEqualTo(PlaceMenuStatus.INACTIVE);
+    }
+
+    @Test
+    void rejectsReorderWhenPlaceHasNoMenus() {
+        when(menuRepository.findAllByPlaceIdOrderByIdAscForUpdate(10L)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.reorder(7L, 10L, 20L, new PlaceMenuOrderRequest(0)))
+                .isInstanceOfSatisfying(PlaceMenuException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(PlaceMenuErrorCode.MENU_NOT_FOUND));
+
+        verify(menuRepository, never()).findByIdForUpdate(anyLong());
+    }
+
+    @Test
+    void rejectsMissingOrOtherPlaceMenuWithoutChangingLockedMenus() {
+        PlaceMenu existing = menuWithIdAndOrder(21L, 5);
+        when(menuRepository.findAllByPlaceIdOrderByIdAscForUpdate(10L)).thenReturn(List.of(existing));
+
+        assertThatThrownBy(() -> service.reorder(7L, 10L, 20L, new PlaceMenuOrderRequest(0)))
+                .isInstanceOfSatisfying(PlaceMenuException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(PlaceMenuErrorCode.MENU_NOT_FOUND));
+
+        assertThat(existing.getDisplayOrder()).isEqualTo(5);
+        verify(menuRepository, never()).findByIdForUpdate(anyLong());
+        verify(menuRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    void rejectsMissingPlaceBeforeLockingMenusForReorder() {
+        when(placeRepository.findById(10L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.reorder(7L, 10L, 20L, new PlaceMenuOrderRequest(0)))
+                .isInstanceOfSatisfying(PlaceMenuException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(PlaceMenuErrorCode.MENU_PLACE_NOT_FOUND));
+
+        verifyNoInteractions(capabilityPolicy, menuRepository);
+    }
+
+    @Test
+    void rejectsDeniedReorderBeforeLockingMenus() {
+        doThrow(new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_PERMISSION_REQUIRED)).when(capabilityPolicy)
+                .require(99L, 10L, MerchantPlaceCapability.PRODUCT_MANAGE);
+
+        assertThatThrownBy(() -> service.reorder(99L, 10L, 20L, new PlaceMenuOrderRequest(0)))
+                .isInstanceOfSatisfying(PlaceMenuException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(PlaceMenuErrorCode.MENU_FORBIDDEN));
+
+        verifyNoInteractions(menuRepository);
     }
 
     @Test
@@ -308,5 +387,12 @@ class PlaceMenuServiceTest {
     private PlaceMenu menu(Long placeId) {
         return PlaceMenu.create(placeId, 7L, "메뉴", "설명", 1000L, MenuCurrency.KRW,
                 "https://cdn.example/menu.jpg", 0, LocalDateTime.now(clock));
+    }
+
+    private PlaceMenu menuWithIdAndOrder(Long id, int displayOrder) {
+        PlaceMenu menu = menu(10L);
+        ReflectionTestUtils.setField(menu, "id", id);
+        menu.changeDisplayOrder(displayOrder, LocalDateTime.now(clock));
+        return menu;
     }
 }
