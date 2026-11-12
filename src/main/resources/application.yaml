@@ -292,6 +292,15 @@ abuse:
       limit: ${ROUTE_QUERY_IP_LIMIT:100}
       window: ${ROUTE_QUERY_IP_WINDOW:PT1M}
 
+voice-ai:
+  retention:
+    cleanup-enabled: true
+    session-batch-size: 10
+    replay-batch-size: 100
+    max-batches-per-run: 10
+    cleanup-delay: PT1H
+    cleanup-initial-delay: PT1H
+
 gemini:
   enabled: ${GEMINI_ENABLED:false}
   api-key: ${GEMINI_API_KEY:}
