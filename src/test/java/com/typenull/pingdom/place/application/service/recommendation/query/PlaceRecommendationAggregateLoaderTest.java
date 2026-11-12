@@ -10,12 +10,19 @@ import static org.mockito.Mockito.when;
 import com.typenull.pingdom.place.application.service.recommendation.feedback.PlaceRecommendationClickService;
 import com.typenull.pingdom.place.application.service.recommendation.feedback.PlaceRecommendationExposureService;
 import com.typenull.pingdom.place.application.service.recommendation.similarity.PlaceRecommendationSimilarityService;
+import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.recommendation.snapshot.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository.GlobalCountsProjection;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RankingWeights;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -108,6 +115,58 @@ class PlaceRecommendationAggregateLoaderTest {
 
         assertThatThrownBy(loader::resolveGlobalCounts).isSameAs(failure);
         verifyNoInteractions(clicks, exposures);
+    }
+
+    @Test
+    void preservesScoresAndRankingForEquivalentSeparateAndCombinedGlobalTotals() {
+        var scoring = new PlaceRecommendationScoringService(mock(PlaceRecommendationSimilarityService.class));
+        List<PlaceDistance> candidates = List.of(
+                new PlaceDistance(MapPlace.builder().id(1L).name("first").build(), Set.of(), 100d, null, null),
+                new PlaceDistance(MapPlace.builder().id(2L).name("second").build(), Set.of(), 300d, null, null),
+                new PlaceDistance(MapPlace.builder().id(3L).name("third").build(), Set.of(), 700d, null, null));
+        Map<Long, PlaceAggregate> aggregates = Map.of(
+                1L, aggregate(1L, 1, 10), 2L, aggregate(2L, 5, 30), 3L, aggregate(3L, 0, 0));
+        var similarity = new PlaceRecommendationSimilarityService.SimilarityContext(
+                Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), 0L);
+        var weights = new RankingWeights(.2d, 0d, .1d, .3d, .2d, 0d, .2d, 0d);
+        Instant sameTime = Instant.parse("2026-11-12T00:00:00Z");
+
+        for (long[] separate : List.of(new long[]{12L, 60L}, new long[]{0L, 0L},
+                new long[]{8L, 0L}, new long[]{8L, 40L})) {
+            when(snapshots.sumGlobalCounts()).thenReturn(counts(separate[0], separate[1]));
+            var combined = loader.resolveGlobalCounts();
+            var baselineContext = scoring.buildScoreContext(candidates, aggregates, separate[0], separate[1]);
+            var combinedContext = scoring.buildScoreContext(candidates, aggregates,
+                    combined.clickCount(), combined.exposureCount());
+            baselineContext = new PlaceRecommendationScoringService.RecommendationScoreContext(
+                    baselineContext.globalCtr(), baselineContext.globalConversionRate(),
+                    baselineContext.globalAverageLikePerPhoto(), sameTime);
+            combinedContext = new PlaceRecommendationScoringService.RecommendationScoreContext(
+                    combinedContext.globalCtr(), combinedContext.globalConversionRate(),
+                    combinedContext.globalAverageLikePerPhoto(), sameTime);
+            assertThat(combinedContext).isEqualTo(baselineContext);
+            var baseline = scoring.applyFinalScores(scoring.buildIntermediateCandidates(candidates, aggregates,
+                    UserSignalContext.empty(), Map.of(), Map.of(), separate[1], 0d, 5d,
+                    similarity, baselineContext), weights);
+            var current = scoring.applyFinalScores(scoring.buildIntermediateCandidates(candidates, aggregates,
+                    UserSignalContext.empty(), Map.of(), Map.of(), combined.exposureCount(), 0d, 5d,
+                    similarity, combinedContext), weights);
+
+            assertThat(current).isEqualTo(baseline)
+                    .allSatisfy(candidate -> assertThat(Double.isFinite(candidate.finalScore())).isTrue());
+            Comparator<ScoredCandidate> ranking = Comparator.comparingDouble(ScoredCandidate::finalScore)
+                    .reversed().thenComparing(candidate -> candidate.place().getId());
+            assertThat(current.stream().sorted(ranking).map(candidate -> candidate.place().getId()).toList())
+                    .isEqualTo(baseline.stream().sorted(ranking).map(candidate -> candidate.place().getId()).toList());
+        }
+        verifyNoInteractions(clicks, exposures);
+    }
+
+    private PlaceAggregate aggregate(long placeId, long clickCount, long exposureCount) {
+        return PlaceAggregate.fromSnapshot(PlaceRecommendationSnapshot.builder().placeId(placeId)
+                .photoCount(placeId * 2).bookmarkCount(placeId).totalLikeCount(placeId * 3)
+                .clickCount(clickCount).exposureCount(exposureCount).bookmarkConversionCount(placeId)
+                .latestPostCreatedAt(LocalDateTime.of(2026, 11, 11, 0, 0)).build());
     }
 
     private GlobalCountsProjection counts(Long clickCount, Long exposureCount) {
