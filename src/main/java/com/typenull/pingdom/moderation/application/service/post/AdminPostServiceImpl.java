@@ -14,6 +14,8 @@ import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.post.domain.MapImage;
+import com.typenull.pingdom.post.application.service.MapImageStateLockService;
+import com.typenull.pingdom.post.application.service.MapImageStateLockService.LockedImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
 import java.net.URI;
@@ -38,6 +40,7 @@ public class AdminPostServiceImpl implements AdminPostService {
     private final MapImageRepository mapImageRepository;
     private final PostReportRepository postReportRepository;
     private final PlaceGrowthService placeGrowthService;
+    private final MapImageStateLockService imageStateLockService;
     private final S3ObjectDeleteOutboxPublisher s3ObjectDeleteOutboxPublisher;
     private final AdminAuditLogService adminAuditLogService;
     private final AdminRoleAuthorizationService authorizationService;
@@ -90,13 +93,14 @@ public class AdminPostServiceImpl implements AdminPostService {
     @Transactional
     public void hidePost(Long postId, String reason, Long adminUserId) {
         authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
-        MapImage mapImage = mapImageRepository.findWithMapPlaceById(postId)
+        LockedImage locked = imageStateLockService.findForUpdate(postId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
+        MapImage mapImage = locked.image();
         Map<String, Object> beforeState = postState(mapImage, false, null);
 
         boolean hidden = mapImage.autoHide(reason, LocalDateTime.now(clock), adminUserId);
-        if (hidden && mapImage.getMapPlace() != null) {
-            placeGrowthService.decreasePhotoCount(mapImage.getMapPlace().getId());
+        if (hidden && locked.place() != null) {
+            placeGrowthService.decreasePhotoCount(locked.place());
         }
         adminAuditLogService.record(
                 adminUserId,
@@ -118,13 +122,14 @@ public class AdminPostServiceImpl implements AdminPostService {
     @Transactional
     public void restorePost(Long postId, String reason, Long adminUserId) {
         authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
-        MapImage mapImage = mapImageRepository.findWithMapPlaceById(postId)
+        LockedImage locked = imageStateLockService.findForUpdate(postId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
+        MapImage mapImage = locked.image();
         Map<String, Object> beforeState = postState(mapImage, false, null);
 
         boolean restored = mapImage.restore(reason, LocalDateTime.now(clock), adminUserId);
-        if (restored && mapImage.getMapPlace() != null) {
-            placeGrowthService.increasePhotoCount(mapImage.getMapPlace().getId());
+        if (restored && locked.place() != null) {
+            placeGrowthService.increasePhotoCount(locked.place());
         }
         adminAuditLogService.record(
                 adminUserId,
