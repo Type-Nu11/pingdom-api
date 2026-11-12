@@ -19,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,6 +58,27 @@ class ChangeInfoServiceProfileImageTest {
 
         assertThatThrownBy(() -> changeInfoService.changeProfileImage(file, user.getId()))
                 .isInstanceOf(DataIntegrityViolationException.class);
+
+        verify(s3ObjectStorage).delete(uploaded.key());
+    }
+
+    @Test
+    void compensatesUploadedObjectWhenUserStateChangedDuringUpload() {
+        User user = user();
+        MockMultipartFile file = new MockMultipartFile("file", "profile.jpg", "image/jpeg", new byte[]{1});
+        ProfileImageFileValidator.ValidatedProfileImage image =
+                new ProfileImageFileValidator.ValidatedProfileImage(new byte[]{1}, "image/jpeg", "jpg");
+        S3PutResult uploaded = new S3PutResult("users/profile-images/1/new.jpg", "https://example.com/new.jpg");
+        ObjectOptimisticLockingFailureException conflict = new ObjectOptimisticLockingFailureException(
+                User.class, user.getId());
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(profileImageFileValidator.validate(file)).thenReturn(image);
+        when(s3ObjectStorage.put(any(byte[].class), eq("profile.jpg"), eq("image/jpeg"),
+                eq("users/profile-images/" + user.getId()))).thenReturn(uploaded);
+        when(userRepository.saveAndFlush(user)).thenThrow(conflict);
+
+        assertThatThrownBy(() -> changeInfoService.changeProfileImage(file, user.getId()))
+                .isSameAs(conflict);
 
         verify(s3ObjectStorage).delete(uploaded.key());
     }
