@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.Optional;
+import java.time.Instant;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -147,14 +149,59 @@ public class S3ObjectStorage {
 
     /** DB에 먼저 등록한 신규 UUID key로만 업로드해 실패·프로세스 종료 시에도 정리 이력을 유지합니다. */
     public S3PutResult putAtKey(byte[] bytes, String contentType, String key) {
+        return putAtKey(bytes, contentType, key, null);
+    }
+
+    /** 추적 업로드의 유효기간보다 SDK 실행이 길어지지 않도록 호출 전체에 상한을 적용합니다. */
+    public S3PutResult putAtKey(byte[] bytes, String contentType, String key, Duration timeout) {
+        if (timeout != null && (timeout.isZero() || timeout.isNegative())) {
+            throw new IllegalArgumentException("업로드 timeout은 양수여야 합니다.");
+        }
         try {
             S3Client client = s3Client();
-            client.putObject(PutObjectRequest.builder().bucket(bucket).key(key)
-                    .contentType(contentType).contentLength((long) bytes.length).build(), RequestBody.fromBytes(bytes));
+            PutObjectRequest.Builder request = PutObjectRequest.builder().bucket(bucket).key(key)
+                    .contentType(contentType).contentLength((long) bytes.length);
+            if (timeout != null) request.overrideConfiguration(config -> config.apiCallTimeout(timeout).apiCallAttemptTimeout(timeout));
+            client.putObject(request.build(), RequestBody.fromBytes(bytes));
             return new S3PutResult(key, client.utilities().getUrl(
                     GetUrlRequest.builder().bucket(bucket).key(key).build()).toExternalForm());
         } catch (SdkException exception) {
             throw new S3StorageException(S3StorageError.S3_ERROR, "S3 image upload failed.", exception);
+        }
+    }
+
+    /** 추적한 orphan의 현재 버전을 확인하며, 404만 부재로 간주하고 권한/설정 오류는 전파합니다. */
+    public Optional<S3ObjectSnapshot> findObjectSnapshot(String key) {
+        if (!StringUtils.hasText(key)) throw new IllegalArgumentException("S3 객체 key가 비어 있습니다.");
+        try {
+            HeadObjectResponse response = s3Client().headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build());
+            return Optional.of(new S3ObjectSnapshot(response.eTag(), response.lastModified(), response.versionId()));
+        } catch (S3Exception exception) {
+            if (exception.statusCode() == 404) return Optional.empty();
+            throw new S3StorageException(S3StorageError.S3_ERROR, "S3 tracked object inspection failed.", exception);
+        } catch (SdkException exception) {
+            throw new S3StorageException(S3StorageError.CONNECTION_ERROR, "S3 tracked object inspection failed.", exception);
+        }
+    }
+
+    /** HEAD에서 확인한 버전/ETag에 한해 삭제하여 뒤늦게 교체된 객체를 무조건 삭제하지 않습니다. */
+    public boolean deleteIfUnchanged(String key, S3ObjectSnapshot snapshot) {
+        if (!StringUtils.hasText(key) || snapshot == null || !StringUtils.hasText(snapshot.eTag()))
+            throw new IllegalArgumentException("조건부 S3 삭제 식별자가 없습니다.");
+        // ETag만으로는 같은 내용의 늦은 재생성과 중복 worker 삭제를 구분할 수 없습니다.
+        if (!snapshot.hasImmutableVersion())
+            throw new S3StorageException(S3StorageError.S3_ERROR, "Immutable S3 version is required for tracked deletion.", null);
+        try {
+            DeleteObjectRequest.Builder request = DeleteObjectRequest.builder().bucket(bucket).key(key)
+                    .ifMatch(snapshot.eTag()).versionId(snapshot.versionId());
+            s3Client().deleteObject(request.build());
+            return true;
+        } catch (S3Exception exception) {
+            if (exception.statusCode() == 404) return true;
+            if (exception.statusCode() == 412) return false;
+            throw new S3StorageException(S3StorageError.S3_ERROR, "S3 tracked object deletion failed.", exception);
+        } catch (SdkException exception) {
+            throw new S3StorageException(S3StorageError.CONNECTION_ERROR, "S3 tracked object deletion failed.", exception);
         }
     }
 
@@ -379,6 +426,18 @@ public class S3ObjectStorage {
 
     /** S3가 응답한 콘텐츠 길이(바이트)와 MIME 유형. */
     public record S3ObjectMetadata(Long contentLength, String contentType) {
+    }
+
+    public record S3ObjectSnapshot(String eTag, Instant lastModified, String versionId) {
+        public S3ObjectSnapshot {
+            if (!StringUtils.hasText(eTag) || lastModified == null)
+                throw new IllegalArgumentException("S3 객체 버전 메타데이터가 없습니다.");
+        }
+
+        /** versioning 중지 시의 null 버전은 후속 PUT에 의해 교체되므로 immutable로 취급하지 않습니다. */
+        public boolean hasImmutableVersion() {
+            return StringUtils.hasText(versionId) && !"null".equals(versionId);
+        }
     }
 
     /** 제한 개수까지 모은 key와 미조회 페이지 존재 여부. 전체 버킷 개수와 재개 토큰은 포함 대상에서 제외. */
