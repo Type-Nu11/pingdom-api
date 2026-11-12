@@ -24,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 장소·추천 버전별 상호작용 집계를 증분 반영하거나 원본 이벤트에서 재생성.
- * 최초 생성은 장소 ID 순서의 잠금과 재조회로 조정하며 기존 행의 증분 갱신에는 별도 쓰기 잠금이 없음.
+ * 증분·재집계 모두 장소 ID 순서의 쓰기 잠금 후 snapshot과 원천을 다시 조회.
  * 재동기화는 실제 원본 이벤트가 있는 장소·버전만 남기고 오래된 조합과 삭제된 장소의 스냅샷을 제거.
  */
 @Service
@@ -38,6 +38,7 @@ public class PlaceRecommendationVersionSnapshotService {
     private final PlaceRecommendationExposureRepository placeRecommendationExposureRepository;
     private final PlaceRecommendationClickRepository placeRecommendationClickRepository;
     private final PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
+    private final PlaceRecommendationSnapshotWriteLock snapshotWriteLock;
 
     @Transactional
     public void increaseExposureCounts(List<Long> placeIds, String recommendationVersion) {
@@ -51,7 +52,7 @@ public class PlaceRecommendationVersionSnapshotService {
 
     /**
      * 장소·추천 버전 스냅샷을 읽거나 생성하고 BOOKMARK이면 북마크 전환, 그 외에는 좋아요 전환 수를 1 증가시킴.
-     * 기존 스냅샷 갱신은 별도 쓰기 잠금 없이 수행하므로 동시 증가의 직렬화는 보장 범위에서 제외.
+     * 전체 snapshot과 같은 장소 잠금에 참여하여 원천 기록과 함께 확정.
      */
     @Transactional
     public void increaseConversionCount(
@@ -71,16 +72,13 @@ public class PlaceRecommendationVersionSnapshotService {
 
     /**
      * 전체 장소를 ID 순 페이지로 순회해 원본 이벤트의 장소·버전별 집계를 재작성하고 집계가 없거나 장소가 삭제된 행을 정리.
-     * 장소가 하나도 없으면 모든 버전 스냅샷을 삭제하며 동기화·삭제 건수를 반환. 전체 원본 이벤트에 대한 일괄 잠금은 미사용.
+     * 각 원천 집계 전에 장소 잠금을 확보하며 빈 장소·고아 정리는 실제 장소 부재 조건으로 한정.
      */
     @Transactional
     public VersionSnapshotResyncResult resyncAll() {
         long placeCount = mapPlaceRepository.count();
         if (placeCount == 0L) {
-            long deletedSnapshotCount = placeRecommendationVersionSnapshotRepository.count();
-            if (deletedSnapshotCount > 0L) {
-                placeRecommendationVersionSnapshotRepository.deleteAllInBatch();
-            }
+            long deletedSnapshotCount = placeRecommendationVersionSnapshotRepository.deleteAllOrphans();
             return new VersionSnapshotResyncResult(0L, deletedSnapshotCount);
         }
 
@@ -116,8 +114,7 @@ public class PlaceRecommendationVersionSnapshotService {
 
         List<Long> orphanSnapshotIds = collectOrphanSnapshotIds(activePlaceIds);
         if (!orphanSnapshotIds.isEmpty()) {
-            placeRecommendationVersionSnapshotRepository.deleteAllByIdInBatch(orphanSnapshotIds);
-            deletedSnapshotCount += orphanSnapshotIds.size();
+            deletedSnapshotCount += placeRecommendationVersionSnapshotRepository.deleteOrphans(orphanSnapshotIds);
         }
 
         return new VersionSnapshotResyncResult(synchronizedSnapshotCount, deletedSnapshotCount);
@@ -125,8 +122,8 @@ public class PlaceRecommendationVersionSnapshotService {
 
     @Transactional
     public VersionSnapshotResyncResult resyncPlace(Long placeId) {
-        if (mapPlaceRepository.findByIdForUpdate(placeId).isEmpty()) {
-            long deletedSnapshotCount = placeRecommendationVersionSnapshotRepository.deleteByPlaceId(placeId);
+        if (snapshotWriteLock.lockPlace(placeId).isEmpty()) {
+            long deletedSnapshotCount = placeRecommendationVersionSnapshotRepository.deleteOrphansByPlaceId(placeId);
             return new VersionSnapshotResyncResult(0L, deletedSnapshotCount);
         }
 
@@ -134,13 +131,16 @@ public class PlaceRecommendationVersionSnapshotService {
     }
 
     private VersionSnapshotResyncResult synchronizeVersions(List<Long> placeIds, LocalDateTime syncedAt) {
+        placeIds = snapshotWriteLock.lockPlaces(placeIds).stream().map(MapPlace::getId).toList();
+        List<Long> lockedPlaceIds = placeIds;
         Map<SnapshotKey, Counts> countsByKey = new HashMap<>();
         accumulateExposureCounts(placeIds, countsByKey);
         accumulateClickCounts(placeIds, countsByKey);
         accumulateConversionCounts(placeIds, countsByKey);
 
         List<PlaceRecommendationVersionSnapshot> existingSnapshots =
-                placeRecommendationVersionSnapshotRepository.findByPlaceIdIn(placeIds);
+                snapshotWriteLock.reloadSnapshots(
+                        () -> placeRecommendationVersionSnapshotRepository.findByPlaceIdIn(lockedPlaceIds));
         Map<SnapshotKey, PlaceRecommendationVersionSnapshot> existingSnapshotByKey = new HashMap<>();
         for (PlaceRecommendationVersionSnapshot existingSnapshot : existingSnapshots) {
             existingSnapshotByKey.put(
@@ -183,6 +183,8 @@ public class PlaceRecommendationVersionSnapshotService {
                 .map(PlaceRecommendationVersionSnapshot::getId)
                 .toList();
         if (!staleSnapshotIds.isEmpty()) {
+            snapshotWriteLock.flushAndDetach(existingSnapshots.stream()
+                    .filter(snapshot -> staleSnapshotIds.contains(snapshot.getId())).toList());
             placeRecommendationVersionSnapshotRepository.deleteAllByIdInBatch(staleSnapshotIds);
         }
 
@@ -199,114 +201,38 @@ public class PlaceRecommendationVersionSnapshotService {
             increments.merge(placeId, 1L, Long::sum);
         }
 
+        snapshotWriteLock.requirePlaces(increments.keySet());
         LocalDateTime now = LocalDateTime.now();
         Map<Long, PlaceRecommendationVersionSnapshot> snapshotsByPlaceId = new HashMap<>();
-        for (PlaceRecommendationVersionSnapshot snapshot :
-                placeRecommendationVersionSnapshotRepository.findByPlaceIdInAndRecommendationVersion(
-                        increments.keySet(),
-                        recommendationVersion
-                )) {
+        for (PlaceRecommendationVersionSnapshot snapshot : snapshotWriteLock.reloadSnapshots(
+                () -> placeRecommendationVersionSnapshotRepository.findByPlaceIdInAndRecommendationVersion(
+                        increments.keySet(), recommendationVersion))) {
             snapshotsByPlaceId.put(snapshot.getPlaceId(), snapshot);
         }
-
-        Map<Long, PlaceRecommendationVersionSnapshot> createdSnapshots = createSnapshots(
-                increments.keySet(),
-                recommendationVersion,
-                snapshotsByPlaceId,
-                now
-        );
-        snapshotsByPlaceId.putAll(createdSnapshots);
-
         List<PlaceRecommendationVersionSnapshot> snapshotsToSave = new ArrayList<>(increments.size());
-        for (Map.Entry<Long, Long> incrementEntry : increments.entrySet()) {
-            PlaceRecommendationVersionSnapshot snapshot = snapshotsByPlaceId.get(incrementEntry.getKey());
-
+        for (Long placeId : increments.keySet().stream().sorted().toList()) {
+            PlaceRecommendationVersionSnapshot snapshot = snapshotsByPlaceId.get(placeId);
+            if (snapshot == null) {
+                snapshot = createSnapshot(placeId, recommendationVersion, now);
+            }
             if (countType == CountType.CLICK) {
-                snapshot.increaseClickCount(incrementEntry.getValue(), now);
+                snapshot.increaseClickCount(increments.get(placeId), now);
             } else {
-                snapshot.increaseExposureCount(incrementEntry.getValue(), now);
+                snapshot.increaseExposureCount(increments.get(placeId), now);
             }
             snapshotsToSave.add(snapshot);
         }
-
         placeRecommendationVersionSnapshotRepository.saveAll(snapshotsToSave);
     }
 
-    private Map<Long, PlaceRecommendationVersionSnapshot> createSnapshots(
-            Iterable<Long> placeIds,
-            String recommendationVersion,
-            Map<Long, PlaceRecommendationVersionSnapshot> existingSnapshots,
-            LocalDateTime now
-    ) {
-        Set<Long> missingPlaceIds = new HashSet<>();
-        for (Long placeId : placeIds) {
-            if (!existingSnapshots.containsKey(placeId)) {
-                missingPlaceIds.add(placeId);
-            }
-        }
-
-        if (missingPlaceIds.isEmpty()) {
-            return Map.of();
-        }
-
-        Set<Long> lockedPlaceIds = new HashSet<>();
-        for (Long placeId : missingPlaceIds.stream().sorted().toList()) {
-            mapPlaceRepository.findByIdForUpdate(placeId)
-                    .map(MapPlace::getId)
-                    .ifPresent(lockedPlaceIds::add);
-        }
-
-        Map<Long, PlaceRecommendationVersionSnapshot> snapshotsAfterLock = new HashMap<>();
-        for (PlaceRecommendationVersionSnapshot snapshot :
-                placeRecommendationVersionSnapshotRepository.findByPlaceIdInAndRecommendationVersionForReadLock(
-                        missingPlaceIds,
-                        recommendationVersion
-                )) {
-            snapshotsAfterLock.put(snapshot.getPlaceId(), snapshot);
-        }
-
-        Map<Long, PlaceRecommendationVersionSnapshot> snapshots = new HashMap<>();
-        for (Long placeId : missingPlaceIds) {
-            PlaceRecommendationVersionSnapshot existingSnapshot = snapshotsAfterLock.get(placeId);
-            if (existingSnapshot != null) {
-                snapshots.put(placeId, existingSnapshot);
-                continue;
-            }
-
-            if (!lockedPlaceIds.contains(placeId)) {
-                throw new IllegalArgumentException("Place not found: " + placeId);
-            }
-            snapshots.put(placeId, createSnapshot(placeId, recommendationVersion, now));
-        }
-        return snapshots;
-    }
-
     private PlaceRecommendationVersionSnapshot loadOrCreateSnapshot(
-            Long placeId,
-            String recommendationVersion,
-            LocalDateTime now
+            Long placeId, String recommendationVersion, LocalDateTime now
     ) {
-        PlaceRecommendationVersionSnapshot existingSnapshot =
-                placeRecommendationVersionSnapshotRepository.findByPlaceIdAndRecommendationVersion(
-                        placeId,
-                        recommendationVersion
-                ).orElse(null);
-        if (existingSnapshot != null) {
-            return existingSnapshot;
-        }
-
-        mapPlaceRepository.findByIdForUpdate(placeId).orElseThrow();
-
-        PlaceRecommendationVersionSnapshot snapshotAfterLock =
-                placeRecommendationVersionSnapshotRepository.findByPlaceIdAndRecommendationVersionForReadLock(
-                        placeId,
-                        recommendationVersion
-                ).orElse(null);
-        if (snapshotAfterLock != null) {
-            return snapshotAfterLock;
-        }
-
-        return createSnapshot(placeId, recommendationVersion, now);
+        snapshotWriteLock.requirePlace(placeId);
+        return snapshotWriteLock.reloadSnapshot(
+                () -> placeRecommendationVersionSnapshotRepository.findByPlaceIdAndRecommendationVersion(
+                        placeId, recommendationVersion))
+                .orElseGet(() -> createSnapshot(placeId, recommendationVersion, now));
     }
 
     private PlaceRecommendationVersionSnapshot createSnapshot(

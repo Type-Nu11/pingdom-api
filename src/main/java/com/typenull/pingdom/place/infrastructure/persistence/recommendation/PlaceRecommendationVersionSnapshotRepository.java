@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -68,4 +69,18 @@ public interface PlaceRecommendationVersionSnapshotRepository
             WHERE s.recommendationVersion = :recommendationVersion
             """)
     Long sumExposureCountByRecommendationVersion(@Param("recommendationVersion") String recommendationVersion);
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM PlaceRecommendationVersionSnapshot s WHERE s.id IN :ids "
+            + "AND NOT EXISTS (SELECT p.id FROM MapPlace p WHERE p.id = s.placeId)")
+    int deleteOrphans(@Param("ids") Collection<Long> ids);
+
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM PlaceRecommendationVersionSnapshot s "
+            + "WHERE NOT EXISTS (SELECT p.id FROM MapPlace p WHERE p.id = s.placeId)")
+    int deleteAllOrphans();
+
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM PlaceRecommendationVersionSnapshot s WHERE s.placeId = :placeId "
+            + "AND NOT EXISTS (SELECT p.id FROM MapPlace p WHERE p.id = s.placeId)")
+    int deleteOrphansByPlaceId(@Param("placeId") Long placeId);
 }
