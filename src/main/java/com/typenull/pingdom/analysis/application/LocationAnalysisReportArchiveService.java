@@ -1,6 +1,7 @@
 package com.typenull.pingdom.analysis.application;
 
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisReportResponse;
+import com.typenull.pingdom.analysis.api.dto.LocationAnalysisReportPageResponse;
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisReportUpdateRequest;
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisRequest;
 import com.typenull.pingdom.analysis.application.LocationAnalysisReportService.LocationAnalysisPdf;
@@ -10,9 +11,10 @@ import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
 import com.typenull.pingdom.analysis.infrastructure.LocationAnalysisReportRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,11 +49,18 @@ public class LocationAnalysisReportArchiveService {
     }
 
     @Transactional(readOnly = true)
-    public List<LocationAnalysisReportResponse> list(Long ownerUserId) {
+    public LocationAnalysisReportPageResponse list(Long ownerUserId, int page, int limit) {
         requireOwnerUserId(ownerUserId);
-        return reportRepository.findSummariesByOwnerUserId(ownerUserId).stream()
-                .map(this::toResponse)
-                .toList();
+        if (page < 1 || limit < 1 || limit > 100 || (long) (page - 1) * limit > Integer.MAX_VALUE) {
+            throw new AnalysisReportException(AnalysisReportErrorCode.ANALYSIS_REPORT_INVALID_PAGINATION, null);
+        }
+        Page<LocationAnalysisReportResponse> reports = reportRepository
+                .findSummariesByOwnerUserId(ownerUserId, PageRequest.of(page - 1, limit))
+                .map(this::toResponse);
+        return new LocationAnalysisReportPageResponse(
+                reports.getContent(), page, limit, reports.getTotalElements(),
+                reports.getTotalPages(), reports.hasNext()
+        );
     }
 
     @Transactional(readOnly = true)
