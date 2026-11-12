@@ -74,7 +74,7 @@ public class LocationAnalysisController {
         accessPolicy.requireOwnedEmail(userId(user), request.getEmail());
         LocationAnalysisReportService.LocationAnalysisPdf report = generationLimiter.execute(() -> {
             LocationAnalysisReportService.LocationAnalysisPdf generated = reportService.generate(request);
-            archiveService.archive(request, generated);
+            archiveService.archive(userId(user), request, generated);
             return generated;
         });
         String filename = downloadFilename(report.reportName(), report.publishedDate(), 0);
@@ -91,7 +91,8 @@ public class LocationAnalysisController {
             @RequestParam String email,
             @CurrentUser JwtAuthenticatedUser user
     ) {
-        return archiveService.list(accessPolicy.requireOwnedEmail(userId(user), email));
+        accessPolicy.requireOwnedEmail(userId(user), email);
+        return archiveService.list(userId(user));
     }
 
     @GetMapping("/{reportId}")
@@ -101,7 +102,8 @@ public class LocationAnalysisController {
             @RequestParam String email,
             @CurrentUser JwtAuthenticatedUser user
     ) {
-        return archiveService.get(reportId, accessPolicy.requireOwnedEmail(userId(user), email));
+        accessPolicy.requireOwnedEmail(userId(user), email);
+        return archiveService.get(reportId, userId(user));
     }
 
     @GetMapping(value = "/{reportId}/download", produces = MediaType.APPLICATION_PDF_VALUE)
@@ -111,10 +113,8 @@ public class LocationAnalysisController {
             @RequestParam String email,
             @CurrentUser JwtAuthenticatedUser user
     ) {
-        var report = archiveService.download(
-                reportId,
-                accessPolicy.requireOwnedEmail(userId(user), email)
-        );
+        accessPolicy.requireOwnedEmail(userId(user), email);
+        var report = archiveService.download(reportId, userId(user));
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition(
@@ -154,11 +154,12 @@ public class LocationAnalysisController {
             @RequestParam String email,
             @CurrentUser JwtAuthenticatedUser user
     ) {
+        accessPolicy.requireOwnedEmail(userId(user), email);
         return ResponseEntity.ok()
                 .contentType(new MediaType(MediaType.TEXT_HTML, StandardCharsets.UTF_8))
                 .body(archiveService.html(
                         reportId,
-                        accessPolicy.requireOwnedEmail(userId(user), email)
+                        userId(user)
                 ));
     }
 
@@ -170,9 +171,9 @@ public class LocationAnalysisController {
             @Valid @RequestBody LocationAnalysisReportUpdateRequest request,
             @CurrentUser JwtAuthenticatedUser user
     ) {
-        String accountEmail = accessPolicy.requireOwnedEmail(userId(user), email);
+        accessPolicy.requireOwnedEmail(userId(user), email);
         accessPolicy.requireOwnedEmail(userId(user), request.email());
-        return archiveService.update(reportId, accountEmail, request);
+        return archiveService.update(reportId, userId(user), request);
     }
 
     @DeleteMapping("/{reportId}")
@@ -182,7 +183,8 @@ public class LocationAnalysisController {
             @RequestParam String email,
             @CurrentUser JwtAuthenticatedUser user
     ) {
-        archiveService.delete(reportId, accessPolicy.requireOwnedEmail(userId(user), email));
+        accessPolicy.requireOwnedEmail(userId(user), email);
+        archiveService.delete(reportId, userId(user));
         return ResponseEntity.noContent().build();
     }
 

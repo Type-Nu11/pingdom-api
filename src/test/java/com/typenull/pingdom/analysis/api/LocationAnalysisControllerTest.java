@@ -2,6 +2,7 @@ package com.typenull.pingdom.analysis.api;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -41,7 +42,7 @@ class LocationAnalysisControllerTest {
         LocationAnalysisReportService reportService = mock(LocationAnalysisReportService.class);
         LocationAnalysisReportArchiveService archiveService = mock(LocationAnalysisReportArchiveService.class);
         LocationAnalysisReportAccessPolicy accessPolicy = accessPolicy();
-        when(archiveService.html("report-1", "owner@example.com"))
+        when(archiveService.html("report-1", OWNER.userId()))
                 .thenReturn("<!doctype html><html lang=\"ko\"><body>보고서</body></html>");
         MockMvc mockMvc = mockMvcBuilder(reportService, archiveService, accessPolicy).build();
 
@@ -50,6 +51,7 @@ class LocationAnalysisControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("보고서")));
+        verify(archiveService).html("report-1", OWNER.userId());
     }
 
     /**
@@ -80,6 +82,7 @@ class LocationAnalysisControllerTest {
                 .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"location-analysis-undated-foot-traffic-analysis-v1.pdf\""))
                 .andExpect(content().bytes(new byte[]{'%', 'P', 'D', 'F', '-'}));
+        verify(archiveService).archive(org.mockito.ArgumentMatchers.eq(OWNER.userId()), any(), any());
     }
 
     /**
