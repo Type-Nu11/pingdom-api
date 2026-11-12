@@ -117,9 +117,7 @@ public class AdminDashboardQueryService {
 
     private long countDuplicatePlaceGroups() {
         return adminPlaceDuplicateResolver
-                .analyze(mapPlaceDuplicateQueryRepository.findPotentialDuplicatePlaces())
-                .groups()
-                .size();
+                .countGroups(mapPlaceDuplicateQueryRepository.findPotentialDuplicatePlaces());
     }
 
     /**
