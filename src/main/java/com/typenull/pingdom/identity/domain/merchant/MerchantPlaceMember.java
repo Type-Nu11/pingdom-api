@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * 장소 팀원의 역할과 활성 상태를 관리.
- * 일반 역할 변경·재활성화에서는 OWNER를 부여할 수 없고 소유권 이전용 전용 메서드로 구분.
+ * 일반 역할 변경·재활성화에서는 OWNER를 부여할 수 없고 현재 OWNER의 역할 변경은 소유권 이전용 전용 메서드로 제한.
  */
 @Getter
 @Entity
@@ -77,6 +77,9 @@ public class MerchantPlaceMember {
     public void changeRole(MerchantPlaceMemberRole role, LocalDateTime now) {
         if (status != MerchantPlaceMemberStatus.ACTIVE) {
             throw new IllegalStateException("활성 팀원만 권한을 변경할 수 있습니다.");
+        }
+        if (this.role == MerchantPlaceMemberRole.OWNER) {
+            throw new IllegalArgumentException("OWNER 권한은 소유권 이전으로만 변경할 수 있습니다.");
         }
         if (role == MerchantPlaceMemberRole.OWNER) {
             throw new IllegalArgumentException("팀원에게 OWNER 권한을 부여할 수 없습니다.");
