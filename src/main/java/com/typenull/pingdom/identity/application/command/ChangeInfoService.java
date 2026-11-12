@@ -11,8 +11,12 @@ import com.typenull.pingdom.identity.domain.exception.UsersException;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import com.typenull.pingdom.shared.support.S3ObjectStorage.S3PutResult;
 import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageException;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,17 +45,41 @@ public class ChangeInfoService {
 
     /**
      * 회원을 찾아 요청 이름으로 변경. 회원이 없으면 USER_NOT_FOUND를 반환.
-     * 현재 이름과 요청 이름이 같고 해당 이름이 이미 존재하면 USERNAME_ALREADY_EXISTS로 거절.
+     * 현재 이름 유지는 허용하고 다른 회원의 이름 또는 DB 유일 제약 경쟁은 같은 중복 오류로 거절.
      */
     @Transactional
     public void changeUsername(ChangeUsernameRequest request, Long userId) {
         User user = getUser(userId);
 
-        if(user.getUsername().equals(request.newUsername()) && userRepository.existsByUsername(request.newUsername())){
+        if (user.getUsername().equals(request.newUsername())) {
+            return;
+        }
+        if (userRepository.existsByUsername(request.newUsername())) {
             throw new UsersException(UsersErrorCode.USERNAME_ALREADY_EXISTS);
         }
 
         user.changeUsername(request.newUsername());
+        try {
+            // 커밋 전에 경쟁 실패를 관찰해야 변경 API의 기존 도메인 오류 계약을 보존할 수 있습니다.
+            userRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            if (isUsernameUniqueViolation(exception)) {
+                throw new UsersException(UsersErrorCode.USERNAME_ALREADY_EXISTS);
+            }
+            throw exception;
+        }
+    }
+
+    private boolean isUsernameUniqueViolation(Throwable exception) {
+        Set<Throwable> visited = new HashSet<>();
+        for (Throwable cause = exception; cause != null && visited.add(cause); cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException violation
+                    && "23505".equals(violation.getSQLState())
+                    && "uk_users_username".equals(violation.getConstraintName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

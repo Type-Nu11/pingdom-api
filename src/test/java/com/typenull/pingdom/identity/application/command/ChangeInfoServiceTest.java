@@ -1,21 +1,28 @@
 package com.typenull.pingdom.identity.application.command;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.*;
+
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
+import com.typenull.pingdom.identity.domain.exception.UsersErrorCode;
+import com.typenull.pingdom.identity.domain.exception.UsersException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.api.dto.profile.ChangePasswordRequest;
-import com.typenull.pingdom.identity.application.command.ChangeInfoService;
+import com.typenull.pingdom.identity.api.dto.profile.ChangeUsernameRequest;
+import java.sql.SQLException;
+import java.util.Optional;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ChangeInfoServiceTest {
@@ -28,6 +35,113 @@ class ChangeInfoServiceTest {
 
     @InjectMocks
     private ChangeInfoService changeInfoService;
+
+    @Test
+    void keepsCurrentUsernameWithoutAnotherWrite() {
+        User user = usernameUser();
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        changeInfoService.changeUsername(new ChangeUsernameRequest("current-user"), 1L);
+
+        assertThat(user.getUsername()).isEqualTo("current-user");
+        verify(userRepository, never()).existsByUsername(anyString());
+        verify(userRepository, never()).flush();
+    }
+
+    @Test
+    void changesAvailableUsername() {
+        User user = usernameUser();
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        changeInfoService.changeUsername(new ChangeUsernameRequest("available-user"), 1L);
+
+        assertThat(user.getUsername()).isEqualTo("available-user");
+        verify(userRepository).existsByUsername("available-user");
+        verify(userRepository).flush();
+    }
+
+    @Test
+    void rejectsAnotherUsersUsernameBeforeMutation() {
+        User user = usernameUser();
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.existsByUsername("taken-user")).thenReturn(true);
+
+        assertThatThrownBy(() -> changeInfoService.changeUsername(new ChangeUsernameRequest("taken-user"), 1L))
+                .isInstanceOfSatisfying(UsersException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(UsersErrorCode.USERNAME_ALREADY_EXISTS));
+
+        assertThat(user.getUsername()).isEqualTo("current-user");
+        verify(userRepository, never()).flush();
+    }
+
+    @Test
+    void mapsExactUsernameUniqueRaceToExistingProfileContract() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(usernameUser()));
+        DataIntegrityViolationException failure = integrityFailure("uk_users_username", "23505");
+        doThrow(failure).when(userRepository).flush();
+
+        assertThatThrownBy(() -> changeInfoService.changeUsername(new ChangeUsernameRequest("raced-user"), 1L))
+                .isInstanceOfSatisfying(UsersException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(UsersErrorCode.USERNAME_ALREADY_EXISTS));
+    }
+
+    @Test
+    void preservesOtherIntegrityFailuresEvenWhenMessageMentionsUsernameConstraint() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(usernameUser()));
+        DataIntegrityViolationException failure = integrityFailure("uk_users_email", "23505");
+        doThrow(failure).when(userRepository).flush();
+
+        assertThatThrownBy(() -> changeInfoService.changeUsername(new ChangeUsernameRequest("next-user"), 1L))
+                .isSameAs(failure);
+    }
+
+    @Test
+    void doesNotTreatAConstraintNameSubstringAsUsernameUniqueViolation() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(usernameUser()));
+        DataIntegrityViolationException failure = integrityFailure("other_uk_users_username", "23505");
+        doThrow(failure).when(userRepository).flush();
+
+        assertThatThrownBy(() -> changeInfoService.changeUsername(new ChangeUsernameRequest("next-user"), 1L))
+                .isSameAs(failure);
+    }
+
+    @Test
+    void preservesNonUniqueConstraintFailure() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(usernameUser()));
+        DataIntegrityViolationException failure = integrityFailure("uk_users_username", "23514");
+        doThrow(failure).when(userRepository).flush();
+
+        assertThatThrownBy(() -> changeInfoService.changeUsername(new ChangeUsernameRequest("next-user"), 1L))
+                .isSameAs(failure);
+    }
+
+    @Test
+    void preservesUserOptimisticConflictForTheExistingHandler() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(usernameUser()));
+        ObjectOptimisticLockingFailureException failure = new ObjectOptimisticLockingFailureException(User.class, 1L);
+        doThrow(failure).when(userRepository).flush();
+
+        assertThatThrownBy(() -> changeInfoService.changeUsername(new ChangeUsernameRequest("next-user"), 1L))
+                .isSameAs(failure);
+    }
+
+    @Test
+    void rejectsMissingUser() {
+        assertThatThrownBy(() -> changeInfoService.changeUsername(new ChangeUsernameRequest("next-user"), 1L))
+                .isInstanceOfSatisfying(UsersException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(UsersErrorCode.USER_NOT_FOUND));
+        verify(userRepository, never()).flush();
+    }
+
+    private User usernameUser() {
+        return User.builder().id(1L).username("current-user").build();
+    }
+
+    private DataIntegrityViolationException integrityFailure(String constraint, String sqlState) {
+        return new DataIntegrityViolationException("uk_users_username is mentioned but not trusted",
+                new IllegalStateException("wrapped", new ConstraintViolationException(
+                        "hidden detail", new SQLException("db failure", sqlState), constraint)));
+    }
 
     /**
      * 현재 비밀번호가 인코더 검증을 통과하면 새 비밀번호를 암호화한 값으로 사용자 변경을 호출하는지 검증.
