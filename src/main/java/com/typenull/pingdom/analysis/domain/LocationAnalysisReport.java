@@ -24,6 +24,10 @@ public class LocationAnalysisReport {
     @Column(name = "report_id", length = 36, nullable = false, updatable = false)
     private String reportId;
 
+    // 기존 이메일 전용 보고서는 null로 격리하며, 신규 보고서의 소유자는 생성 후 변경하지 않습니다.
+    @Column(name = "owner_user_id", updatable = false)
+    private Long ownerUserId;
+
     @Column(name = "report_name", length = 200, nullable = false)
     private String reportName;
 
@@ -71,6 +75,7 @@ public class LocationAnalysisReport {
 
     private LocationAnalysisReport(
             String reportId,
+            long ownerUserId,
             String reportName,
             String category,
             String region,
@@ -84,7 +89,11 @@ public class LocationAnalysisReport {
             byte[] pdfContent,
             LocalDateTime now
     ) {
+        if (ownerUserId <= 0) {
+            throw new IllegalArgumentException("보고서 소유자 ID는 양수여야 합니다.");
+        }
         this.reportId = reportId;
+        this.ownerUserId = ownerUserId;
         this.reportName = reportName;
         this.category = category;
         this.region = region;
@@ -102,6 +111,7 @@ public class LocationAnalysisReport {
 
     public static LocationAnalysisReport create(
             String reportId,
+            long ownerUserId,
             String reportName,
             String category,
             String region,
@@ -115,7 +125,7 @@ public class LocationAnalysisReport {
             byte[] pdfContent,
             LocalDateTime now
     ) {
-        return new LocationAnalysisReport(reportId, reportName, category, region, targetCustomerGroup,
+        return new LocationAnalysisReport(reportId, ownerUserId, reportName, category, region, targetCustomerGroup,
                 operatingHours, email, privacyConsent, publishedDate, analysisBasisDate, htmlContent, pdfContent, now);
     }
 
