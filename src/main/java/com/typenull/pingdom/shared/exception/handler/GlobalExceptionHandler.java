@@ -122,17 +122,17 @@ public class GlobalExceptionHandler {
                 .body(ValidationErrorResponse.of(errors));
     }
 
-    /** 예외 메시지의 알려진 제약명·테이블 문자열로 중복 오류를 분류. 매칭되지 않은 무결성 실패는 공통 500으로 반환. */
+    /** 사용자명은 실제 UNIQUE 제약으로, 나머지는 기존 매핑으로 분류하며 미확인 무결성 실패는 공통 500으로 반환. */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
             DataIntegrityViolationException exception
     ) {
+        if (isUsernameUniqueViolation(exception)) {
+            return errorResponse(AuthErrorCode.DUPLICATE_USERNAME);
+        }
         String message = exception.getMessage();
         if (message != null) {
             String normalizedMessage = message.toLowerCase();
-            if (normalizedMessage.contains("users_username_key")) {
-                return errorResponse(AuthErrorCode.DUPLICATE_USERNAME);
-            }
             if (normalizedMessage.contains("uk_oauth_accounts_provider_provider_id")) {
                 return errorResponse(AuthErrorCode.OAUTH_ACCOUNT_ALREADY_LINKED);
             }
@@ -145,6 +145,18 @@ public class GlobalExceptionHandler {
         }
 
         return errorResponse(CommonErrorCode.DATA_INTEGRITY_VIOLATION);
+    }
+
+    private boolean isUsernameUniqueViolation(Throwable exception) {
+        Set<Throwable> visited = new HashSet<>();
+        for (Throwable cause = exception; cause != null && visited.add(cause); cause = cause.getCause()) {
+            if (cause instanceof org.hibernate.exception.ConstraintViolationException violation
+                    && "23505".equals(violation.getSQLState())
+                    && "uk_users_username".equals(violation.getConstraintName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** User 쓰기의 flush·commit 충돌은 자동 재시도 없이 거절하고 다른 도메인의 기존 오류 계약은 유지. */
