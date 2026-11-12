@@ -9,6 +9,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import org.springframework.stereotype.Component;
 
 /**
@@ -72,6 +73,34 @@ public class RecommendationMetrics {
                         "reason", safeTag(reason)
                 )
         ).increment();
+    }
+
+    public void recordSimilarityCoverage(boolean loadSnapshots, long hitPairCount, long missingPairCount) {
+        String mode = loadSnapshots ? "online" : "rebuild";
+        meterRegistry.counter("pingdom.recommendation.similarity.pairs", "mode", mode, "result", "hit")
+                .increment(hitPairCount);
+        meterRegistry.counter("pingdom.recommendation.similarity.pairs", "mode", mode, "result", "miss")
+                .increment(missingPairCount);
+    }
+
+    public void recordSimilarityBookmarkQuery(boolean loadSnapshots, long rowCount, long elapsedNanos) {
+        recordSimilarityReactionQuery(loadSnapshots, "bookmark", rowCount, elapsedNanos);
+    }
+
+    public void recordSimilarityLikeQuery(boolean loadSnapshots, long rowCount, long elapsedNanos) {
+        recordSimilarityReactionQuery(loadSnapshots, "like", rowCount, elapsedNanos);
+    }
+
+    private void recordSimilarityReactionQuery(
+            boolean loadSnapshots,
+            String reaction,
+            long rowCount,
+            long elapsedNanos
+    ) {
+        Tags tags = Tags.of("mode", loadSnapshots ? "online" : "rebuild", "reaction", reaction);
+        meterRegistry.summary("pingdom.recommendation.similarity.reaction.rows", tags).record(rowCount);
+        meterRegistry.timer("pingdom.recommendation.similarity.reaction.query", tags)
+                .record(elapsedNanos, TimeUnit.NANOSECONDS);
     }
 
     private void recordSnapshotResyncItemCount(String item, long count) {
