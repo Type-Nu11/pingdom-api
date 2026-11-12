@@ -15,6 +15,7 @@ public enum MapErrorCode implements ErrorCode {
     ROUTE_PROVIDER_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "경로 공급자 응답 시간이 초과되었습니다."),
     ROUTE_PROVIDER_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "경로 조회 서비스를 일시적으로 사용할 수 없습니다."),
     IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."),
+    IMAGE_PLACE_CHANGED(HttpStatus.CONFLICT, "게시글의 연결 장소가 변경되었습니다. 다시 시도해주세요."),
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "신고 내역을 찾을 수 없습니다."),
     ALREADY_REPORTED_IMAGE(HttpStatus.CONFLICT, "같은 게시글은 한 번만 신고할 수 있습니다."),
     REPORTER_RESTRICTED(HttpStatus.FORBIDDEN, "허위 신고 누적으로 신고 기능이 일시 제한되었습니다."),

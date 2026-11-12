@@ -4,6 +4,7 @@ import com.typenull.pingdom.place.domain.place.core.MapBookmark;
 
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
+import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -13,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -25,6 +27,24 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public interface MapImageRepository extends JpaRepository<MapImage,Long> {
+
+    interface ImagePlaceReference {
+        Long getImageId();
+
+        Long getPlaceId();
+    }
+
+    // 엔티티를 미리 적재하지 않고 장소를 먼저 잠글 수 있도록 FK 식별자만 읽습니다.
+    @Query("""
+            SELECT image.id AS imageId, place.id AS placeId
+            FROM MapImage image LEFT JOIN image.mapPlace place
+            WHERE image.id = :imageId
+            """)
+    Optional<ImagePlaceReference> findPlaceReferenceById(@Param("imageId") Long imageId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT image FROM MapImage image WHERE image.id = :imageId")
+    Optional<MapImage> findByIdForUpdate(@Param("imageId") Long imageId);
 
     interface PlaceImageAggregateProjection {
         Long getPlaceId();
