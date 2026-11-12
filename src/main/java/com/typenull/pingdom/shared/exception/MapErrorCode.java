@@ -14,6 +14,7 @@ public enum MapErrorCode implements ErrorCode {
     ROUTE_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "경로 조회 요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
     ROUTE_PROVIDER_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "경로 공급자 응답 시간이 초과되었습니다."),
     ROUTE_PROVIDER_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "경로 조회 서비스를 일시적으로 사용할 수 없습니다."),
+    RECOMMENDATION_RESYNC_IN_PROGRESS(HttpStatus.CONFLICT, "다른 추천 재동기화가 진행 중입니다. 다시 시도해주세요."),
     IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."),
     IMAGE_PLACE_CHANGED(HttpStatus.CONFLICT, "게시글의 연결 장소가 변경되었습니다. 다시 시도해주세요."),
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "신고 내역을 찾을 수 없습니다."),
