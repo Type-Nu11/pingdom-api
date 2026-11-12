@@ -1,6 +1,9 @@
 package com.typenull.pingdom.engagement.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -15,6 +18,7 @@ import com.typenull.pingdom.engagement.infrastructure.persistence.ReporterModera
 import com.typenull.pingdom.engagement.infrastructure.persistence.TrustScoreAnomalyRepository;
 import com.typenull.pingdom.engagement.infrastructure.persistence.TrustScoreInterventionRuleRepository;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
+import com.typenull.pingdom.shared.exception.MapException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -61,9 +65,9 @@ class ReportPolicyServiceTest {
                 placeGrowthService,
                 CLOCK
         );
-        when(trustScoreAnomalyRepository.findByReporterUserIdAndResolvedAtIsNullOrderByDetectedAtDescIdDesc(REPORTER_ID))
+        lenient().when(trustScoreAnomalyRepository.findByReporterUserIdAndResolvedAtIsNullOrderByDetectedAtDescIdDesc(REPORTER_ID))
                 .thenReturn(List.of());
-        when(trustScoreInterventionRuleRepository.findByEnabledTrueOrderByPriorityAscIdAsc())
+        lenient().when(trustScoreInterventionRuleRepository.findByEnabledTrueOrderByPriorityAscIdAsc())
                 .thenReturn(List.of());
     }
 
@@ -146,6 +150,65 @@ class ReportPolicyServiceTest {
         assertThat(policy.getRestrictedUntil()).isEqualTo(NOW.plusDays(3));
         assertThat(policy.getRestrictionReason()).isEqualTo("priority-10");
         verify(reporterPolicyRepository).save(policy);
+    }
+
+    @Test
+    void clearsExpiredRestrictionOnlyAfterLockingPolicy() {
+        ReporterModerationPolicy policy = ReporterModerationPolicy.builder()
+                .reporterUserId(REPORTER_ID).reporterUsername("reporter")
+                .falseReportCount(3).trustScore(40).restrictedUntil(NOW.minusMinutes(1))
+                .restrictionReason("expired").build();
+        when(reporterPolicyRepository.findByReporterUserIdForUpdate(REPORTER_ID)).thenReturn(Optional.of(policy));
+
+        service.validateCanReport(REPORTER_ID, NOW);
+
+        assertThat(policy.getFalseReportCount()).isZero();
+        assertThat(policy.getRestrictedUntil()).isNull();
+        verify(reporterPolicyRepository, never()).findById(REPORTER_ID);
+    }
+
+    @Test
+    void rejectsReporterWhoseLockedRestrictionIsStillActive() {
+        ReporterModerationPolicy policy = ReporterModerationPolicy.builder()
+                .reporterUserId(REPORTER_ID).reporterUsername("reporter")
+                .restrictedUntil(NOW.plusDays(1)).build();
+        when(reporterPolicyRepository.findByReporterUserIdForUpdate(REPORTER_ID)).thenReturn(Optional.of(policy));
+
+        assertThatThrownBy(() -> service.validateCanReport(REPORTER_ID, NOW)).isInstanceOf(MapException.class);
+    }
+
+    @Test
+    void reusesConcurrentlyCreatedPolicyWithoutResettingStatistics() {
+        ReporterModerationPolicy policy = ReporterModerationPolicy.builder()
+                .reporterUserId(REPORTER_ID).reporterUsername("reporter")
+                .submittedCount(4).acceptedCount(2).build();
+        when(reporterPolicyRepository.findByReporterUserIdForUpdate(REPORTER_ID))
+                .thenReturn(Optional.empty(), Optional.of(policy));
+        when(reporterPolicyRepository.insertIfAbsent(REPORTER_ID, "reporter")).thenReturn(0);
+
+        service.recordSubmitted(REPORTER_ID, "reporter");
+
+        assertThat(policy.getSubmittedCount()).isEqualTo(5);
+        assertThat(policy.getAcceptedCount()).isEqualTo(2);
+        verify(reporterPolicyRepository).insertIfAbsent(REPORTER_ID, "reporter");
+        verify(reporterPolicyRepository).save(policy);
+    }
+
+    @Test
+    void rejectsRestrictionCreatedAfterInitialPolicyWasAbsent() {
+        ReporterModerationPolicy policy = ReporterModerationPolicy.builder()
+                .reporterUserId(REPORTER_ID).reporterUsername("reporter")
+                .submittedCount(4).restrictedUntil(NOW.plusDays(1)).build();
+        when(reporterPolicyRepository.findByReporterUserIdForUpdate(REPORTER_ID))
+                .thenReturn(Optional.empty(), Optional.empty(), Optional.of(policy));
+        when(reporterPolicyRepository.insertIfAbsent(REPORTER_ID, "reporter")).thenReturn(0);
+        service.validateCanReport(REPORTER_ID, NOW);
+
+        assertThatThrownBy(() -> service.recordSubmitted(REPORTER_ID, "reporter"))
+                .isInstanceOf(MapException.class);
+
+        assertThat(policy.getSubmittedCount()).isEqualTo(4);
+        verify(reporterPolicyRepository, never()).save(policy);
     }
 
     /**

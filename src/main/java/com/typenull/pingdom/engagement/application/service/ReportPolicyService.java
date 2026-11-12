@@ -27,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 신고 접수·승인·반려 통계로 신고자 신뢰도와 제한, 이미지 자동 숨김 관리.
- * 기존 신고자 정책 갱신은 행 잠금을 사용하며 최초 정책 생성 경합은 별도 재시도 없이 전파.
+ * 신고자 정책의 제한·통계 갱신은 같은 행 잠금을 사용하며 최초 생성 경합은 INSERT 충돌 무시 후 재조회.
  */
 @Service
 @RequiredArgsConstructor
@@ -52,18 +52,15 @@ public class ReportPolicyService {
 
     // 신고자의 현재 제한 상태를 정리한 뒤 새로운 신고를 등록할 수 있는지 검증.
     public void validateCanReport(Long reporterUserId, LocalDateTime now) {
-        reporterPolicyRepository.findById(reporterUserId)
-                .ifPresent(policy -> {
-                    policy.clearExpiredRestriction(now);
-                    if (policy.isRestricted(now)) {
-                        throw new MapException(MapErrorCode.REPORTER_RESTRICTED);
-                    }
-                });
+        reporterPolicyRepository.findByReporterUserIdForUpdate(reporterUserId)
+                .ifPresent(policy -> validateCanReport(policy, now));
     }
 
     // 신고 접수 건수를 기록하고 신고자 정책을 저장.
     public void recordSubmitted(Long reporterUserId, String reporterUsername) {
         ReporterModerationPolicy policy = getOrCreate(reporterUserId, reporterUsername);
+        // 사전 검증 당시 정책이 없었다면 생성 경합 후 취득한 정책의 제한도 확인해야 합니다.
+        validateCanReport(policy, LocalDateTime.now(clock));
         policy.recordSubmitted(reporterUsername);
         reporterPolicyRepository.save(policy);
     }
@@ -157,7 +154,17 @@ public class ReportPolicyService {
     // 비관적 잠금으로 기존 정책을 가져오거나 신규 신고자 정책을 생성.
     private ReporterModerationPolicy getOrCreate(Long reporterUserId, String reporterUsername) {
         return reporterPolicyRepository.findByReporterUserIdForUpdate(reporterUserId)
-                .orElseGet(() -> ReporterModerationPolicy.create(reporterUserId, reporterUsername));
+                .orElseGet(() -> {
+                    reporterPolicyRepository.insertIfAbsent(reporterUserId, reporterUsername);
+                    return reporterPolicyRepository.findByReporterUserIdForUpdate(reporterUserId).orElseThrow();
+                });
+    }
+
+    private void validateCanReport(ReporterModerationPolicy policy, LocalDateTime now) {
+        policy.clearExpiredRestriction(now);
+        if (policy.isRestricted(now)) {
+            throw new MapException(MapErrorCode.REPORTER_RESTRICTED);
+        }
     }
 
     // 신뢰도 급락, 허위 신고 증가, 낮은 승인율을 미해결 이상으로 기록.
