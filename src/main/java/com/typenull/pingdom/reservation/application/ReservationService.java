@@ -22,6 +22,14 @@ import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -222,12 +230,14 @@ public class ReservationService {
         Page<Reservation> reservations = reservationRepository.findAllForAdmin(status, placeId, ownerId, touristUserId,
                 reservationFrom != null, reservationFrom, reservationTo != null, reservationTo,
                 pageRequest(page, limit));
-        return new AdminReservationPageResponse(reservations.getContent().stream().map(this::toAdminResponse).toList(),
+        return new AdminReservationPageResponse(toAdminResponses(reservations.getContent()),
                 page, limit, reservations.getTotalElements(), reservations.getTotalPages(), reservations.hasNext());
     }
 
     @Transactional(readOnly = true)
-    public AdminReservationResponse getForAdmin(Long reservationId) { return toAdminResponse(find(reservationId)); }
+    public AdminReservationResponse getForAdmin(Long reservationId) {
+        return toAdminResponses(List.of(find(reservationId))).getFirst();
+    }
 
     /** 현재 장소 소유권을 잠금 확인하고 승인 결과와 이력을 같은 트랜잭션으로 저장한다. */
     @Transactional
@@ -270,20 +280,59 @@ public class ReservationService {
         }
     }
 
-    private AdminReservationResponse toAdminResponse(Reservation reservation) {
-        PlaceAvailability availability = findAvailability(reservation.getAvailabilityId());
-        User tourist = userRepository.findById(reservation.getTouristUserId()).orElse(null);
-        Long currentOwnerId = ownerPlaceRepository.findById(availability.getPlaceId())
-                .map(MerchantOwnerPlace::getMerchantOwnerUserId).orElse(null);
-        User owner = currentOwnerId == null ? null : userRepository.findById(currentOwnerId).orElse(null);
-        MapPlace place = mapPlaceRepository.findById(availability.getPlaceId()).orElse(null);
+    private List<AdminReservationResponse> toAdminResponses(List<Reservation> reservations) {
+        if (reservations.isEmpty()) {
+            return List.of();
+        }
+        AdminReservationReadData data = loadAdminReadData(reservations);
+        return reservations.stream().map(reservation -> toAdminResponse(reservation, data)).toList();
+    }
+
+    private AdminReservationReadData loadAdminReadData(List<Reservation> reservations) {
+        List<Long> availabilityIds = reservations.stream().map(Reservation::getAvailabilityId).distinct().toList();
+        Map<Long, PlaceAvailability> availabilities = availabilityRepository.findAllById(availabilityIds).stream()
+                .collect(Collectors.toMap(PlaceAvailability::getId, Function.identity()));
+        for (Long availabilityId : availabilityIds) {
+            if (!availabilities.containsKey(availabilityId)) {
+                throw new ReservationException(ReservationErrorCode.RESERVATION_NOT_FOUND);
+            }
+        }
+        List<Long> placeIds = availabilities.values().stream().map(PlaceAvailability::getPlaceId).distinct().toList();
+        Map<Long, MerchantOwnerPlace> owners = ownerPlaceRepository.findAllByPlaceIdIn(placeIds).stream()
+                .collect(Collectors.toMap(MerchantOwnerPlace::getPlaceId, Function.identity()));
+        Set<Long> userIds = new LinkedHashSet<>();
+        reservations.forEach(reservation -> userIds.add(reservation.getTouristUserId()));
+        owners.values().forEach(owner -> userIds.add(owner.getMerchantOwnerUserId()));
+        Map<Long, User> users = userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+        Map<Long, MapPlace> places = mapPlaceRepository.findAllById(placeIds).stream()
+                .collect(Collectors.toMap(MapPlace::getId, Function.identity()));
+        List<Long> reservationIds = reservations.stream().map(Reservation::getId).toList();
+        Map<Long, List<AdminReservationStatusHistoryResponse>> histories = new HashMap<>();
+        for (ReservationStatusHistory history : reservationStatusHistoryRepository
+                .findAllByReservationIdInOrderByReservationIdAscChangedAtAscIdAsc(reservationIds)) {
+            histories.computeIfAbsent(history.getReservationId(), ignored -> new ArrayList<>())
+                    .add(AdminReservationStatusHistoryResponse.from(history));
+        }
+        return new AdminReservationReadData(availabilities, owners, users, places, histories);
+    }
+
+    private AdminReservationResponse toAdminResponse(Reservation reservation, AdminReservationReadData data) {
+        PlaceAvailability availability = data.availabilities().get(reservation.getAvailabilityId());
+        User tourist = data.users().get(reservation.getTouristUserId());
+        MerchantOwnerPlace ownerPlace = data.owners().get(availability.getPlaceId());
+        Long currentOwnerId = ownerPlace == null ? null : ownerPlace.getMerchantOwnerUserId();
+        User owner = currentOwnerId == null ? null : data.users().get(currentOwnerId);
+        MapPlace place = data.places().get(availability.getPlaceId());
         return AdminReservationResponse.of(reservation, tourist == null ? null : tourist.getUsername(),
                 currentOwnerId, owner == null ? null : owner.getUsername(), availability.getPlaceId(),
                 place == null ? null : place.getName(),
-                reservationStatusHistoryRepository
-                        .findAllByReservationIdOrderByChangedAtAscIdAsc(reservation.getId()).stream()
-                        .map(AdminReservationStatusHistoryResponse::from).toList());
+                data.histories().getOrDefault(reservation.getId(), List.of()));
     }
+
+    private record AdminReservationReadData(Map<Long, PlaceAvailability> availabilities,
+            Map<Long, MerchantOwnerPlace> owners, Map<Long, User> users, Map<Long, MapPlace> places,
+            Map<Long, List<AdminReservationStatusHistoryResponse>> histories) {}
 
     // 사용자 ID로 관광객 계정을 조회해 유효성을 검증.
     private void requireTourist(Long userId) {
