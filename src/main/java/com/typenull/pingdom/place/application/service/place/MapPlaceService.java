@@ -29,11 +29,11 @@ public class MapPlaceService {
     /**
      * 현재 Merchant 소유 연결이 확인된 장소의 북마크 추세·북마크·장소·추천 스냅샷을 삭제.
      * 장소 부재나 소유권 불일치는 거절하며, 이 메서드에서 정리하지 않는 다른 참조의 FK 제약은 삭제를 실패시킬 수 있음.
-     * 장소 및 소유 연결에 대한 별도 잠금은 미사용.
+     * snapshot writer와 같은 장소 잠금을 먼저 확보.
      */
     @Transactional
     public void deletePlace(long placeId, long userId) {
-        MapPlace mapPlace = mapPlaceRepository.findById(placeId)
+        MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
 
         if (!merchantOwnerPlaceRepository.existsByPlaceIdAndMerchantOwnerUserId(placeId, userId)) {

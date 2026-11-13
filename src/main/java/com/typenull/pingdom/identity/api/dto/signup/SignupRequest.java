@@ -30,7 +30,7 @@ public record SignupRequest(
         @Schema(description = "출생 연도", example = "1998", nullable = true)
         Integer birthYear,
 
-        @Schema(description = "프로필 이미지 URL", example = "https://cdn.pingdom.com/profiles/user1.png", nullable = true)
+        @Schema(description = "프로필 이미지 URL. 서버 업로드 전용 users/profile-images/tracked/ namespace는 가입 입력에서 사용할 수 없습니다.", example = "https://cdn.pingdom.com/profiles/user1.png", nullable = true)
         String profileImageUrl,
 
         @NotBlank(message = "언어는 필수입니다.")

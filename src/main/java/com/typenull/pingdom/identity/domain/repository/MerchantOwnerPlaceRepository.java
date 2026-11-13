@@ -15,6 +15,13 @@ public interface MerchantOwnerPlaceRepository extends JpaRepository<MerchantOwne
 
     List<MerchantOwnerPlace> findAllByMerchantOwnerUserIdOrderByPlaceIdAsc(Long merchantOwnerUserId);
 
+    List<MerchantOwnerPlace> findAllByMerchantOwnerUserIdInOrderByMerchantOwnerUserIdAscPlaceIdAsc(
+            Collection<Long> merchantOwnerUserIds
+    );
+
+    @Query("SELECT place.placeId FROM MerchantOwnerPlace place WHERE place.merchantOwnerUserId = :userId ORDER BY place.placeId ASC")
+    List<Long> findPlaceIdsByMerchantOwnerUserId(@Param("userId") Long userId);
+
     List<MerchantOwnerPlace> findAllByPlaceIdIn(Collection<Long> placeIds);
 
     boolean existsByPlaceIdAndMerchantOwnerUserId(Long placeId, Long merchantOwnerUserId);
@@ -26,4 +33,11 @@ public interface MerchantOwnerPlaceRepository extends JpaRepository<MerchantOwne
     @Modifying
     @Query("DELETE FROM MerchantOwnerPlace place WHERE place.merchantOwnerUserId = :userId")
     int deleteAllByMerchantOwnerUserId(@Param("userId") Long userId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM MerchantOwnerPlace place WHERE place.merchantOwnerUserId = :userId AND place.placeId IN :placeIds")
+    int deleteAllByMerchantOwnerUserIdAndPlaceIdIn(
+            @Param("userId") Long userId,
+            @Param("placeIds") Collection<Long> placeIds
+    );
 }

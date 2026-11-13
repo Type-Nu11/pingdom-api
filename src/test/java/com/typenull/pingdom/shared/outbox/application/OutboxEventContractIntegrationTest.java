@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.identity.application.port.EmailSendResult;
 import com.typenull.pingdom.identity.application.port.EmailSender;
+import com.typenull.pingdom.identity.application.service.auth.AuthEmailDispatchPolicy;
 import com.typenull.pingdom.notification.application.service.NotificationDeliveryRecorder;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEvent;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventStatus;
@@ -27,6 +28,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -72,6 +74,7 @@ class OutboxEventContractIntegrationTest {
     }
 
     @MockBean private EmailSender emailSender;
+    @MockBean private AuthEmailDispatchPolicy dispatchPolicy;
     @MockBean private NotificationDeliveryRecorder notificationDeliveryRecorder;
 
     @Autowired private OutboxEventPublisher eventPublisher;
@@ -79,6 +82,7 @@ class OutboxEventContractIntegrationTest {
     @Autowired private OutboxEventProcessor processor;
     @Autowired private OutboxEventRepository eventRepository;
     @Autowired private OutboxProperties outboxProperties;
+    @Autowired private JdbcTemplate jdbcTemplate;
 
     /**
      * 이벤트 테이블을 비우고 Clock과 이메일/전달 기록 대역을 초기화해 각 재시도 시나리오를 격리.
@@ -87,7 +91,10 @@ class OutboxEventContractIntegrationTest {
     void setUp() {
         eventRepository.deleteAllInBatch();
         OUTBOX_CLOCK.set(INITIAL_TIME);
-        reset(emailSender, notificationDeliveryRecorder);
+        reset(emailSender, notificationDeliveryRecorder, dispatchPolicy);
+        when(dispatchPolicy.canSendVerification(Long.valueOf(OutboxEventContractFixture.AGGREGATE_ID),
+                OutboxEventContractFixture.RECIPIENT_EMAIL, OutboxEventContractFixture.VERIFICATION_CODE,
+                OutboxEventContractFixture.EXPIRES_AT)).thenReturn(true);
     }
 
     /**
@@ -117,13 +124,13 @@ class OutboxEventContractIntegrationTest {
         assertThat(pending.getAggregateId()).isEqualTo(OutboxEventContractFixture.AGGREGATE_ID);
         assertThat(pending.getPayload()).contains(OutboxEventContractFixture.RECIPIENT_EMAIL);
 
-        assertThat(claimService.claimReadyEvents()).containsExactly(eventId);
-        processor.process(eventId);
+        LocalDateTime beforeCompletion = eventRepository.databaseNow();
+        processClaimedEvent(eventId);
 
         OutboxEvent succeeded = event(eventId);
         assertThat(succeeded.getStatus()).isEqualTo(OutboxEventStatus.SUCCEEDED);
         assertThat(succeeded.getAttemptCount()).isZero();
-        assertThat(succeeded.getProcessedAt()).isEqualTo(now());
+        assertThat(succeeded.getProcessedAt()).isBetween(beforeCompletion, eventRepository.databaseNow());
         verify(emailSender).sendVerificationEmail(
                 OutboxEventContractFixture.RECIPIENT_EMAIL,
                 OutboxEventContractFixture.VERIFICATION_CODE
@@ -144,15 +151,16 @@ class OutboxEventContractIntegrationTest {
                 );
         String eventId = publishEmail("retry");
 
+        LocalDateTime beforeFailure = eventRepository.databaseNow();
         processClaimedEvent(eventId);
 
         OutboxEvent retry = event(eventId);
         assertThat(retry.getStatus()).isEqualTo(OutboxEventStatus.RETRY);
         assertThat(retry.getAttemptCount()).isEqualTo(1);
-        assertThat(retry.getLastError()).contains("provider temporarily unavailable");
-        assertThat(retry.getNextAttemptAt()).isEqualTo(now().plusSeconds(10));
+        assertThat(retry.getLastError()).contains("인증 메일 전송에 실패했습니다.");
+        assertThat(retry.getNextAttemptAt()).isBetween(beforeFailure.plusSeconds(10), eventRepository.databaseNow().plusSeconds(10));
 
-        OUTBOX_CLOCK.advanceSeconds(10);
+        makeRetryReady(eventId);
         processClaimedEvent(eventId);
 
         OutboxEvent succeeded = event(eventId);
@@ -179,10 +187,10 @@ class OutboxEventContractIntegrationTest {
             assertThat(event.getAttemptCount()).isEqualTo(attempt);
             if (attempt < outboxProperties.maxAttempts()) {
                 assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.RETRY);
-                OUTBOX_CLOCK.set(event.getNextAttemptAt().atZone(ZoneOffset.UTC).toInstant());
+                makeRetryReady(eventId);
             } else {
                 assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.FAILED);
-                assertThat(event.getLastError()).contains("provider unavailable");
+                assertThat(event.getLastError()).contains("인증 메일 전송에 실패했습니다.");
             }
         }
     }
@@ -193,9 +201,9 @@ class OutboxEventContractIntegrationTest {
     @Test
     void recoversStaleClaimWithBackoff() {
         String eventId = publishEmail("stale");
-        assertThat(claimService.claimReadyEvents()).containsExactly(eventId);
-
-        OUTBOX_CLOCK.advanceSeconds(301);
+        assertThat(claimService.claimReadyEvents(1)).extracting(OutboxClaim::eventId).containsExactly(eventId);
+        jdbcTemplate.update("UPDATE outbox_event SET lease_until = (clock_timestamp() AT TIME ZONE 'UTC') - INTERVAL '1 second' WHERE event_id = ?", eventId);
+        LocalDateTime beforeRecovery = eventRepository.databaseNow();
 
         assertThat(claimService.recoverStaleEvents()).isEqualTo(1);
 
@@ -203,7 +211,7 @@ class OutboxEventContractIntegrationTest {
         assertThat(recovered.getStatus()).isEqualTo(OutboxEventStatus.RETRY);
         assertThat(recovered.getAttemptCount()).isEqualTo(1);
         assertThat(recovered.getProcessingStartedAt()).isNull();
-        assertThat(recovered.getNextAttemptAt()).isEqualTo(now().plusSeconds(10));
+        assertThat(recovered.getNextAttemptAt()).isBetween(beforeRecovery.plusSeconds(10), eventRepository.databaseNow().plusSeconds(10));
     }
 
     /**
@@ -223,14 +231,18 @@ class OutboxEventContractIntegrationTest {
      * 준비된 이벤트가 기대 ID 하나로만 선점되는지 확인한 뒤 processor로 전달.
      */
     private void processClaimedEvent(String eventId) {
-        List<String> claimedEventIds = claimService.claimReadyEvents();
-        assertThat(claimedEventIds).containsExactly(eventId);
-        processor.process(eventId);
+        List<OutboxClaim> claims = claimService.claimReadyEvents(1);
+        assertThat(claims).extracting(OutboxClaim::eventId).containsExactly(eventId);
+        processor.process(claims.getFirst());
     }
 
     /**
      * 이벤트를 저장소에서 다시 읽어 서비스 호출 이후 실제 영속 상태를 assertion에 제공.
      */
+    private void makeRetryReady(String eventId) {
+        jdbcTemplate.update("UPDATE outbox_event SET next_attempt_at = (clock_timestamp() AT TIME ZONE 'UTC') - INTERVAL '1 second' WHERE event_id = ?", eventId);
+    }
+
     private OutboxEvent event(String eventId) {
         return eventRepository.findById(eventId).orElseThrow();
     }

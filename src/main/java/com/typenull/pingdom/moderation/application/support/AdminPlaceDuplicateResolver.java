@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 /**
  * 장소 쌍의 Kakao ID 일치 또는 정규화 이름·주소 일치와 50m 이하 거리를 중복 근거로 계산.
  * 거리 계산은 좌표 존재를 전제로 수행. 그룹은 중복 연결의 연결 성분으로, 일부 구성원 쌍은 간접 연결만 가능.
- * 입력 전체 쌍을 비교하므로 조회 단계에서 후보 규모를 줄이는 책임은 호출자에게 귀속.
+ * 상세 분석은 입력 전체 쌍을 비교하며, 그룹 수 집계는 같은 식별 키의 장소만 비교.
  */
 @Component
 public class AdminPlaceDuplicateResolver {
@@ -64,6 +64,49 @@ public class AdminPlaceDuplicateResolver {
 
         List<DuplicateGroup> groups = buildGroups(immutableCandidateMap);
         return new DuplicateAnalysis(immutableCandidateMap, groups);
+    }
+
+    /**
+     * 상세 후보를 만들지 않고 Kakao ID 연결과 이름·주소·거리 연결을 합친 성분 수를 집계.
+     * 서로 다른 근거를 통해 이어진 장소도 하나의 그룹이며 고립된 장소는 제외.
+     */
+    public long countGroups(Collection<MapPlace> places) {
+        PlaceGroups groups = new PlaceGroups();
+        Map<String, Long> kakaoRepresentatives = new HashMap<>();
+        Map<NameAddressKey, List<MapPlace>> placesByNameAndAddress = new HashMap<>();
+
+        for (MapPlace place : places) {
+            groups.add(place.getId());
+            String kakaoPlaceId = normalizeKakaoPlaceId(place.getKakaoPlaceId());
+            if (kakaoPlaceId != null) {
+                Long representativeId = kakaoRepresentatives.putIfAbsent(kakaoPlaceId, place.getId());
+                if (representativeId != null) {
+                    groups.connect(representativeId, place.getId());
+                }
+            }
+
+            NameAddressKey key = new NameAddressKey(
+                    normalizeText(place.getName()), normalizeText(place.getAddress()));
+            placesByNameAndAddress.computeIfAbsent(key, ignored -> new ArrayList<>()).add(place);
+        }
+
+        for (List<MapPlace> candidates : placesByNameAndAddress.values()) {
+            for (int index = 0; index < candidates.size(); index++) {
+                MapPlace left = candidates.get(index);
+                for (int innerIndex = index + 1; innerIndex < candidates.size(); innerIndex++) {
+                    MapPlace right = candidates.get(innerIndex);
+                    if (groups.connected(left.getId(), right.getId())) {
+                        continue;
+                    }
+                    if (calculateDistanceMeters(left.getLatitude(), left.getLongitude(),
+                            right.getLatitude(), right.getLongitude()) <= DUPLICATE_DISTANCE_METERS) {
+                        groups.connect(left.getId(), right.getId());
+                    }
+                }
+            }
+        }
+
+        return groups.countDuplicates();
     }
 
     public boolean areDuplicates(MapPlace sourcePlace, MapPlace targetPlace) {
@@ -207,5 +250,52 @@ public class AdminPlaceDuplicateResolver {
             String reason,
             Double distanceMeters
     ) {
+    }
+
+    private record NameAddressKey(String name, String address) {
+    }
+
+    private static final class PlaceGroups {
+
+        private final Map<Long, Long> parents = new HashMap<>();
+        private final Map<Long, Integer> sizes = new HashMap<>();
+
+        private void add(Long placeId) {
+            if (parents.putIfAbsent(placeId, placeId) == null) {
+                sizes.put(placeId, 1);
+            }
+        }
+
+        private boolean connected(Long leftId, Long rightId) {
+            return rootOf(leftId).equals(rootOf(rightId));
+        }
+
+        private void connect(Long leftId, Long rightId) {
+            Long leftRoot = rootOf(leftId);
+            Long rightRoot = rootOf(rightId);
+            if (leftRoot.equals(rightRoot)) {
+                return;
+            }
+            if (sizes.get(leftRoot) < sizes.get(rightRoot)) {
+                Long smallerRoot = leftRoot;
+                leftRoot = rightRoot;
+                rightRoot = smallerRoot;
+            }
+            parents.put(rightRoot, leftRoot);
+            sizes.put(leftRoot, sizes.get(leftRoot) + sizes.remove(rightRoot));
+        }
+
+        private Long rootOf(Long placeId) {
+            Long parentId = parents.get(placeId);
+            if (!parentId.equals(placeId)) {
+                parentId = rootOf(parentId);
+                parents.put(placeId, parentId);
+            }
+            return parentId;
+        }
+
+        private long countDuplicates() {
+            return sizes.values().stream().filter(size -> size > 1).count();
+        }
     }
 }

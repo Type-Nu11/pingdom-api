@@ -17,6 +17,23 @@ import org.springframework.stereotype.Repository;
 public interface NotificationsRepository extends JpaRepository<Notifications, Long> {
     Optional<Notifications> findByIdAndUserId(Long id, Long userId);
 
+    Optional<Notifications> findByUserIdAndEventKey(Long userId, String eventKey);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            INSERT INTO notifications (event_key, type, user_id, title, body, is_read, created_at)
+            VALUES (:eventKey, :type, :userId, :title, :body, false, :createdAt)
+            ON CONFLICT (user_id, event_key) DO NOTHING
+            """, nativeQuery = true)
+    int insertFcmNotificationIfAbsent(
+            @Param("userId") Long userId,
+            @Param("type") String type,
+            @Param("title") String title,
+            @Param("body") String body,
+            @Param("eventKey") String eventKey,
+            @Param("createdAt") LocalDateTime createdAt
+    );
+
     Optional<Notifications> findByIdAndUserIdAndTypeIn(
             Long id,
             Long userId,

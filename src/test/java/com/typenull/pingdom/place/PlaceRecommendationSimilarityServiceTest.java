@@ -6,23 +6,31 @@ import com.typenull.pingdom.place.domain.recommendation.snapshot.PlaceSimilarity
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceSimilaritySnapshotRepository;
+import com.typenull.pingdom.shared.observability.RecommendationMetrics;
 
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.InOrder;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -40,6 +48,9 @@ class PlaceRecommendationSimilarityServiceTest {
     @Mock
     private PlaceSimilaritySnapshotRepository placeSimilaritySnapshotRepository;
 
+    @Mock
+    private RecommendationMetrics recommendationMetrics;
+
     private PlaceRecommendationSimilarityService placeRecommendationSimilarityService;
 
     /**
@@ -51,7 +62,8 @@ class PlaceRecommendationSimilarityServiceTest {
                 mapBookmarkRepository,
                 mapImageLikeRepository,
                 placeRecommendationSnapshotRepository,
-                placeSimilaritySnapshotRepository
+                placeSimilaritySnapshotRepository,
+                recommendationMetrics
         );
 
         when(mapBookmarkRepository.findBookmarkUsersByPlaceIds(anyCollection())).thenReturn(List.of());
@@ -59,6 +71,27 @@ class PlaceRecommendationSimilarityServiceTest {
         when(placeRecommendationSnapshotRepository.findByPlaceIdIn(anyCollection())).thenReturn(List.of());
         when(placeSimilaritySnapshotRepository.findByPlaceIdsWithin(anyCollection())).thenReturn(List.of());
         when(mapBookmarkRepository.countDistinctUserId()).thenReturn(0L);
+    }
+
+    @Test
+    void aggregateInputsMatchUserSetScores() {
+        MapPlace left = place(1L, 35.18, 128.10, 3L);
+        MapPlace right = place(2L, 35.19, 128.11, 4L);
+        var leftTrend = new PlaceRecommendationSimilarityService.TrendProfile(3, 0.5d, true);
+        var rightTrend = new PlaceRecommendationSimilarityService.TrendProfile(4, 0.7d, true);
+        var context = new PlaceRecommendationSimilarityService.SimilarityContext(
+                Map.of(1L, left, 2L, right),
+                Map.of(1L, Set.of(11L, 12L), 2L, Set.of(12L, 13L)),
+                Map.of(1L, Set.of(21L, 22L), 2L, Set.of(22L)),
+                Map.of(1L, leftTrend, 2L, rightTrend), Map.of(), 100L);
+        var original = placeRecommendationSimilarityService.score(left, right, context);
+        var aggregated = placeRecommendationSimilarityService.scoreFromCounts(left, right,
+                2, 2, 1, 2, 1, 1, 100L, leftTrend, rightTrend);
+        assertEquals(original, aggregated);
+        var empty = placeRecommendationSimilarityService.scoreFromCounts(left, right,
+                0, 0, 0, 0, 0, 0, 0, leftTrend, rightTrend);
+        assertEquals(0d, empty.coBookmarkPmi());
+        assertEquals(0d, empty.coLikeCosine());
     }
 
     /**
@@ -78,7 +111,7 @@ class PlaceRecommendationSimilarityServiceTest {
                         .coLikeCosineScore(0.33d)
                         .trendSimilarityScore(0.44d)
                         .totalSimilarityScore(0.55d)
-                        .updatedAt(LocalDateTime.now())
+                        .updatedAt(LocalDateTime.of(2010, 1, 1, 0, 0))
                         .build()
         ));
 
@@ -94,6 +127,9 @@ class PlaceRecommendationSimilarityServiceTest {
         assertTrue(score.snapshotBacked());
         assertEquals(0.55d, score.totalSimilarity(), 0.000001d);
         assertEquals(0.22d, score.coBookmarkPmi(), 0.000001d);
+        verify(mapBookmarkRepository, never()).findBookmarkUsersByPlaceIds(anyCollection());
+        verify(mapImageLikeRepository, never()).findLikeUsersByPlaceIds(anyCollection());
+        verify(recommendationMetrics).recordSimilarityCoverage(true, 1L, 0L);
     }
 
     /**
@@ -111,6 +147,7 @@ class PlaceRecommendationSimilarityServiceTest {
                 projection(200L, 3L)
         ));
         when(mapImageLikeRepository.findLikeUsersByPlaceIds(anyCollection())).thenReturn(List.of(
+                likeProjection(100L, 7L),
                 likeProjection(100L, 7L),
                 likeProjection(100L, 8L),
                 likeProjection(200L, 7L)
@@ -130,12 +167,112 @@ class PlaceRecommendationSimilarityServiceTest {
         assertTrue(score.coBookmarkPmi() > 0d);
         assertTrue(score.coLikeCosine() > 0d);
         assertTrue(score.trendSimilarity() > 0d);
+        assertEquals(1d / Math.sqrt(2d), score.coLikeCosine(), 0.000001d);
+        verify(placeSimilaritySnapshotRepository, never()).findByPlaceIdsWithin(anyCollection());
 
         double expected = (0.40d * score.geoKernel())
                 + (0.35d * score.coBookmarkPmi())
                 + (0.15d * score.coLikeCosine())
                 + (0.10d * score.trendSimilarity());
         assertEquals(expected, score.totalSimilarity(), 0.000001d);
+    }
+
+    @Test
+    void loadsOnlyBothEndpointsOfMissingPairsAndPreservesRealtimeScore() {
+        MapPlace first = place(100L, 35.1801, 128.1078, 12L);
+        MapPlace second = place(200L, 35.1803, 128.1080, 9L);
+        Map<Long, MapPlace> places = Map.of(
+                100L, first,
+                200L, second,
+                300L, place(300L, 35.1805, 128.1082, 5L),
+                400L, place(400L, 35.1807, 128.1084, 4L)
+        );
+        when(placeSimilaritySnapshotRepository.findByPlaceIdsWithin(anyCollection())).thenReturn(List.of(
+                snapshot(100L, 300L), snapshot(300L, 100L), snapshot(100L, 400L),
+                snapshot(200L, 300L), snapshot(200L, 400L), snapshot(300L, 400L)
+        ));
+        when(mapBookmarkRepository.findBookmarkUsersByPlaceIds(anyCollection())).thenReturn(List.of(
+                projection(100L, 1L), projection(100L, 2L),
+                projection(200L, 1L), projection(200L, 3L)
+        ));
+        when(mapImageLikeRepository.findLikeUsersByPlaceIds(anyCollection())).thenReturn(List.of(
+                likeProjection(100L, 7L), likeProjection(100L, 7L), likeProjection(100L, 8L),
+                likeProjection(200L, 7L)
+        ));
+
+        PlaceRecommendationSimilarityService.SimilarityContext partialContext =
+                placeRecommendationSimilarityService.buildContext(
+                        List.of(100L, 200L, 300L, 400L, 100L), places, true, 6L
+                );
+        PlaceRecommendationSimilarityService.SimilarityScore fallbackScore =
+                placeRecommendationSimilarityService.score(100L, 200L, partialContext);
+        PlaceRecommendationSimilarityService.SimilarityContext fullContext =
+                placeRecommendationSimilarityService.buildContext(places.keySet(), places, false, 6L);
+
+        assertEquals(placeRecommendationSimilarityService.score(100L, 200L, fullContext), fallbackScore);
+        assertFalse(fallbackScore.snapshotBacked());
+        assertTrue(placeRecommendationSimilarityService.score(400L, 100L, partialContext).snapshotBacked());
+        verify(mapBookmarkRepository).findBookmarkUsersByPlaceIds(Set.of(100L, 200L));
+        verify(mapImageLikeRepository).findLikeUsersByPlaceIds(Set.of(100L, 200L));
+        verify(recommendationMetrics).recordSimilarityCoverage(true, 5L, 1L);
+        verify(mapBookmarkRepository, never()).countDistinctUserId();
+        InOrder queryOrder = inOrder(
+                placeSimilaritySnapshotRepository, mapBookmarkRepository, mapImageLikeRepository
+        );
+        queryOrder.verify(placeSimilaritySnapshotRepository).findByPlaceIdsWithin(anyCollection());
+        queryOrder.verify(mapBookmarkRepository).findBookmarkUsersByPlaceIds(Set.of(100L, 200L));
+        queryOrder.verify(mapImageLikeRepository).findLikeUsersByPlaceIds(Set.of(100L, 200L));
+    }
+
+    @Test
+    void loadsAllReactionsWhenEverySnapshotIsMissing() {
+        Set<Long> placeIds = Set.of(100L, 200L, 300L);
+
+        placeRecommendationSimilarityService.buildContext(placeIds, Map.of(), true, 10L);
+
+        verify(mapBookmarkRepository).findBookmarkUsersByPlaceIds(placeIds);
+        verify(mapImageLikeRepository).findLikeUsersByPlaceIds(placeIds);
+        verify(recommendationMetrics).recordSimilarityCoverage(true, 0L, 3L);
+    }
+
+    @Test
+    void skipsQueriesForEmptyPlaceIds() {
+        PlaceRecommendationSimilarityService.SimilarityContext context =
+                placeRecommendationSimilarityService.buildContext(List.of(), Map.of(), true, 10L);
+
+        assertTrue(context.snapshotScoresByPair().isEmpty());
+        assertEquals(0L, context.totalBookmarkUserCount());
+        verifyNoInteractions(mapBookmarkRepository, mapImageLikeRepository,
+                placeRecommendationSnapshotRepository, placeSimilaritySnapshotRepository, recommendationMetrics);
+    }
+
+    @Test
+    void singleDistinctPlaceUsesIdentityWithoutReactionQueries() {
+        MapPlace onlyPlace = place(100L, 35.1801, 128.1078, 12L);
+
+        PlaceRecommendationSimilarityService.SimilarityContext context =
+                placeRecommendationSimilarityService.buildContext(
+                        List.of(100L, 100L), Map.of(100L, onlyPlace), true, 10L
+                );
+
+        assertEquals(1d, placeRecommendationSimilarityService.similarity(100L, 100L, context));
+        assertEquals(10L, context.totalBookmarkUserCount());
+        verify(mapBookmarkRepository, never()).findBookmarkUsersByPlaceIds(anyCollection());
+        verify(mapImageLikeRepository, never()).findLikeUsersByPlaceIds(anyCollection());
+        verify(recommendationMetrics).recordSimilarityCoverage(true, 0L, 0L);
+    }
+
+    private PlaceSimilaritySnapshot snapshot(Long leftPlaceId, Long rightPlaceId) {
+        return PlaceSimilaritySnapshot.builder()
+                .leftPlaceId(leftPlaceId)
+                .rightPlaceId(rightPlaceId)
+                .geoKernelScore(0.11d)
+                .coBookmarkPmiScore(0.22d)
+                .coLikeCosineScore(0.33d)
+                .trendSimilarityScore(0.44d)
+                .totalSimilarityScore(0.55d)
+                .updatedAt(LocalDateTime.of(2010, 1, 1, 0, 0))
+                .build();
     }
 
     /**

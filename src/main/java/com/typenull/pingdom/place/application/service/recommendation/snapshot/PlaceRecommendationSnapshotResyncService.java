@@ -16,27 +16,20 @@ import com.typenull.pingdom.shared.exception.MapException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 원본 북마크·게시물·추천 이벤트를 집계하여 전체 장소 스냅샷을 보정하고 버전·유사도 재동기화를 조정.
- * 전체 실행은 500개씩 조회하지만 모든 묶음과 후속 재동기화가 같은 트랜잭션에 참여.
+ * 관리용 전체 실행의 청크 조정은 PlaceRecommendationFullResyncService가 담당.
  * 단일 장소 보정은 해당 장소를 잠그며 장소가 없으면 관련 스냅샷을 제거.
  */
 @Service
 @RequiredArgsConstructor
 public class PlaceRecommendationSnapshotResyncService {
-
-    private static final int RESYNC_BATCH_SIZE = 500;
 
     private final MapPlaceRepository mapPlaceRepository;
     private final MapBookmarkRepository mapBookmarkRepository;
@@ -47,82 +40,7 @@ public class PlaceRecommendationSnapshotResyncService {
     private final PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
     private final PlaceSimilaritySnapshotResyncService placeSimilaritySnapshotResyncService;
     private final PlaceRecommendationVersionSnapshotService placeRecommendationVersionSnapshotService;
-
-    /**
-     * 전체 장소를 ID 순 페이지로 순회하며 원본 집계로 추천 스냅샷을 덮어쓰고 삭제된 장소의 스냅샷을 정리.
-     * 유사도·버전별 스냅샷 재동기화도 같은 호출 트랜잭션에 연결하고 종류별 갱신·삭제 건수를 반환.
-     * 전체 장소·원본 이벤트의 일괄 잠금 없이 실행하므로 동시 쓰기와 격리된 시점의 전체 재구성은 보장 범위에서 제외.
-     */
-    @Transactional
-    public SnapshotResyncResult resyncAll() {
-        long placeCount = mapPlaceRepository.count();
-        if (placeCount == 0L) {
-            long deletedSnapshotCount = placeRecommendationSnapshotRepository.count();
-            if (deletedSnapshotCount > 0L) {
-                placeRecommendationSnapshotRepository.deleteAllInBatch();
-            }
-            PlaceRecommendationVersionSnapshotService.VersionSnapshotResyncResult versionResult =
-                    placeRecommendationVersionSnapshotService.resyncAll();
-            PlaceSimilaritySnapshotResyncService.SimilaritySnapshotResyncResult similarityResult =
-                    placeSimilaritySnapshotResyncService.resyncAll();
-            return new SnapshotResyncResult(
-                    0,
-                    0,
-                    deletedSnapshotCount,
-                    similarityResult.synchronizedSnapshotCount(),
-                    similarityResult.deletedSnapshotCount(),
-                    versionResult.synchronizedSnapshotCount(),
-                    versionResult.deletedSnapshotCount()
-            );
-        }
-
-        LocalDateTime syncedAt = LocalDateTime.now();
-        Set<Long> activePlaceIds = new HashSet<>();
-        long synchronizedSnapshotCount = 0L;
-        int pageNumber = 0;
-
-        while (true) {
-            Page<MapPlace> placePage = mapPlaceRepository.findAll(
-                    PageRequest.of(pageNumber, RESYNC_BATCH_SIZE, Sort.by(Sort.Order.asc("id")))
-            );
-            if (placePage.isEmpty()) {
-                break;
-            }
-
-            List<MapPlace> places = placePage.getContent();
-            List<Long> placeIds = places.stream()
-                    .map(MapPlace::getId)
-                    .toList();
-            activePlaceIds.addAll(placeIds);
-            synchronizedSnapshotCount += synchronizeSnapshots(places, syncedAt);
-
-            if (!placePage.hasNext()) {
-                break;
-            }
-            pageNumber++;
-        }
-
-        List<Long> orphanSnapshotPlaceIds = collectOrphanSnapshotPlaceIds(activePlaceIds);
-
-        if (!orphanSnapshotPlaceIds.isEmpty()) {
-            placeRecommendationSnapshotRepository.deleteAllByIdInBatch(orphanSnapshotPlaceIds);
-        }
-
-        PlaceSimilaritySnapshotResyncService.SimilaritySnapshotResyncResult similarityResult =
-                placeSimilaritySnapshotResyncService.resyncAll();
-        PlaceRecommendationVersionSnapshotService.VersionSnapshotResyncResult versionResult =
-                placeRecommendationVersionSnapshotService.resyncAll();
-
-        return new SnapshotResyncResult(
-                placeCount,
-                synchronizedSnapshotCount,
-                orphanSnapshotPlaceIds.size(),
-                similarityResult.synchronizedSnapshotCount(),
-                similarityResult.deletedSnapshotCount(),
-                versionResult.synchronizedSnapshotCount(),
-                versionResult.deletedSnapshotCount()
-        );
-    }
+    private final PlaceRecommendationSnapshotWriteLock snapshotWriteLock;
 
     /**
      * 장소 행을 쓰기 잠금으로 읽어 해당 장소 집계와 주변 유사도·버전별 집계를 재구성하고 처리 건수를 반환.
@@ -130,19 +48,16 @@ public class PlaceRecommendationSnapshotResyncService {
      */
     @Transactional
     public SnapshotResyncResult resyncPlace(Long placeId) {
-        MapPlace place = mapPlaceRepository.findByIdForUpdate(placeId).orElse(null);
+        MapPlace place = snapshotWriteLock.lockPlace(placeId).orElse(null);
         if (place == null) {
-            boolean snapshotExists = placeRecommendationSnapshotRepository.existsById(placeId);
-            if (snapshotExists) {
-                placeRecommendationSnapshotRepository.deleteById(placeId);
-            }
+            long deletedSnapshotCount = placeRecommendationSnapshotRepository.deleteOrphans(List.of(placeId));
             long deletedSimilaritySnapshotCount = placeSimilaritySnapshotResyncService.deleteForPlace(placeId);
             PlaceRecommendationVersionSnapshotService.VersionSnapshotResyncResult versionResult =
                     placeRecommendationVersionSnapshotService.resyncPlace(placeId);
             return new SnapshotResyncResult(
                     0L,
                     0L,
-                    snapshotExists ? 1L : 0L,
+                    deletedSnapshotCount,
                     0L,
                     deletedSimilaritySnapshotCount,
                     versionResult.synchronizedSnapshotCount(),
@@ -176,7 +91,8 @@ public class PlaceRecommendationSnapshotResyncService {
     @Transactional
     public void resyncMergedPlace(Long sourcePlaceId, Long targetPlaceId) {
         LocalDateTime syncedAt = LocalDateTime.now();
-        MapPlace targetPlace = mapPlaceRepository.findById(targetPlaceId)
+        MapPlace targetPlace = snapshotWriteLock.lockPlaces(List.of(sourcePlaceId, targetPlaceId)).stream()
+                .filter(place -> place.getId().equals(targetPlaceId)).findFirst()
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
         List<Long> targetPlaceIds = List.of(targetPlaceId);
 
@@ -185,7 +101,8 @@ public class PlaceRecommendationSnapshotResyncService {
         Map<Long, Long> clickCounts = loadClickCounts(targetPlaceIds);
         Map<Long, ConversionCounts> conversionCounts = loadConversionCounts(targetPlaceIds);
         Map<Long, Long> exposureCounts = loadExposureCounts(targetPlaceIds);
-        PlaceRecommendationSnapshot snapshot = placeRecommendationSnapshotRepository.findById(targetPlaceId)
+        PlaceRecommendationSnapshot snapshot = snapshotWriteLock.reloadSnapshot(
+                () -> placeRecommendationSnapshotRepository.findById(targetPlaceId))
                 .orElseGet(() -> PlaceRecommendationSnapshot.builder()
                         .placeId(targetPlaceId)
                         .updatedAt(syncedAt)
@@ -205,10 +122,12 @@ public class PlaceRecommendationSnapshotResyncService {
         );
 
         placeRecommendationSnapshotRepository.save(snapshot);
-        placeRecommendationSnapshotRepository.deleteById(sourcePlaceId);
+        snapshotWriteLock.reloadSnapshot(() -> placeRecommendationSnapshotRepository.findById(sourcePlaceId))
+                .ifPresent(placeRecommendationSnapshotRepository::delete);
     }
 
-    private long synchronizeSnapshots(List<MapPlace> places, LocalDateTime syncedAt) {
+    long synchronizeSnapshots(List<MapPlace> places, LocalDateTime syncedAt) {
+        places = snapshotWriteLock.lockPlaces(places.stream().map(MapPlace::getId).toList());
         List<Long> placeIds = places.stream()
                 .map(MapPlace::getId)
                 .toList();
@@ -219,7 +138,8 @@ public class PlaceRecommendationSnapshotResyncService {
         Map<Long, Long> exposureCounts = loadExposureCounts(placeIds);
         Map<Long, PlaceRecommendationSnapshot> existingSnapshotsByPlaceId = new HashMap<>();
         for (PlaceRecommendationSnapshot existingSnapshot :
-                placeRecommendationSnapshotRepository.findByPlaceIdIn(placeIds)) {
+                snapshotWriteLock.reloadSnapshots(
+                        () -> placeRecommendationSnapshotRepository.findByPlaceIdIn(placeIds))) {
             existingSnapshotsByPlaceId.put(existingSnapshot.getPlaceId(), existingSnapshot);
         }
 
@@ -252,33 +172,6 @@ public class PlaceRecommendationSnapshotResyncService {
 
         placeRecommendationSnapshotRepository.saveAll(snapshotsToSave);
         return snapshotsToSave.size();
-    }
-
-    private List<Long> collectOrphanSnapshotPlaceIds(Set<Long> activePlaceIds) {
-        List<Long> orphanSnapshotPlaceIds = new ArrayList<>();
-        int pageNumber = 0;
-
-        while (true) {
-            Page<PlaceRecommendationSnapshot> snapshotPage = placeRecommendationSnapshotRepository.findAll(
-                    PageRequest.of(pageNumber, RESYNC_BATCH_SIZE, Sort.by(Sort.Order.asc("placeId")))
-            );
-            if (snapshotPage.isEmpty()) {
-                break;
-            }
-
-            for (PlaceRecommendationSnapshot snapshot : snapshotPage.getContent()) {
-                if (!activePlaceIds.contains(snapshot.getPlaceId())) {
-                    orphanSnapshotPlaceIds.add(snapshot.getPlaceId());
-                }
-            }
-
-            if (!snapshotPage.hasNext()) {
-                break;
-            }
-            pageNumber++;
-        }
-
-        return orphanSnapshotPlaceIds;
     }
 
     private Map<Long, Long> loadBookmarkCounts(List<Long> placeIds) {

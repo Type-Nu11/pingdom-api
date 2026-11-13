@@ -1,14 +1,17 @@
 package com.typenull.pingdom.engagement.infrastructure.persistence;
 
 import com.typenull.pingdom.engagement.domain.PostReport;
+import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,6 +23,27 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public interface PostReportRepository extends JpaRepository<PostReport, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT report FROM PostReport report WHERE report.id = :reportId")
+    Optional<PostReport> findByIdForUpdate(@Param("reportId") Long reportId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT report FROM PostReport report
+            WHERE report.reportedImageId = :imageId AND report.status = :status
+            ORDER BY report.id ASC
+            """)
+    List<PostReport> findAllByImageAndStatusForUpdate(@Param("imageId") Long imageId,
+                                                   @Param("status") PostReportStatus status);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT report FROM PostReport report
+            WHERE report.mapImage.id = :imageId
+            ORDER BY report.id ASC
+            """)
+    List<PostReport> findAllByMapImageIdForUpdate(@Param("imageId") Long imageId);
 
     long countByStatus(PostReportStatus status);
 

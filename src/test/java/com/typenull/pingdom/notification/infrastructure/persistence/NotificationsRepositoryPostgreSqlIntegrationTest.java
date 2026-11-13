@@ -17,6 +17,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -67,6 +69,9 @@ class NotificationsRepositoryPostgreSqlIntegrationTest {
     @Autowired
     private NotificationsRepository notificationsRepository;
 
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
     /**
      * 기간 필터와 멱등 삽입의 행 수를 정확히 확인하도록 기존 알림을 제거.
      */
@@ -111,6 +116,42 @@ class NotificationsRepositoryPostgreSqlIntegrationTest {
         assertThat(duplicateInsert).isZero();
         assertThat(otherRecipientInsert).isEqualTo(1);
         assertThat(notificationsRepository.count()).isEqualTo(2);
+    }
+
+    @Test
+    void reusesCommittedFcmPreparationBeforeFirstDeliveryRecord() {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        Long preparedId = transaction.execute(status -> {
+            assertThat(insertFcmNotification(10L, "fcm:event-1", "original")).isEqualTo(1);
+            return notificationsRepository.findByUserIdAndEventKey(10L, "fcm:event-1").orElseThrow().getId();
+        });
+
+        // 별도 트랜잭션에서 재시작을 모사하며 아직 delivery 기록이 없어도 같은 알림을 사용합니다.
+        transaction.executeWithoutResult(status -> {
+            assertThat(insertFcmNotification(10L, "fcm:event-1", "changed")).isZero();
+            Notifications retried = notificationsRepository.findByUserIdAndEventKey(10L, "fcm:event-1").orElseThrow();
+            assertThat(retried.getId()).isEqualTo(preparedId);
+            assertThat(retried.getBody()).isEqualTo("original");
+            assertThat(retried.getToken()).isNull();
+            assertThat(retried.getType()).isEqualTo(NotificationType.NEW_LIKE);
+        });
+        assertThat(notificationsRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void isolatesFcmPreparationByRecipientAndEventKey() {
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            assertThat(insertFcmNotification(10L, "fcm:event-1", "first")).isEqualTo(1);
+            assertThat(insertFcmNotification(11L, "fcm:event-1", "other recipient")).isEqualTo(1);
+            assertThat(insertFcmNotification(10L, "fcm:event-2", "other event")).isEqualTo(1);
+        });
+
+        assertThat(notificationsRepository.count()).isEqualTo(3);
+    }
+
+    private int insertFcmNotification(Long userId, String eventKey, String body) {
+        return notificationsRepository.insertFcmNotificationIfAbsent(
+                userId, NotificationType.NEW_LIKE.name(), "좋아요 알림", body, eventKey, NOW);
     }
 
     /**

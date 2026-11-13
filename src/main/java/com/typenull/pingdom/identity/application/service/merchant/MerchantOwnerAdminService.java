@@ -35,11 +35,11 @@ import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceR
 import com.typenull.pingdom.shared.security.access.UserAccessStatusService;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -82,8 +82,19 @@ public class MerchantOwnerAdminService {
         Page<MerchantOwnerProfile> result = status == null
                 ? profileRepository.findAll(pageable)
                 : profileRepository.findAllByStatus(status, pageable);
+        List<Long> userIds = result.getContent().stream().map(MerchantOwnerProfile::getUserId).toList();
+        Map<Long, List<Long>> placeIdsByOwner = userIds.isEmpty()
+                ? Map.of()
+                : ownerPlaceRepository
+                        .findAllByMerchantOwnerUserIdInOrderByMerchantOwnerUserIdAscPlaceIdAsc(userIds).stream()
+                        .collect(Collectors.groupingBy(
+                                MerchantOwnerPlace::getMerchantOwnerUserId,
+                                Collectors.mapping(MerchantOwnerPlace::getPlaceId, Collectors.toList())
+                        ));
         List<MerchantOwnerProfileResponse> profiles = result.getContent().stream()
-                .map(this::response)
+                .map(profile -> MerchantOwnerProfileResponse.from(
+                        profile, placeIdsByOwner.getOrDefault(profile.getUserId(), List.of())
+                ))
                 .toList();
         return new MerchantOwnerProfilePageResponse(
                 profiles,
@@ -234,14 +245,9 @@ public class MerchantOwnerAdminService {
         if (profile.getStatus() != MerchantOwnerStatus.ACTIVE) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_PROFILE_STATE);
         }
-        Set<Long> beforePlaceIds = new LinkedHashSet<>(placeIds(userId));
+        Set<Long> requestedPlaceIds = request.normalizedPlaceIds();
         LocalDateTime now = LocalDateTime.now(clock);
-        Set<Long> removedPlaceIds = new LinkedHashSet<>(beforePlaceIds);
-        removedPlaceIds.removeAll(request.normalizedPlaceIds());
-        if (!removedPlaceIds.isEmpty()) {
-            touristOfferRepository.closeAllByMerchantOwnerUserIdAndPlaceIdIn(userId, removedPlaceIds, now);
-        }
-        replacePlaces(userId, request.normalizedPlaceIds(), now);
+        Set<Long> beforePlaceIds = replacePlaces(userId, requestedPlaceIds, now);
         recordAudit(
                 adminUserId,
                 AdminAuditAction.MERCHANT_OWNER_PLACES_UPDATED,
@@ -249,7 +255,7 @@ public class MerchantOwnerAdminService {
                 request.reason(),
                 profile.getStatus(),
                 profile.getStatus(),
-                Map.of("before", beforePlaceIds, "after", request.normalizedPlaceIds())
+                Map.of("before", beforePlaceIds, "after", requestedPlaceIds)
         );
         return response(profile);
     }
@@ -354,30 +360,52 @@ public class MerchantOwnerAdminService {
         return MerchantOwnerPlaceResponse.from(ownerPlace);
     }
 
-    private void replacePlaces(Long userId, Set<Long> requestedPlaceIds, LocalDateTime now) {
-        List<Long> placeIds = requestedPlaceIds.stream().sorted().toList();
-        if (!placeIds.isEmpty()) {
-            List<MapPlace> places = mapPlaceRepository.findAllByIdInForUpdate(placeIds);
-            if (places.size() != placeIds.size()) {
+    private Set<Long> replacePlaces(Long userId, Set<Long> requestedPlaceIds, LocalDateTime now) {
+        Set<Long> affectedPlaceIds = new LinkedHashSet<>(
+                ownerPlaceRepository.findPlaceIdsByMerchantOwnerUserId(userId)
+        );
+        affectedPlaceIds.addAll(requestedPlaceIds);
+        if (!affectedPlaceIds.isEmpty()) {
+            Set<Long> lockedPlaceIds = new LinkedHashSet<>(mapPlaceRepository
+                    .findAllByIdInForUpdate(affectedPlaceIds.stream().sorted().toList()).stream()
+                    .map(MapPlace::getId)
+                    .toList());
+            if (!lockedPlaceIds.containsAll(requestedPlaceIds)) {
                 throw new MerchantOwnerException(MerchantOwnerErrorCode.PLACE_NOT_FOUND);
             }
-            boolean assignedToAnotherOwner = ownerPlaceRepository.findAllByPlaceIdIn(placeIds).stream()
+        }
+        if (!requestedPlaceIds.isEmpty()) {
+            boolean assignedToAnotherOwner = ownerPlaceRepository.findAllByPlaceIdIn(requestedPlaceIds).stream()
                     .anyMatch(place -> !place.getMerchantOwnerUserId().equals(userId));
             if (assignedToAnotherOwner) {
                 throw new MerchantOwnerException(MerchantOwnerErrorCode.PLACE_ALREADY_ASSIGNED);
             }
         }
 
-        ownerPlaceRepository.deleteAllByMerchantOwnerUserId(userId);
-        List<MerchantOwnerPlace> mappings = new ArrayList<>();
-        for (Long placeId : placeIds) {
-            mappings.add(MerchantOwnerPlace.builder()
-                    .placeId(placeId)
-                    .merchantOwnerUserId(userId)
-                    .createdAt(now)
-                    .build());
+        // 장소 잠금을 기다리는 동안 Claim이 소유권을 이전했을 수 있어 DB의 ID 목록을 다시 읽음.
+        Set<Long> beforePlaceIds = new LinkedHashSet<>(
+                ownerPlaceRepository.findPlaceIdsByMerchantOwnerUserId(userId)
+        );
+        Set<Long> removedPlaceIds = new LinkedHashSet<>(beforePlaceIds);
+        removedPlaceIds.removeAll(requestedPlaceIds);
+        if (!removedPlaceIds.isEmpty()) {
+            touristOfferRepository.closeAllByMerchantOwnerUserIdAndPlaceIdIn(userId, removedPlaceIds, now);
+            // 오퍼 종료의 bulk clear 후에는 이전 관리 엔티티 대신 소유자 조건으로 제거 대상만 삭제.
+            ownerPlaceRepository.deleteAllByMerchantOwnerUserIdAndPlaceIdIn(userId, removedPlaceIds);
         }
-        ownerPlaceRepository.saveAll(mappings);
+        List<MerchantOwnerPlace> addedMappings = requestedPlaceIds.stream()
+                .filter(placeId -> !beforePlaceIds.contains(placeId))
+                .sorted()
+                .map(placeId -> MerchantOwnerPlace.builder()
+                        .placeId(placeId)
+                        .merchantOwnerUserId(userId)
+                        .createdAt(now)
+                        .build())
+                .toList();
+        if (!addedMappings.isEmpty()) {
+            ownerPlaceRepository.saveAll(addedMappings);
+        }
+        return beforePlaceIds;
     }
 
     private MerchantOwnerProfile requireProfile(Long userId) {

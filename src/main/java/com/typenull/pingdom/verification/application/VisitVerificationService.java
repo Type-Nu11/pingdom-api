@@ -11,19 +11,24 @@ import com.typenull.pingdom.verification.domain.*;
 import com.typenull.pingdom.verification.domain.exception.*;
 import com.typenull.pingdom.verification.infrastructure.*;
 import java.time.*;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 
 /** 서버 수신 시각과 연속 관측 간격으로 장소 체류 시간을 판정. */
 @Service
 @RequiredArgsConstructor
 public class VisitVerificationService {
     private static final ZoneId VERIFICATION_ZONE = ZoneId.of("Asia/Seoul");
+    private static final int FOREGROUND_RECOVERY_BATCH_SIZE = 50;
     private static final List<VisitVerificationSessionStatus> ACTIVE_STATUSES = List.of(
             VisitVerificationSessionStatus.STARTED, VisitVerificationSessionStatus.IN_PROGRESS);
 
@@ -46,7 +51,7 @@ public class VisitVerificationService {
     }
 
     /** 장소 ID를 신뢰하지 않고 좌표 주변의 단일 공개 장소를 서버가 선택. */
-    @Transactional
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     public VisitVerificationSessionResponse startForeground(Long userId,
             ForegroundVisitVerificationStartRequest request) {
         requireTourist(userId);
@@ -94,31 +99,68 @@ public class VisitVerificationService {
     private VisitVerificationSession findExistingForegroundSession(Long userId,
             ForegroundVisitVerificationStartRequest request, Instant now) {
         LocalDate verificationDate = LocalDate.ofInstant(now, VERIFICATION_ZONE);
-        return sessionRepository.findAllByTouristUserIdAndVerificationDateAndStatusInOrderByLastVerifiedAtDesc(
-                        userId, verificationDate, ACTIVE_STATUSES).stream()
-                .filter(session -> isReusableForegroundSession(session, request, now))
-                .findFirst()
-                .orElse(null);
+        Instant observationCutoff = now.minus(properties.maxObservationGap());
+        Instant cursorTime = null;
+        Long cursorId = null;
+        while (true) {
+            List<VisitVerificationSessionRepository.ForegroundRecoveryCandidate> batch =
+                    sessionRepository.findForegroundRecoveryBatch(userId, verificationDate, ACTIVE_STATUSES,
+                            cursorTime, cursorId, PageRequest.of(0, FOREGROUND_RECOVERY_BATCH_SIZE));
+            if (batch.isEmpty()) return null;
+            List<Long> expiredIds = new ArrayList<>();
+            for (VisitVerificationSessionRepository.ForegroundRecoveryCandidate candidate : batch) {
+                // expire는 lastVerifiedAt을 바꾸므로 projection의 원본 값을 먼저 커서로 보존합니다.
+                cursorTime = candidate.getLastVerifiedAt();
+                cursorId = candidate.getId();
+                if (!now.isBefore(candidate.getExpiresAt())
+                        || candidate.getLastVerifiedAt().isBefore(observationCutoff)) {
+                    expiredIds.add(candidate.getId());
+                    continue;
+                }
+                if (!isReusableForegroundPlace(candidate, request)) continue;
+                expireForegroundPrefix(userId, verificationDate, expiredIds, now, observationCutoff);
+                VisitVerificationSession selected = sessionRepository
+                        .findByIdAndTouristUserIdForUpdate(candidate.getId(), userId)
+                        .orElseThrow(() -> new ConcurrencyFailureException("복구 대상 방문 세션이 변경되었습니다."));
+                if (!selected.isActive() || selected.getStatus() != candidate.getStatus()
+                        || !selected.getPlaceId().equals(candidate.getPlaceId())
+                        || !selected.getLastVerifiedAt().equals(candidate.getLastVerifiedAt())
+                        || !selected.getExpiresAt().equals(candidate.getExpiresAt())
+                        || Double.compare(selected.getRequiredRadiusMeters(), candidate.getRequiredRadiusMeters()) != 0) {
+                    throw new ConcurrencyFailureException("복구 대상 방문 세션이 변경되었습니다.");
+                }
+                return selected;
+            }
+            expireForegroundPrefix(userId, verificationDate, expiredIds, now, observationCutoff);
+            if (batch.size() < FOREGROUND_RECOVERY_BATCH_SIZE) return null;
+        }
     }
 
-    /**
-     * TTL 또는 관측 공백을 넘긴 세션은 만료 처리.
-     * 그 밖에는 현재 공개·운영 장소의 저장된 반경 안에 있을 때만 재사용.
-     */
-    private boolean isReusableForegroundSession(VisitVerificationSession session,
-            ForegroundVisitVerificationStartRequest request, Instant now) {
-        if (session.isExpiredAt(now) || session.hasObservationGapExceeded(now, properties.maxObservationGap())) {
-            session.expire(now);
-            return false;
-        }
-        MapPlace place = placeRepository.findById(session.getPlaceId()).orElse(null);
-        if (place == null || place.getOperatingStatus() != PlaceOperatingStatus.OPERATING
-                || place.getDiscoveryStatus() != PlaceDiscoveryStatus.VISIBLE) {
+    /** 저장된 세션 반경과 snapshot의 공개·운영 장소 좌표로 재사용 여부를 판정합니다. */
+    private boolean isReusableForegroundPlace(VisitVerificationSessionRepository.ForegroundRecoveryCandidate candidate,
+            ForegroundVisitVerificationStartRequest request) {
+        if (candidate.getOperatingStatus() != PlaceOperatingStatus.OPERATING
+                || candidate.getDiscoveryStatus() != PlaceDiscoveryStatus.VISIBLE
+                || candidate.getLatitude() == null || candidate.getLongitude() == null) {
             return false;
         }
         double distanceMeters = LocationCheckInService.distanceMeters(request.latitude(), request.longitude(),
-                place.getLatitude(), place.getLongitude());
-        return distanceMeters <= session.getRequiredRadiusMeters();
+                candidate.getLatitude(), candidate.getLongitude());
+        return distanceMeters <= candidate.getRequiredRadiusMeters();
+    }
+
+    private void expireForegroundPrefix(Long userId, LocalDate verificationDate, List<Long> expiredIds,
+            Instant now, Instant observationCutoff) {
+        if (expiredIds.isEmpty()) return;
+        // TIMESTAMP(6)의 엄격한 < 비교가 JDBC 반올림으로 Java의 공백 초과 판정과 달라지지 않게 합니다.
+        Instant databaseCutoff = observationCutoff.truncatedTo(ChronoUnit.MICROS);
+        if (!databaseCutoff.equals(observationCutoff)) databaseCutoff = databaseCutoff.plus(1, ChronoUnit.MICROS);
+        int expired = sessionRepository.expireForegroundPrefix(userId, verificationDate, expiredIds, ACTIVE_STATUSES,
+                VisitVerificationSessionStatus.EXPIRED, now, databaseCutoff);
+        // 조건 불일치도 새 세션 생성으로 흘려보내지 않고 앞선 만료와 함께 롤백합니다.
+        if (expired != expiredIds.size()) {
+            throw new ConcurrencyFailureException("만료 대상 방문 세션이 변경되었습니다.");
+        }
     }
 
     /**

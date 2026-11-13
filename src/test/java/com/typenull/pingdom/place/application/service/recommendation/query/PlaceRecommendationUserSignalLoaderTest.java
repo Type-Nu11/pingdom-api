@@ -26,4 +26,23 @@ class PlaceRecommendationUserSignalLoaderTest {
 
         assertThat(context.seedWeights()).hasSize(64);
     }
+
+    @Test
+    void selectsEqualWeightSeedsByPlaceIdRegardlessOfInputOrder() {
+        var bookmarks = mock(MapBookmarkRepository.class);
+        var likes = mock(MapImageLikeRepository.class);
+        var uploads = mock(MapImageRepository.class);
+        when(bookmarks.findPlaceIdsByUserId(7L)).thenReturn(
+                IntStream.iterate(200, id -> id - 1).limit(200).mapToObj(Long::valueOf).toList()
+        );
+        when(likes.findPlaceIdsByUserId(7L)).thenReturn(java.util.List.of());
+        when(uploads.findPlaceIdsByUserId(7L)).thenReturn(java.util.List.of());
+
+        var context = new PlaceRecommendationUserSignalLoader(bookmarks, likes, uploads).loadUserSignals(7L);
+
+        assertThat(context.seedWeights().keySet()).containsExactlyElementsOf(
+                IntStream.rangeClosed(1, 64).mapToObj(Long::valueOf).toList()
+        );
+        assertThat(context.interactedPlaceIds()).containsExactlyInAnyOrderElementsOf(context.seedWeights().keySet());
+    }
 }

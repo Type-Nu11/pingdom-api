@@ -12,8 +12,9 @@ import com.typenull.pingdom.moderation.application.AdminPostService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
-import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.post.domain.MapImage;
+import com.typenull.pingdom.post.application.service.MapImageStateLockService;
+import com.typenull.pingdom.post.application.service.MapImageStateLockService.LockedImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
 import java.net.URI;
@@ -38,6 +39,7 @@ public class AdminPostServiceImpl implements AdminPostService {
     private final MapImageRepository mapImageRepository;
     private final PostReportRepository postReportRepository;
     private final PlaceGrowthService placeGrowthService;
+    private final MapImageStateLockService imageStateLockService;
     private final S3ObjectDeleteOutboxPublisher s3ObjectDeleteOutboxPublisher;
     private final AdminAuditLogService adminAuditLogService;
     private final AdminRoleAuthorizationService authorizationService;
@@ -45,7 +47,7 @@ public class AdminPostServiceImpl implements AdminPostService {
 
     /**
      * REPORT_REVIEW 권한과 게시글 존재를 확인한 뒤 신고 연결을 끊고 게시글 영구 삭제.
-     * 연결된 장소의 사진 수는 게시글의 현재 숨김 여부와 무관하게 감소.
+     * 잠금 후 최신 상태가 ACTIVE인 게시글만 연결 장소의 성장 사진 수에서 차감.
      * DB 삭제·사진 집계·감사 기록·확보된 원본/썸네일 키의 삭제 outbox 저장은 같은 트랜잭션에 참여.
      * 응답 범위는 DB 반영까지이며 실제 S3 삭제는 커밋 후 worker에서 비동기 처리.
      */
@@ -53,19 +55,22 @@ public class AdminPostServiceImpl implements AdminPostService {
     @Transactional
     public void deletePost(Long postId, Long adminUserId) {
         authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
-        MapImage mapImage = mapImageRepository.findWithMapPlaceById(postId)
+        mapImageRepository.findPlaceReferenceById(postId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
-        Map<String, Object> beforeState = postState(mapImage, false, null);
 
-        // 게시글 삭제 전에 신고 연관을 먼저 끊어 FK 제약 위반을 방지.
+        // 심사와 같은 신고→장소→사진 순서로 잠그고, bulk clear 전에 읽은 엔티티는 재사용하지 않습니다.
+        postReportRepository.findAllByMapImageIdForUpdate(postId);
         postReportRepository.detachMapImageByMapImageId(postId);
+        LockedImage locked = imageStateLockService.findForUpdate(postId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
+        MapImage mapImage = locked.image();
+        Map<String, Object> beforeState = postState(mapImage, false, null);
 
         String keyToDelete = resolveS3Key(mapImage);
         String thumbnailKeyToDelete = mapImage.getThumbnailS3Key();
 
-        MapPlace mapPlace = mapImage.getMapPlace();
-        if (mapPlace != null) {
-            placeGrowthService.decreasePhotoCount(mapPlace.getId());
+        if (mapImage.isVisible() && locked.place() != null) {
+            placeGrowthService.decreasePhotoCount(locked.place());
         }
         mapImageRepository.delete(mapImage);
         publishS3Delete(keyToDelete, postId, "ADMIN_MAP_IMAGE_DELETED");
@@ -90,13 +95,14 @@ public class AdminPostServiceImpl implements AdminPostService {
     @Transactional
     public void hidePost(Long postId, String reason, Long adminUserId) {
         authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
-        MapImage mapImage = mapImageRepository.findWithMapPlaceById(postId)
+        LockedImage locked = imageStateLockService.findForUpdate(postId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
+        MapImage mapImage = locked.image();
         Map<String, Object> beforeState = postState(mapImage, false, null);
 
         boolean hidden = mapImage.autoHide(reason, LocalDateTime.now(clock), adminUserId);
-        if (hidden && mapImage.getMapPlace() != null) {
-            placeGrowthService.decreasePhotoCount(mapImage.getMapPlace().getId());
+        if (hidden && locked.place() != null) {
+            placeGrowthService.decreasePhotoCount(locked.place());
         }
         adminAuditLogService.record(
                 adminUserId,
@@ -118,13 +124,14 @@ public class AdminPostServiceImpl implements AdminPostService {
     @Transactional
     public void restorePost(Long postId, String reason, Long adminUserId) {
         authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
-        MapImage mapImage = mapImageRepository.findWithMapPlaceById(postId)
+        LockedImage locked = imageStateLockService.findForUpdate(postId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
+        MapImage mapImage = locked.image();
         Map<String, Object> beforeState = postState(mapImage, false, null);
 
         boolean restored = mapImage.restore(reason, LocalDateTime.now(clock), adminUserId);
-        if (restored && mapImage.getMapPlace() != null) {
-            placeGrowthService.increasePhotoCount(mapImage.getMapPlace().getId());
+        if (restored && locked.place() != null) {
+            placeGrowthService.increasePhotoCount(locked.place());
         }
         adminAuditLogService.record(
                 adminUserId,

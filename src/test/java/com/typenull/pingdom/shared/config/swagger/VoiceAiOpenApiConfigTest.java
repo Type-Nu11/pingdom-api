@@ -57,6 +57,13 @@ class VoiceAiOpenApiConfigTest {
         }
         assertThat(published.at("/paths/~1voice-ai~1sessions~1{sessionId}~1messages/post/responses/200/content/application~1json/schema/$ref")
                 .asText()).isEqualTo("#/components/schemas/ProviderEnvelopeV1");
+        for (String operation : java.util.List.of(
+                "/paths/~1voice-ai~1sessions~1{sessionId}~1messages/post",
+                "/paths/~1voice-ai~1sessions~1{sessionId}~1refresh/post",
+                "/paths/~1voice-ai~1sessions~1{sessionId}/delete")) {
+            assertThat(published.at(operation + "/responses/502/description").asText())
+                    .contains("PROVIDER_UNAVAILABLE", "30초");
+        }
     }
 
     private Operation operation() {

@@ -16,6 +16,8 @@ import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
@@ -80,7 +82,7 @@ public class PlaceMenuService {
     public PlaceMenuResponse update(Long userId, Long placeId, Long menuId, PlaceMenuUpdateRequest request) {
         requirePlace(placeId);
         requireManage(userId, placeId);
-        PlaceMenu menu = findMenu(menuId, placeId);
+        PlaceMenu menu = findMenuForUpdate(menuId, placeId);
         if (menu.getStatus() == PlaceMenuStatus.INACTIVE) {
             throw new PlaceMenuException(PlaceMenuErrorCode.MENU_STATE_CONFLICT);
         }
@@ -97,7 +99,7 @@ public class PlaceMenuService {
     public PlaceMenuResponse changeStatus(Long userId, Long placeId, Long menuId, PlaceMenuStatus status) {
         requirePlace(placeId);
         requireManage(userId, placeId);
-        PlaceMenu menu = findMenu(menuId, placeId);
+        PlaceMenu menu = findMenuForUpdate(menuId, placeId);
         menu.changeStatus(status, LocalDateTime.now(clock));
         return PlaceMenuResponse.from(menu);
     }
@@ -110,8 +112,11 @@ public class PlaceMenuService {
     public PlaceMenuResponse reorder(Long userId, Long placeId, Long menuId, PlaceMenuOrderRequest request) {
         requirePlace(placeId);
         requireManage(userId, placeId);
-        PlaceMenu target = findMenu(menuId, placeId);
-        List<PlaceMenu> menus = menuRepository.findAllByPlaceIdOrderByDisplayOrderAscIdAscForUpdate(placeId);
+        // 표시 순서는 잠금 대기 중 바뀔 수 있으므로 불변 ID 순으로 잠근 뒤 최신 표시 순서를 적용한다.
+        List<PlaceMenu> menus = new ArrayList<>(menuRepository.findAllByPlaceIdOrderByIdAscForUpdate(placeId));
+        PlaceMenu target = menus.stream().filter(menu -> menu.getId().equals(menuId)).findFirst()
+                .orElseThrow(() -> new PlaceMenuException(PlaceMenuErrorCode.MENU_NOT_FOUND));
+        menus.sort(Comparator.comparingInt(PlaceMenu::getDisplayOrder).thenComparing(PlaceMenu::getId));
         int destination = Math.min(request.displayOrder(), menus.size() - 1);
         menus.remove(target);
         menus.add(destination, target);
@@ -167,8 +172,18 @@ public class PlaceMenuService {
     }
 
     private PlaceMenu findMenu(Long menuId, Long placeId) {
+        PlaceMenu menu = menuRepository.findById(menuId)
+                .orElseThrow(() -> new PlaceMenuException(PlaceMenuErrorCode.MENU_NOT_FOUND));
+        return requireMenuPlace(menu, placeId);
+    }
+
+    private PlaceMenu findMenuForUpdate(Long menuId, Long placeId) {
         PlaceMenu menu = menuRepository.findByIdForUpdate(menuId)
                 .orElseThrow(() -> new PlaceMenuException(PlaceMenuErrorCode.MENU_NOT_FOUND));
+        return requireMenuPlace(menu, placeId);
+    }
+
+    private PlaceMenu requireMenuPlace(PlaceMenu menu, Long placeId) {
         if (!menu.getPlaceId().equals(placeId)) throw new PlaceMenuException(PlaceMenuErrorCode.MENU_NOT_FOUND);
         return menu;
     }

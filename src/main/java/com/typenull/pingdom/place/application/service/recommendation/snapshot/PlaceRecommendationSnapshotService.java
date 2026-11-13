@@ -20,8 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 장소 콘텐츠 집계를 갱신하고 추천 클릭·노출·전환을 증분 반영.
- * 스냅샷 최초 생성은 장소 행 잠금 후 재조회하지만 기존 스냅샷의 증가 경로는 별도 쓰기 잠금이나 version 검사가 없음.
- * 따라서 최초 생성 조정과 기존 집계의 동시 증가 보장 범위는 구분 필요.
+ * 기존 행·최초 생성·refresh 모두 같은 장소 쓰기 잠금 후 최신 snapshot을 조회하여 갱신.
  */
 @Service
 @RequiredArgsConstructor
@@ -31,6 +30,7 @@ public class PlaceRecommendationSnapshotService {
     private final MapPlaceRepository mapPlaceRepository;
     private final MapBookmarkRepository mapBookmarkRepository;
     private final MapImageRepository mapImageRepository;
+    private final PlaceRecommendationSnapshotWriteLock snapshotWriteLock;
 
     @Transactional
     public void initialize(Long placeId) {
@@ -48,14 +48,10 @@ public class PlaceRecommendationSnapshotService {
         MapPlace mapPlace = mapPlaceRepository.findById(placeId)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
 
-        snapshot.synchronize(
+        snapshot.synchronizeContent(
                 mapPlace.currentPhotoCount(),
                 mapBookmarkRepository.countByPlaceId(placeId),
                 mapImageRepository.sumLikeCountByPlaceId(placeId),
-                snapshot.getClickCount(),
-                snapshot.getBookmarkConversionCount(),
-                snapshot.getLikeConversionCount(),
-                snapshot.getExposureCount(),
                 mapImageRepository.findLatestCreatedAtByPlaceId(placeId),
                 now
         );
@@ -64,7 +60,9 @@ public class PlaceRecommendationSnapshotService {
 
     @Transactional
     public void delete(Long placeId) {
-        placeRecommendationSnapshotRepository.deleteById(placeId);
+        snapshotWriteLock.lockPlace(placeId);
+        snapshotWriteLock.reloadSnapshot(() -> placeRecommendationSnapshotRepository.findById(placeId))
+                .ifPresent(placeRecommendationSnapshotRepository::delete);
     }
 
     @Transactional
@@ -79,7 +77,7 @@ public class PlaceRecommendationSnapshotService {
 
     /**
      * 장소 스냅샷을 읽거나 처음 생성하고 BOOKMARK이면 북마크 전환, 그 외에는 좋아요 전환 수를 1 증가시킴.
-     * 기존 스냅샷 경로는 일반 조회 후 갱신하므로 동시 증가 시 갱신 손실 가능.
+     * 장소 잠금은 원천 로그와 전체·버전 snapshot 기록이 커밋될 때까지 유지.
      */
     @Transactional
     public void increaseConversionCount(Long placeId, PlaceRecommendationConversionType conversionType) {
@@ -103,94 +101,37 @@ public class PlaceRecommendationSnapshotService {
             increments.merge(placeId, 1L, Long::sum);
         }
 
+        Map<Long, MapPlace> placesById = new HashMap<>();
+        for (MapPlace place : snapshotWriteLock.requirePlaces(increments.keySet())) {
+            placesById.put(place.getId(), place);
+        }
         LocalDateTime now = LocalDateTime.now();
-        Map<Long, PlaceRecommendationSnapshot> existingSnapshots = new HashMap<>();
-        for (PlaceRecommendationSnapshot snapshot :
-                placeRecommendationSnapshotRepository.findByPlaceIdIn(increments.keySet())) {
-            existingSnapshots.put(snapshot.getPlaceId(), snapshot);
+        Map<Long, PlaceRecommendationSnapshot> snapshotsById = new HashMap<>();
+        for (PlaceRecommendationSnapshot snapshot : snapshotWriteLock.reloadSnapshots(
+                () -> placeRecommendationSnapshotRepository.findByPlaceIdIn(increments.keySet()))) {
+            snapshotsById.put(snapshot.getPlaceId(), snapshot);
         }
 
-        Map<Long, PlaceRecommendationSnapshot> createdSnapshots =
-                createMissingSnapshots(increments.keySet(), existingSnapshots, now);
-        existingSnapshots.putAll(createdSnapshots);
-
         List<PlaceRecommendationSnapshot> snapshotsToSave = new ArrayList<>(increments.size());
-        for (Map.Entry<Long, Long> incrementEntry : increments.entrySet()) {
-            PlaceRecommendationSnapshot snapshot = existingSnapshots.get(incrementEntry.getKey());
-
+        for (Long placeId : increments.keySet().stream().sorted().toList()) {
+            PlaceRecommendationSnapshot snapshot = snapshotsById.get(placeId);
+            if (snapshot == null) {
+                snapshot = createSnapshot(placesById.get(placeId), now);
+            }
             if (countType == CountType.CLICK) {
-                snapshot.increaseClickCount(incrementEntry.getValue(), now);
+                snapshot.increaseClickCount(increments.get(placeId), now);
             } else {
-                snapshot.increaseExposureCount(incrementEntry.getValue(), now);
+                snapshot.increaseExposureCount(increments.get(placeId), now);
             }
             snapshotsToSave.add(snapshot);
         }
-
         placeRecommendationSnapshotRepository.saveAll(snapshotsToSave);
     }
 
-    private Map<Long, PlaceRecommendationSnapshot> createMissingSnapshots(
-            Iterable<Long> placeIds,
-            Map<Long, PlaceRecommendationSnapshot> existingSnapshots,
-            LocalDateTime now
-    ) {
-        List<Long> missingPlaceIds = new ArrayList<>();
-        for (Long placeId : placeIds) {
-            if (!existingSnapshots.containsKey(placeId)) {
-                missingPlaceIds.add(placeId);
-            }
-        }
-
-        if (missingPlaceIds.isEmpty()) {
-            return Map.of();
-        }
-
-        List<Long> sortedMissingPlaceIds = missingPlaceIds.stream().sorted().toList();
-        Map<Long, MapPlace> placesById = new HashMap<>();
-        for (MapPlace mapPlace : mapPlaceRepository.findAllByIdInForUpdate(sortedMissingPlaceIds)) {
-            placesById.put(mapPlace.getId(), mapPlace);
-        }
-
-        Map<Long, PlaceRecommendationSnapshot> snapshotsAfterLock = new HashMap<>();
-        for (PlaceRecommendationSnapshot snapshot :
-                placeRecommendationSnapshotRepository.findByPlaceIdInForReadLock(missingPlaceIds)) {
-            snapshotsAfterLock.put(snapshot.getPlaceId(), snapshot);
-        }
-
-        Map<Long, PlaceRecommendationSnapshot> createdSnapshots = new HashMap<>();
-        for (Long placeId : missingPlaceIds) {
-            PlaceRecommendationSnapshot existingSnapshot = snapshotsAfterLock.get(placeId);
-            if (existingSnapshot != null) {
-                createdSnapshots.put(placeId, existingSnapshot);
-                continue;
-            }
-
-            MapPlace mapPlace = placesById.get(placeId);
-            if (mapPlace == null) {
-                throw new MapException(MapErrorCode.PLACE_NOT_FOUND);
-            }
-            createdSnapshots.put(placeId, createSnapshot(mapPlace, now));
-        }
-        return createdSnapshots;
-    }
-
     private PlaceRecommendationSnapshot loadOrCreateSnapshot(Long placeId, LocalDateTime now) {
-        PlaceRecommendationSnapshot existingSnapshot = placeRecommendationSnapshotRepository.findById(placeId)
-                .orElse(null);
-        if (existingSnapshot != null) {
-            return existingSnapshot;
-        }
-
-        MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
-                .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
-
-        PlaceRecommendationSnapshot snapshotAfterLock = placeRecommendationSnapshotRepository.findByPlaceIdForReadLock(placeId)
-                .orElse(null);
-        if (snapshotAfterLock != null) {
-            return snapshotAfterLock;
-        }
-
-        return createSnapshot(mapPlace, now);
+        MapPlace place = snapshotWriteLock.requirePlace(placeId);
+        return snapshotWriteLock.reloadSnapshot(() -> placeRecommendationSnapshotRepository.findById(placeId))
+                .orElseGet(() -> createSnapshot(place, now));
     }
 
     private PlaceRecommendationSnapshot createSnapshot(MapPlace mapPlace, LocalDateTime now) {

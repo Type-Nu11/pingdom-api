@@ -166,9 +166,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
 
         Map<Long, PlaceAggregate> aggregateMap = placeRecommendationAggregateLoader.loadAggregates(selection.candidates());
         Map<Long, Double> trustScores = placeRecommendationTrustScoreLoader.load(selection.candidates());
-        long totalClickCount = placeRecommendationAggregateLoader.resolveTotalClickCount();
-        long totalExposureCount = placeRecommendationAggregateLoader.resolveTotalExposureCount();
-        final long resolvedTotalExposureCount = totalExposureCount;
+        var globalCounts = placeRecommendationAggregateLoader.resolveGlobalCounts();
         PlaceRecommendationSimilarityService.SimilarityContext similarityContext = buildSimilarityContext(
                 selection.candidates(),
                 signalContext.interactedPlaceIds(),
@@ -185,8 +183,8 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 placeRecommendationScoringService.buildScoreContext(
                         selection.candidates(),
                         aggregateMap,
-                        totalClickCount,
-                        totalExposureCount
+                        globalCounts.clickCount(),
+                        globalCounts.exposureCount()
                 );
         double maxSeedWeight = signalContext.seedWeights().values().stream()
                 .mapToDouble(Double::doubleValue)
@@ -201,7 +199,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 signalContext,
                 graphAffinityScores,
                 trustScores,
-                resolvedTotalExposureCount,
+                globalCounts.exposureCount(),
                 maxSeedWeight,
                 appliedRadiusKm,
                 similarityContext,

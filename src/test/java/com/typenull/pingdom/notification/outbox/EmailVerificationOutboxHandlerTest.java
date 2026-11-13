@@ -1,15 +1,23 @@
 package com.typenull.pingdom.notification.outbox;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.identity.application.port.EmailSendException;
 import com.typenull.pingdom.identity.application.port.EmailSendResult;
 import com.typenull.pingdom.identity.application.port.EmailSender;
+import com.typenull.pingdom.identity.application.service.auth.AuthEmailDispatchPolicy;
 import com.typenull.pingdom.notification.application.service.NotificationDeliveryRecorder;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,94 +28,125 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class EmailVerificationOutboxHandlerTest {
 
     private static final String EVENT_ID = "event-id";
+    private static final String EMAIL = "user@example.com";
+    private static final String SECRET = "123456";
+    private static final LocalDateTime EXPIRY = LocalDateTime.of(2026, 11, 12, 15, 30);
 
-    @Mock
-    private EmailSender emailSender;
-
-    @Mock
-    private NotificationDeliveryRecorder notificationDeliveryRecorder;
+    @Mock private EmailSender emailSender;
+    @Mock private NotificationDeliveryRecorder recorder;
+    @Mock private AuthEmailDispatchPolicy dispatchPolicy;
 
     private EmailVerificationOutboxHandler handler;
     private ObjectMapper objectMapper;
 
-    /**
-     * JSON 페이로드를 실제 역직렬화하면서 메일 발송과 이력 기록은 대체할 인증 메일 핸들러를 구성.
-     */
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper();
-        handler = new EmailVerificationOutboxHandler(emailSender, objectMapper, notificationDeliveryRecorder);
+        objectMapper = new ObjectMapper().findAndRegisterModules();
+        handler = new EmailVerificationOutboxHandler(emailSender, objectMapper, recorder, dispatchPolicy);
     }
 
-    /**
-     * 인증 메일 발송 성공 시 사용자·이벤트·수신자·공급자 메시지 ID를 인증 요청 유형의 성공 이력으로 전달하는지 검증.
-     */
     @Test
-    void recordsSuccessfulVerificationDelivery() throws Exception {
-        String payload = objectMapper.writeValueAsString(
-                new EmailVerificationOutboxPayload(1L, "user@example.com", "123456")
-        );
-        when(emailSender.sendVerificationEmail("user@example.com", "123456"))
-                .thenReturn(EmailSendResult.sent("postmark-message-id"));
+    void sendsCurrentRequestOnceWhenCompletedDeliveryIsReplayed() throws Exception {
+        String payload = payload();
+        when(recorder.isEmailDeliveryTerminal(EVENT_ID, EMAIL)).thenReturn(false, true);
+        when(dispatchPolicy.canSendVerification(1L, EMAIL, SECRET, EXPIRY)).thenReturn(true);
+        when(emailSender.sendVerificationEmail(EMAIL, SECRET)).thenReturn(EmailSendResult.sent("message-id"));
 
         handler.handle(EVENT_ID, payload);
+        // Outbox 완료 저장 실패 등으로 동일 이벤트를 다시 처리해도 성공 이력을 우선한다.
+        handler.handle(EVENT_ID, payload);
 
-        verify(notificationDeliveryRecorder).recordEmailSuccess(
-                1L,
-                EVENT_ID,
-                OutboxEventType.EMAIL_VERIFICATION_REQUESTED,
-                "user@example.com",
-                "postmark-message-id"
-        );
+        verify(emailSender).sendVerificationEmail(EMAIL, SECRET);
+        verify(dispatchPolicy).canSendVerification(1L, EMAIL, SECRET, EXPIRY);
+        verify(recorder).recordEmailSuccess(1L, EVENT_ID, OutboxEventType.EMAIL_VERIFICATION_REQUESTED, EMAIL, "message-id");
     }
 
-    /**
-     * 메일 발송 오류의 공급자 코드·내부 코드·사유·재시도 여부를 실패 이력에 전달하고 EmailSendException을 호출자에게 전파하는지 검증.
-     */
     @Test
-    void recordsAndRethrowsVerificationFailure() throws Exception {
-        String payload = objectMapper.writeValueAsString(
-                new EmailVerificationOutboxPayload(1L, "user@example.com", "123456")
-        );
-        EmailSendException failure = new EmailSendException(
-                "failed",
-                "POSTMARK_SEND_FAILED",
-                "500",
-                true,
-                null
-        );
-        when(emailSender.sendVerificationEmail("user@example.com", "123456")).thenThrow(failure);
+    void terminatesStaleRequestWithoutSending() throws Exception {
+        handler.handle(EVENT_ID, payload());
 
-        assertThrows(EmailSendException.class, () -> handler.handle(EVENT_ID, payload));
-
-        verify(notificationDeliveryRecorder).recordEmailFailure(
-                1L,
-                EVENT_ID,
-                OutboxEventType.EMAIL_VERIFICATION_REQUESTED,
-                "user@example.com",
-                "500",
-                "POSTMARK_SEND_FAILED",
-                "failed",
-                true
-        );
+        verifyNoInteractions(emailSender);
+        verify(recorder).recordEmailStale(1L, EVENT_ID, OutboxEventType.EMAIL_VERIFICATION_REQUESTED, EMAIL);
     }
 
-    /**
-     * null 페이로드는 IllegalArgumentException을 발생시키고 수신자 없이 재시도 불가 페이로드 오류 이력을 기록하는지 검증.
-     */
     @Test
-    void rejectsNullVerificationPayload() {
-        assertThrows(IllegalArgumentException.class, () -> handler.handle(EVENT_ID, null));
+    void retriesStaleRecordingFailureWithoutLeakingCauseOrSending() throws Exception {
+        String payload = payload();
+        doThrow(new IllegalStateException(EMAIL + SECRET)).when(recorder)
+                .recordEmailStale(1L, EVENT_ID, OutboxEventType.EMAIL_VERIFICATION_REQUESTED, EMAIL);
 
-        verify(notificationDeliveryRecorder).recordEmailFailure(
-                null,
-                EVENT_ID,
-                OutboxEventType.EMAIL_VERIFICATION_REQUESTED,
-                null,
-                null,
-                NotificationDeliveryRecorder.ERROR_EMAIL_PAYLOAD_INVALID,
-                "Payload is empty",
-                false
-        );
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> handler.handle(EVENT_ID, payload));
+
+        assertThat(failure).hasNoCause();
+        assertThat(failure.getMessage()).doesNotContain(EMAIL, SECRET);
+        verifyNoInteractions(emailSender);
+    }
+
+    @Test
+    void retriesDeliveryLookupFailureWithoutSendingOrDisclosingCause() throws Exception {
+        String payload = payload();
+        when(recorder.isEmailDeliveryTerminal(EVENT_ID, EMAIL))
+                .thenThrow(new IllegalStateException(EMAIL + SECRET));
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> handler.handle(EVENT_ID, payload));
+
+        assertThat(failure).hasNoCause();
+        assertThat(failure.getMessage()).doesNotContain(EMAIL, SECRET);
+        verifyNoInteractions(emailSender, dispatchPolicy);
+    }
+
+    @Test
+    void retriesPolicyLookupFailureInsteadOfRecordingStale() throws Exception {
+        String payload = payload();
+        when(dispatchPolicy.canSendVerification(1L, EMAIL, SECRET, EXPIRY))
+                .thenThrow(new IllegalStateException(EMAIL + SECRET));
+
+        assertThrows(IllegalStateException.class, () -> handler.handle(EVENT_ID, payload));
+
+        verifyNoInteractions(emailSender);
+        verify(recorder, never()).recordEmailStale(any(), anyString(), any(), anyString());
+    }
+
+    @Test
+    void recordsSafeFailureAndRemovesProviderExceptionSecrets() throws Exception {
+        String payload = payload();
+        when(dispatchPolicy.canSendVerification(1L, EMAIL, SECRET, EXPIRY)).thenReturn(true);
+        when(emailSender.sendVerificationEmail(EMAIL, SECRET)).thenThrow(new EmailSendException(
+                EMAIL + SECRET, "POSTMARK_SEND_FAILED", "500", true,
+                new IllegalArgumentException(SECRET)));
+
+        EmailSendException failure = assertThrows(EmailSendException.class,
+                () -> handler.handle(EVENT_ID, payload));
+
+        assertThat(failure).hasNoCause();
+        assertThat(failure.getMessage()).doesNotContain(EMAIL, SECRET);
+        assertThat(failure.isRetryable()).isTrue();
+        verify(recorder).recordEmailFailure(1L, EVENT_ID, OutboxEventType.EMAIL_VERIFICATION_REQUESTED,
+                EMAIL, "500", "POSTMARK_SEND_FAILED", "인증 메일 전송에 실패했습니다.", true);
+    }
+
+    @Test
+    void removesPayloadSecretsFromParsingFailure() {
+        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                () -> handler.handle(EVENT_ID, "{\"recipientEmail\":\"" + EMAIL + "\",\"verificationCode\":\"" + SECRET + "\""));
+
+        assertThat(failure).hasNoCause();
+        assertThat(failure.getMessage()).doesNotContain(EMAIL, SECRET);
+        verifyNoInteractions(emailSender, dispatchPolicy);
+    }
+
+    @Test
+    void rejectsBlankPayload() {
+        assertThrows(IllegalArgumentException.class, () -> handler.handle(EVENT_ID, " "));
+
+        verify(recorder).recordEmailFailure(null, EVENT_ID, OutboxEventType.EMAIL_VERIFICATION_REQUESTED,
+                null, null, NotificationDeliveryRecorder.ERROR_EMAIL_PAYLOAD_INVALID,
+                "Payload is empty", false);
+    }
+
+    private String payload() throws Exception {
+        return objectMapper.writeValueAsString(new EmailVerificationOutboxPayload(1L, EMAIL, SECRET, EXPIRY));
     }
 }

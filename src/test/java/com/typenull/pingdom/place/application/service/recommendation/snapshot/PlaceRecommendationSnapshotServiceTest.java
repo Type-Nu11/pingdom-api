@@ -7,6 +7,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRe
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +32,9 @@ class PlaceRecommendationSnapshotServiceTest {
     private MapPlaceRepository mapPlaceRepository;
 
     @Mock
+    private EntityManager entityManager;
+
+    @Mock
     private MapBookmarkRepository mapBookmarkRepository;
 
     @Mock
@@ -47,7 +51,8 @@ class PlaceRecommendationSnapshotServiceTest {
                 placeRecommendationSnapshotRepository,
                 mapPlaceRepository,
                 mapBookmarkRepository,
-                mapImageRepository
+                mapImageRepository,
+                new PlaceRecommendationSnapshotWriteLock(mapPlaceRepository, entityManager)
         );
     }
 
@@ -68,15 +73,14 @@ class PlaceRecommendationSnapshotServiceTest {
                 .updatedAt(LocalDateTime.now().minusMinutes(1))
                 .build();
 
-        when(placeRecommendationSnapshotRepository.findByPlaceIdIn(any())).thenReturn(List.of());
-        when(placeRecommendationSnapshotRepository.findByPlaceIdInForReadLock(any())).thenReturn(List.of(snapshot));
-        when(mapPlaceRepository.findAllByIdInForUpdate(List.of(1L))).thenReturn(List.of(createPlace(1L)));
+        when(placeRecommendationSnapshotRepository.findByPlaceIdIn(any())).thenReturn(List.of(snapshot));
+        when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(java.util.Optional.of(createPlace(1L)));
 
         placeRecommendationSnapshotService.increaseExposureCounts(List.of(1L));
 
         assertThat(snapshot.getExposureCount()).isEqualTo(4L);
         verify(placeRecommendationSnapshotRepository).saveAll(List.of(snapshot));
-        verify(mapPlaceRepository).findAllByIdInForUpdate(List.of(1L));
+        verify(mapPlaceRepository).findByIdForUpdate(1L);
         verify(mapBookmarkRepository, never()).countByPlaceId(1L);
         verify(mapImageRepository, never()).sumLikeCountByPlaceId(1L);
     }
@@ -87,7 +91,6 @@ class PlaceRecommendationSnapshotServiceTest {
     @Test
     void bulkLocksSortedMissingPlaces() {
         when(placeRecommendationSnapshotRepository.findByPlaceIdIn(any())).thenReturn(List.of());
-        when(placeRecommendationSnapshotRepository.findByPlaceIdInForReadLock(any())).thenReturn(List.of());
         when(mapPlaceRepository.findAllByIdInForUpdate(List.of(1L, 2L, 3L)))
                 .thenReturn(List.of(createPlace(1L), createPlace(2L), createPlace(3L)));
 
@@ -95,6 +98,30 @@ class PlaceRecommendationSnapshotServiceTest {
 
         verify(mapPlaceRepository).findAllByIdInForUpdate(List.of(1L, 2L, 3L));
         verify(mapPlaceRepository, never()).findByIdForUpdate(any());
+    }
+
+    @Test
+    void refreshPreservesInteractionCounts() {
+        PlaceRecommendationSnapshot snapshot = PlaceRecommendationSnapshot.builder()
+                .placeId(1L).clickCount(7L).exposureCount(11L)
+                .bookmarkConversionCount(2L).likeConversionCount(3L).build();
+        when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(java.util.Optional.of(createPlace(1L)));
+        when(mapPlaceRepository.findById(1L)).thenReturn(java.util.Optional.of(createPlace(1L)));
+        when(placeRecommendationSnapshotRepository.findById(1L)).thenReturn(java.util.Optional.of(snapshot));
+
+        placeRecommendationSnapshotService.refresh(1L);
+
+        assertThat(snapshot.getClickCount()).isEqualTo(7L);
+        assertThat(snapshot.getExposureCount()).isEqualTo(11L);
+        assertThat(snapshot.getBookmarkConversionCount()).isEqualTo(2L);
+        assertThat(snapshot.getLikeConversionCount()).isEqualTo(3L);
+        assertThat(snapshot.getPhotoCount()).isEqualTo(1L);
+        var order = org.mockito.Mockito.inOrder(mapPlaceRepository, entityManager, placeRecommendationSnapshotRepository);
+        order.verify(mapPlaceRepository).findByIdForUpdate(1L);
+        order.verify(entityManager).flush();
+        order.verify(placeRecommendationSnapshotRepository).findById(1L);
+        order.verify(entityManager).detach(snapshot);
+        order.verify(placeRecommendationSnapshotRepository).findById(1L);
     }
 
     /**

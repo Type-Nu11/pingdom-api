@@ -5,6 +5,7 @@ import com.typenull.pingdom.place.api.dto.bookmark.BookmarkCreateResponse;
 import com.typenull.pingdom.place.api.dto.bookmark.BookmarkRemoveResponse;
 import com.typenull.pingdom.place.application.service.recommendation.feedback.PlaceRecommendationConversionService;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotService;
+import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotWriteLock;
 import com.typenull.pingdom.place.domain.place.core.MapBookmark;
 import com.typenull.pingdom.place.domain.place.core.MapBookmarkTrendEvent;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
@@ -35,6 +36,7 @@ public class MapBookmarkService {
     private final MapBookmarkRepository mapBookmarkRepository;
     private final MapBookmarkTrendEventRepository mapBookmarkTrendEventRepository;
     private final MapPlaceRepository mapPlaceRepository;
+    private final PlaceRecommendationSnapshotWriteLock snapshotWriteLock;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
     private final PlaceRecommendationConversionService placeRecommendationConversionService;
     private final Clock clock;
@@ -47,6 +49,7 @@ public class MapBookmarkService {
     @Transactional
     public BookmarkCreateResponse createBookmark(BookmarkCreateRequest request, long userId) {
         Long placeId = request.placeId();
+        snapshotWriteLock.requirePlace(placeId);
 
         boolean placeExists = mapPlaceRepository.existsByIdAndOperatingStatusAndDiscoveryStatus(
                 placeId,
@@ -89,6 +92,7 @@ public class MapBookmarkService {
      */
     @Transactional
     public BookmarkRemoveResponse removeBookmark(Long placeId, long userId) {
+        snapshotWriteLock.lockPlace(placeId);
         if (mapBookmarkRepository.deleteByPlaceIdAndUserId(placeId, userId) == 0) {
             throw new MapException(MapErrorCode.BOOKMARK_NOT_FOUND);
         }

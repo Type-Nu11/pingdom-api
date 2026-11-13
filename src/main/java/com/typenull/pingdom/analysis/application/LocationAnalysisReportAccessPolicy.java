@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 요청 이메일을 공백 제거·소문자로 정규화하여 로그인 사용자의 현재 계정 이메일과 비교.
- * 보고서 보관 서비스에 넘길 조회 키를 반환하며, 계정의 정지·탈퇴 상태는 검사 범위에서 제외.
+ * 기존 API의 연락처 검증을 유지하며, 보고서 소유권은 별도로 생성 당시 사용자 ID로 제한.
  */
 @Component
 @RequiredArgsConstructor
@@ -20,7 +20,7 @@ public class LocationAnalysisReportAccessPolicy {
 
     /**
      * 사용자 ID·계정이 없거나 정규화한 요청 이메일이 계정 이메일과 다르면 보고서 접근 거부.
-     * 일치하면 조회·보관 키로 사용할 계정 이메일 반환. 소유권 레코드 생성 없이 계정 이메일 비교로 접근 판단.
+     * 일치하면 연락처로 사용할 계정 이메일 반환. 이 결과만으로 보고서 소유권을 판정하지 않음.
      */
     @Transactional(readOnly = true)
     public String requireOwnedEmail(Long userId, String requestedEmail) {

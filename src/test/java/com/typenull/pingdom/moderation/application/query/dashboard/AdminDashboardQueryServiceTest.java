@@ -17,6 +17,7 @@ import com.typenull.pingdom.moderation.application.support.AdminPlaceDuplicateRe
 import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceDuplicateQueryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationApplicationRepository;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplication;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
@@ -113,6 +114,12 @@ class AdminDashboardQueryServiceTest {
                 LocalDateTime.of(2026, 7, 27, 12, 0)
         )).thenReturn(4L);
         when(mapPlaceRepository.countMissingLocation()).thenReturn(1L);
+        when(mapPlaceDuplicateQueryRepository.findPotentialDuplicatePlaces()).thenReturn(List.of(
+                MapPlace.builder().id(1L).name("핑덤 카페").address("서울시 중구")
+                        .latitude(37.56).longitude(126.98).build(),
+                MapPlace.builder().id(2L).name("핑덤 카페").address("서울시 중구")
+                        .latitude(37.56).longitude(126.98).build()
+        ));
 
         AdminDashboardSummaryResponse response = service.getSummary();
 
@@ -124,7 +131,7 @@ class AdminDashboardQueryServiceTest {
         assertEquals(7L, response.operationalMetrics().today().postRegistrationCount());
         assertEquals(12L, response.operationalMetrics().last7Days().placeRegistrationCount());
         assertEquals(31L, response.operationalMetrics().last7Days().postRegistrationCount());
-        assertEquals(0L, response.operationalMetrics().duplicatePlaceGroupCount());
+        assertEquals(1L, response.operationalMetrics().duplicatePlaceGroupCount());
         assertEquals(4L, response.operationalMetrics().expiringBannedUserCount());
         assertEquals(1L, response.operationalMetrics().missingLocationPlaceCount());
         assertEquals(LocalDateTime.of(2026, 7, 27, 12, 0), response.operationalMetrics().expiringBanUntil());

@@ -124,8 +124,22 @@ public class ScoutProfileService {
         Page<ScoutProfile> profiles = status == null
                 ? profileRepository.findAll(pageable)
                 : profileRepository.findAllByStatus(status, pageable);
+        Map<Long, ScoutActivityEligibility> eligibilitiesByUserId = new LinkedHashMap<>();
+        if (profiles.hasContent()) {
+            eligibilityRepository.findAllById(
+                    profiles.getContent().stream().map(ScoutProfile::getUserId).toList()
+            ).forEach(eligibility -> eligibilitiesByUserId.put(eligibility.getScoutUserId(), eligibility));
+        }
         return new ScoutProfilePageResponse(
-                profiles.getContent().stream().map(this::response).toList(),
+                profiles.getContent().stream().map(profile -> {
+                    ScoutActivityEligibility eligibility = eligibilitiesByUserId.get(profile.getUserId());
+                    if (eligibility == null) {
+                        throw new VisitorVerificationException(
+                                VisitorVerificationErrorCode.SCOUT_ACTIVITY_ELIGIBILITY_NOT_FOUND
+                        );
+                    }
+                    return ScoutProfileResponse.from(profile, eligibility);
+                }).toList(),
                 profiles.getNumber() + 1,
                 profiles.getSize(),
                 profiles.getTotalElements(),

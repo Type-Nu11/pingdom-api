@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 
 /**
  * 장소 리뷰 본문·추천 사유·사진과 공개 상태를 보관.
@@ -23,12 +24,16 @@ public class PlaceReview {
     @Enumerated(EnumType.STRING)
     @OrderColumn(name = "display_order")
     @Column(name = "reason", nullable = false, length = 50)
+    @BatchSize(size = 100)
     private List<PlaceReviewRecommendReason> recommendReasons = new ArrayList<>();
     @Column(nullable = false, length = 2000) private String content;
     @ElementCollection @CollectionTable(name = "place_review_image", joinColumns = @JoinColumn(name = "review_id"))
-    @Column(name = "image_url", nullable = false, length = 500) private List<String> imageUrls;
+    @Column(name = "image_url", nullable = false, length = 500)
+    @BatchSize(size = 100)
+    private List<String> imageUrls;
     @OneToMany(mappedBy = "review", fetch = FetchType.LAZY)
     @OrderBy("displayOrder ASC")
+    @BatchSize(size = 100)
     private List<PlaceReviewMediaUpload> mediaUploads = new ArrayList<>();
     @Column(name = "created_at", nullable = false) private LocalDateTime createdAt;
     @Enumerated(EnumType.STRING)

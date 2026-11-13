@@ -12,6 +12,8 @@ import com.typenull.pingdom.engagement.infrastructure.persistence.ReporterModera
 import com.typenull.pingdom.engagement.infrastructure.persistence.TrustScoreAnomalyRepository;
 import com.typenull.pingdom.engagement.infrastructure.persistence.TrustScoreInterventionRuleRepository;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
+import com.typenull.pingdom.post.application.service.MapImageStateLockService;
+import com.typenull.pingdom.post.application.service.MapImageStateLockService.LockedImage;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
@@ -19,6 +21,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 신고 접수·승인·반려 통계로 신고자 신뢰도와 제한, 이미지 자동 숨김 관리.
- * 기존 신고자 정책 갱신은 행 잠금을 사용하며 최초 정책 생성 경합은 별도 재시도 없이 전파.
+ * 신고자 정책의 제한·통계 갱신은 같은 행 잠금을 사용하며 최초 생성 경합은 INSERT 충돌 무시 후 재조회.
  */
 @Service
 @RequiredArgsConstructor
@@ -48,22 +51,32 @@ public class ReportPolicyService {
     private final TrustScoreAnomalyRepository trustScoreAnomalyRepository;
     private final TrustScoreInterventionRuleRepository trustScoreInterventionRuleRepository;
     private final PlaceGrowthService placeGrowthService;
+    private final MapImageStateLockService imageStateLockService;
     private final Clock clock;
 
     // 신고자의 현재 제한 상태를 정리한 뒤 새로운 신고를 등록할 수 있는지 검증.
     public void validateCanReport(Long reporterUserId, LocalDateTime now) {
-        reporterPolicyRepository.findById(reporterUserId)
-                .ifPresent(policy -> {
-                    policy.clearExpiredRestriction(now);
-                    if (policy.isRestricted(now)) {
-                        throw new MapException(MapErrorCode.REPORTER_RESTRICTED);
-                    }
-                });
+        reporterPolicyRepository.findByReporterUserIdForUpdate(reporterUserId)
+                .ifPresent(policy -> validateCanReport(policy, now));
+    }
+
+    /** 사진 FK를 가진 새 신고의 INSERT보다 먼저 최초 생성 정책까지 확보합니다. */
+    public void lockForSubmission(Long reporterUserId, String reporterUsername, LocalDateTime now) {
+        validateCanReport(getOrCreate(reporterUserId, reporterUsername), now);
+    }
+
+    // 신고 순서와 신고자 ID 순서가 달라도 일괄 심사의 정책 잠금은 항상 ID 오름차순입니다.
+    public void lockForModeration(List<PostReport> reports) {
+        Map<Long, String> reporters = new TreeMap<>();
+        reports.forEach(report -> reporters.putIfAbsent(report.getReporterUserId(), report.getReporterUsername()));
+        reporters.forEach(this::getOrCreate);
     }
 
     // 신고 접수 건수를 기록하고 신고자 정책을 저장.
     public void recordSubmitted(Long reporterUserId, String reporterUsername) {
         ReporterModerationPolicy policy = getOrCreate(reporterUserId, reporterUsername);
+        // 사전 검증 당시 정책이 없었다면 생성 경합 후 취득한 정책의 제한도 확인해야 합니다.
+        validateCanReport(policy, LocalDateTime.now(clock));
         policy.recordSubmitted(reporterUsername);
         reporterPolicyRepository.save(policy);
     }
@@ -100,12 +113,17 @@ public class ReportPolicyService {
      * 실제로 숨겨진 경우만 연결 장소의 사진 수를 줄이고 true를 반환. 누락·이미 숨김·기준 미달은 false를 반환.
      */
     public boolean autoHideIfNeeded(MapImage mapImage, LocalDateTime now) {
-        if (mapImage == null || !mapImage.isVisible()) {
+        if (mapImage == null) {
             return false;
         }
+        LockedImage locked = imageStateLockService.findForUpdate(mapImage.getId()).orElse(null);
+        if (locked == null || !locked.image().isVisible()) {
+            return false;
+        }
+        MapImage lockedImage = locked.image();
 
         List<PostReport> activeReports = postReportRepository.findAllByMapImage_IdAndStatusIn(
-                mapImage.getId(),
+                lockedImage.getId(),
                 List.of(PostReportStatus.PENDING, PostReportStatus.ACCEPTED)
         );
         Map<Long, ReporterModerationPolicy> policiesByReporterId = loadPoliciesByReporterId(activeReports);
@@ -117,17 +135,11 @@ public class ReportPolicyService {
             return false;
         }
 
-        boolean hidden = mapImage.autoHide(AUTO_HIDE_REASON, now, null);
-        decreasePhotoCountIfNeeded(mapImage, hidden);
-        return hidden;
-    }
-
-    // 이미지가 실제로 숨겨진 경우 연결 장소의 사진 집계도 감소.
-    private void decreasePhotoCountIfNeeded(MapImage mapImage, boolean hidden) {
-        if (!hidden || mapImage.getMapPlace() == null) {
-            return;
+        boolean hidden = lockedImage.autoHide(AUTO_HIDE_REASON, now, null);
+        if (hidden && locked.place() != null) {
+            placeGrowthService.decreasePhotoCount(locked.place());
         }
-        placeGrowthService.decreasePhotoCount(mapImage.getMapPlace().getId());
+        return hidden;
     }
 
     // 활성 신고에 포함된 신고자 정책을 한 번에 조회해 신고자 ID로 색인.
@@ -157,7 +169,17 @@ public class ReportPolicyService {
     // 비관적 잠금으로 기존 정책을 가져오거나 신규 신고자 정책을 생성.
     private ReporterModerationPolicy getOrCreate(Long reporterUserId, String reporterUsername) {
         return reporterPolicyRepository.findByReporterUserIdForUpdate(reporterUserId)
-                .orElseGet(() -> ReporterModerationPolicy.create(reporterUserId, reporterUsername));
+                .orElseGet(() -> {
+                    reporterPolicyRepository.insertIfAbsent(reporterUserId, reporterUsername);
+                    return reporterPolicyRepository.findByReporterUserIdForUpdate(reporterUserId).orElseThrow();
+                });
+    }
+
+    private void validateCanReport(ReporterModerationPolicy policy, LocalDateTime now) {
+        policy.clearExpiredRestriction(now);
+        if (policy.isRestricted(now)) {
+            throw new MapException(MapErrorCode.REPORTER_RESTRICTED);
+        }
     }
 
     // 신뢰도 급락, 허위 신고 증가, 낮은 승인율을 미해결 이상으로 기록.

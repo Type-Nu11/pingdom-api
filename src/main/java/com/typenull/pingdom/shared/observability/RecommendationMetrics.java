@@ -9,6 +9,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import org.springframework.stereotype.Component;
 
 /**
@@ -74,6 +75,34 @@ public class RecommendationMetrics {
         ).increment();
     }
 
+    public void recordSimilarityCoverage(boolean loadSnapshots, long hitPairCount, long missingPairCount) {
+        String mode = loadSnapshots ? "online" : "rebuild";
+        meterRegistry.counter("pingdom.recommendation.similarity.pairs", "mode", mode, "result", "hit")
+                .increment(hitPairCount);
+        meterRegistry.counter("pingdom.recommendation.similarity.pairs", "mode", mode, "result", "miss")
+                .increment(missingPairCount);
+    }
+
+    public void recordSimilarityBookmarkQuery(boolean loadSnapshots, long rowCount, long elapsedNanos) {
+        recordSimilarityReactionQuery(loadSnapshots, "bookmark", rowCount, elapsedNanos);
+    }
+
+    public void recordSimilarityLikeQuery(boolean loadSnapshots, long rowCount, long elapsedNanos) {
+        recordSimilarityReactionQuery(loadSnapshots, "like", rowCount, elapsedNanos);
+    }
+
+    private void recordSimilarityReactionQuery(
+            boolean loadSnapshots,
+            String reaction,
+            long rowCount,
+            long elapsedNanos
+    ) {
+        Tags tags = Tags.of("mode", loadSnapshots ? "online" : "rebuild", "reaction", reaction);
+        meterRegistry.summary("pingdom.recommendation.similarity.reaction.rows", tags).record(rowCount);
+        meterRegistry.timer("pingdom.recommendation.similarity.reaction.query", tags)
+                .record(elapsedNanos, TimeUnit.NANOSECONDS);
+    }
+
     private void recordSnapshotResyncItemCount(String item, long count) {
         if (count <= 0) {
             return;
@@ -82,6 +111,71 @@ public class RecommendationMetrics {
                 "pingdom.recommendation.snapshot_resync.items",
                 Tags.of("item", item)
         ).increment(count);
+    }
+
+    public void recordExposureReceived(int placeCount) {
+        recordExposureStage("received", placeCount);
+    }
+
+    public void recordExposureSubmitted(int placeCount) {
+        recordExposureStage("submitted", placeCount);
+    }
+
+    public void recordExposureStarted(int placeCount, long queueWaitNanos) {
+        recordExposureStage("started", placeCount);
+        meterRegistry.timer("pingdom.recommendation.exposure.queue_wait")
+                .record(queueWaitNanos, TimeUnit.NANOSECONDS);
+    }
+
+    public void recordExposurePersisted(int placeCount, long elapsedNanos) {
+        recordExposureStage("persisted", placeCount);
+        recordExposureProcessingTime("success", elapsedNanos);
+    }
+
+    public void recordExposureRejected(int placeCount, ExposureRejectionReason reason) {
+        recordExposureStage("submission_rejected", placeCount);
+        recordExposureDrop(reason.tag, placeCount);
+    }
+
+    public void recordExposureSubmissionFailure(int placeCount) {
+        recordExposureStage("submission_failed", placeCount);
+    }
+
+    public void recordExposurePersistenceFailure(int placeCount, long elapsedNanos) {
+        recordExposureStage("persistence_failed", placeCount);
+        // 커밋 응답 유실이면 실제 저장 여부를 단정할 수 없으므로 확정 드롭과 구분합니다.
+        recordExposureProcessingTime("failure", elapsedNanos);
+    }
+
+    private void recordExposureStage(String stage, int placeCount) {
+        if (placeCount <= 0) {
+            return;
+        }
+        meterRegistry.counter("pingdom.recommendation.exposure.events", "stage", stage).increment();
+        meterRegistry.counter("pingdom.recommendation.exposure.items", "stage", stage).increment(placeCount);
+    }
+
+    private void recordExposureDrop(String reason, int placeCount) {
+        if (placeCount > 0) {
+            meterRegistry.counter("pingdom.recommendation.exposure.dropped", "reason", reason).increment(placeCount);
+        }
+    }
+
+    private void recordExposureProcessingTime(String result, long elapsedNanos) {
+        meterRegistry.timer("pingdom.recommendation.exposure.processing", "result", result)
+                .record(elapsedNanos, TimeUnit.NANOSECONDS);
+    }
+
+    public enum ExposureRejectionReason {
+        CAPACITY("capacity"),
+        SHUTDOWN("shutdown"),
+        UNKNOWN("unknown");
+
+        private final String tag;
+
+        ExposureRejectionReason(String tag) {
+            this.tag = tag;
+        }
     }
 
     private String safeTag(String value) {

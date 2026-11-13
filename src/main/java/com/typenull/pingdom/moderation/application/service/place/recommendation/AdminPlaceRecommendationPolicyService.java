@@ -17,6 +17,7 @@ import com.typenull.pingdom.moderation.domain.recommendation.AdminRecommendation
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminRecommendationPolicyChangeHistoryRepository;
 import com.typenull.pingdom.place.application.service.recommendation.policy.PlaceRecommendationPolicyService;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotResyncService;
+import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationFullResyncService;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -40,7 +41,7 @@ import org.springframework.util.StringUtils;
 public class AdminPlaceRecommendationPolicyService {
     private final ObjectMapper objectMapper;
     private final PlaceRecommendationPolicyService placeRecommendationPolicyService;
-    private final PlaceRecommendationSnapshotResyncService placeRecommendationSnapshotResyncService;
+    private final PlaceRecommendationFullResyncService placeRecommendationFullResyncService;
     private final AdminRecommendationPolicyChangeHistoryRepository adminRecommendationPolicyChangeHistoryRepository;
     private final AdminAuditLogService adminAuditLogService;
     private final Clock clock;
@@ -156,9 +157,8 @@ public class AdminPlaceRecommendationPolicyService {
         );
     }
 
-    @Transactional
     public PlaceRecommendationSnapshotResyncService.SnapshotResyncResult resyncRecommendationSnapshots() {
-        return placeRecommendationSnapshotResyncService.resyncAll();
+        return placeRecommendationFullResyncService.resyncAll();
     }
 
     private void validateRecommendationTrafficRequest(AdminPlaceRecommendationTrafficUpdateRequest request) {

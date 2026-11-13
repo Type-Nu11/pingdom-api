@@ -15,11 +15,12 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationExposureRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import jakarta.persistence.EntityManager;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
@@ -37,8 +38,19 @@ class PlaceRecommendationSnapshotResyncServiceTest {
     @Mock private PlaceSimilaritySnapshotResyncService placeSimilaritySnapshotResyncService;
     @Mock private PlaceRecommendationVersionSnapshotService placeRecommendationVersionSnapshotService;
 
-    @InjectMocks
+    @Mock private EntityManager entityManager;
     private PlaceRecommendationSnapshotResyncService resyncService;
+
+    @BeforeEach
+    void setUp() {
+        resyncService = new PlaceRecommendationSnapshotResyncService(
+                mapPlaceRepository, mapBookmarkRepository, mapImageRepository,
+                placeRecommendationClickRepository, placeRecommendationConversionRepository,
+                placeRecommendationExposureRepository, placeRecommendationSnapshotRepository,
+                placeSimilaritySnapshotResyncService, placeRecommendationVersionSnapshotService,
+                new PlaceRecommendationSnapshotWriteLock(mapPlaceRepository, entityManager));
+    }
+
 
     /**
      * 단일 장소의 원본 집계와 유사도·버전 단건 결과를 합치고 전체 장소 순회를 호출하지 않는지 확인.
@@ -76,7 +88,7 @@ class PlaceRecommendationSnapshotResyncServiceTest {
     @Test
     void cleansDeletedPlaceSnapshots() {
         when(mapPlaceRepository.findByIdForUpdate(17L)).thenReturn(Optional.empty());
-        when(placeRecommendationSnapshotRepository.existsById(17L)).thenReturn(true);
+        when(placeRecommendationSnapshotRepository.deleteOrphans(List.of(17L))).thenReturn(1);
         when(placeSimilaritySnapshotResyncService.deleteForPlace(17L)).thenReturn(2L);
         when(placeRecommendationVersionSnapshotService.resyncPlace(17L))
                 .thenReturn(new PlaceRecommendationVersionSnapshotService.VersionSnapshotResyncResult(0L, 1L));
@@ -87,7 +99,7 @@ class PlaceRecommendationSnapshotResyncServiceTest {
         assertThat(result.deletedSnapshotCount()).isEqualTo(1L);
         assertThat(result.deletedSimilaritySnapshotCount()).isEqualTo(2L);
         assertThat(result.deletedVersionSnapshotCount()).isEqualTo(1L);
-        verify(placeRecommendationSnapshotRepository).deleteById(17L);
+        verify(placeRecommendationSnapshotRepository).deleteOrphans(List.of(17L));
         verify(placeSimilaritySnapshotResyncService).deleteForPlace(17L);
         verify(placeRecommendationVersionSnapshotService).resyncPlace(17L);
     }

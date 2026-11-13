@@ -80,9 +80,49 @@ docker logs --since 30m pingdom-app-1 2>&1 | grep -F '[requestId:응답의-X-Req
 | `pingdom.scout.profile_status_updates` | `from_status`, `to_status` | Scout 프로필 상태 전이 수 |
 | `pingdom.scout.activity_eligibility_status_updates` | `from_status`, `to_status` | Scout 활동 자격 상태 전이 수 |
 
-Outbox 외 Spring 이벤트에는 현재 공통 처리 metric이 없다. 개인정보 이력과 추천 노출의
+Outbox 외 Spring 이벤트 전체에 공통 처리 metric이 있는 것은 아니다. 개인정보 이력의
 커밋 후 처리 실패는 listener 로그와 원래 요청의 `X-Request-Id`로 추적한다. 동기 신고
 이벤트 실패는 요청 오류와 트랜잭션 결과를 함께 확인한다.
+
+### 추천 노출 비동기 처리
+
+추천 노출은 `placeRecommendationExposureExecutor`에서 처리하며 영속 Outbox 실행기와
+스레드·큐를 공유하지 않는다. 기본값 1 worker·대기 40개는 운영 부하로 검증한 튜닝값이
+아니다. `place.recommendation.exposure`의 `worker-concurrency`, `queue-capacity`,
+`shutdown-await-seconds`로 설정하고 두 풀의 합산 DB 커넥션·CPU 사용량을 확인한다.
+포화 시 호출자 스레드로 저장을 넘기지 않고 작업을 거절한다.
+
+| Metric | Tags | 의미 |
+| --- | --- | --- |
+| `pingdom.recommendation.exposure.events` | `stage` | listener가 관측한 이벤트 수 |
+| `pingdom.recommendation.exposure.items` | `stage` | 해당 단계의 장소 노출 항목 수 |
+| `pingdom.recommendation.exposure.dropped` | `reason` | 실행기가 제출을 거절하여 전달되지 않은 항목 수 |
+| `pingdom.recommendation.exposure.queue_wait` | none | 제출 시도부터 실행 시작까지의 대기 시간 |
+| `pingdom.recommendation.exposure.processing` | `result` | 저장 서비스 호출의 처리 시간 |
+| `pingdom.recommendation.exposure.executor.active` | none | 실행 중인 worker 수 |
+| `pingdom.recommendation.exposure.executor.queued` | none | 대기 작업 수 |
+
+`stage`는 `received`, `submitted`, `started`, `persisted`, `submission_rejected`,
+`submission_failed`, `persistence_failed`로 제한한다. `persisted`는 REQUIRES_NEW
+서비스의 커밋 반환 이후에만 기록하며 빈 목록은 집계하지 않는다. 이벤트 수와 항목 수는
+서로 다른 단위이고, requestId·사용자 ID·장소 ID는 metric tag에 넣지 않는다.
+제출 거절의 `reason`은 거절 관측 시 풀 상태에 따라 `capacity`(동작 중), `shutdown`(종료),
+`unknown`(상태 확인 불가)으로 제한한다. 포화 직후 종료와 경합하면 종료 상태로 관측될
+수 있으며 과거의 원인을 정확히 재구성하는 신호는 아니다.
+`submission_failed`와 `persistence_failed`는 실행/커밋 결과가 불명확할 수 있으므로
+확정 드롭 수에 더하지 않는다. 원천 로그와 대조할 때도 임의 재전송하지 않는다.
+
+대기 시간·큐 점유·드롭의 지속 증가를 함께 조사한다. 경보에는 관측 구간, 최소 표본,
+허용 제출 누락률과 지속 시간을 운영 기준으로 정한다. 드롭 비율을 계산할 때는 같은 구간의
+항목 단위 `received`를 분모로 사용하고 이벤트 수나 일반 요청 수와 섞지 않는다.
+작업 완료 시차 때문에 짧은 구간의 단계별 수가 일치하지 않을 수 있다.
+
+이 메트릭은 메모리 이벤트 유실을 복원하지 않는다. listener 실행 전 crash, 마지막 수집
+후 강제 종료와 종료 제한을 넘긴 미완료 작업의 정확한 유실 수는 알 수 없다. 종료 시
+신규 제출은 executor 종료 후 거절하며 설정한 시간 동안만 완료를 기다린다. 대기 제한은
+실행 중인 DB 호출의 강제 종료나 컨테이너 종료 예산을 보장하지 않으므로 함께 조정한다.
+노출 원천 누락은 CTR 분모를 줄여 지표를 편향시킬 수 있고 snapshot resync로 복구되지
+않는다. 동일 requestId의 임의 재생성은 중복 노출을 만들 수 있으므로 수행하지 않는다.
 
 ## Alert Criteria
 

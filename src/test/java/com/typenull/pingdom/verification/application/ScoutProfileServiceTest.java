@@ -33,10 +33,17 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 class ScoutProfileServiceTest {
 
@@ -184,6 +191,92 @@ class ScoutProfileServiceTest {
                         .isEqualTo(VisitorVerificationErrorCode.SCOUT_ACTIVITY_PROFILE_REQUIRED));
 
         verify(eligibilityRepository, never()).findByScoutUserIdForUpdate(1L);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 20, 100})
+    void loadsPageEligibilityInOneBatch(int count) {
+        var pageable = PageRequest.of(0, count,
+                Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("userId")));
+        var profiles = IntStream.rangeClosed(1, count)
+                .mapToObj(index -> ScoutProfile.pending((long) index, "Scout-" + index, null, NOW))
+                .toList();
+        var ids = profiles.stream().map(ScoutProfile::getUserId).toList();
+        var eligibilities = ids.stream().map(id -> ScoutActivityEligibility.pending(id, NOW)).toList();
+        when(profileRepository.findAll(pageable)).thenReturn(new PageImpl<>(profiles, pageable, count + 1));
+        when(eligibilityRepository.findAllById(ids)).thenReturn(eligibilities);
+
+        var result = service.listForAdmin(9L, null, 1, count);
+
+        assertThat(result.profiles()).extracting(item -> item.userId()).containsExactlyElementsOf(ids);
+        assertThat(result.page()).isEqualTo(1);
+        assertThat(result.limit()).isEqualTo(count);
+        assertThat(result.totalCount()).isEqualTo(count + 1);
+        assertThat(result.totalPages()).isEqualTo(2);
+        assertThat(result.hasNext()).isTrue();
+        verify(eligibilityRepository).findAllById(ids);
+        verify(eligibilityRepository, never()).findById(any());
+    }
+
+    @Test
+    void preservesProfileOrderAndStoredEligibilityState() {
+        var pageable = PageRequest.of(0, 20,
+                Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("userId")));
+        var firstProfile = ScoutProfile.pending(7L, "첫 Scout", null, NOW.plusMinutes(1));
+        var secondProfile = ScoutProfile.pending(3L, "다음 Scout", null, NOW);
+        var firstEligibility = ScoutActivityEligibility.pending(7L, NOW);
+        var secondEligibility = ScoutActivityEligibility.pending(3L, NOW);
+        secondEligibility.grant(9L, NOW.minusDays(2), NOW.minusDays(1), NOW.plusMinutes(2));
+        when(profileRepository.findAll(pageable)).thenReturn(
+                new PageImpl<>(List.of(firstProfile, secondProfile), pageable, 2));
+        when(eligibilityRepository.findAllById(List.of(7L, 3L))).thenReturn(
+                List.of(secondEligibility, firstEligibility));
+
+        var result = service.listForAdmin(9L, null, 1, 20);
+
+        assertThat(result.profiles()).extracting(item -> item.userId()).containsExactly(7L, 3L);
+        assertThat(result.profiles().get(0).activityEligibilityStatus())
+                .isEqualTo(ScoutActivityEligibilityStatus.PENDING);
+        assertThat(result.profiles().get(1).activityEligibilityStatus())
+                .isEqualTo(ScoutActivityEligibilityStatus.ELIGIBLE);
+        assertThat(result.profiles().get(0).updatedAt()).isEqualTo(NOW.plusMinutes(1));
+        assertThat(result.profiles().get(1).updatedAt()).isEqualTo(NOW.plusMinutes(2));
+        verify(eligibilityRepository, never()).findById(any());
+    }
+
+    @Test
+    void rejectsWholePageWhenAnyEligibilityIsMissing() {
+        var pageable = PageRequest.of(0, 20,
+                Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("userId")));
+        var profiles = List.of(ScoutProfile.pending(2L, "둘", null, NOW),
+                ScoutProfile.pending(1L, "하나", null, NOW));
+        when(profileRepository.findAll(pageable)).thenReturn(new PageImpl<>(profiles, pageable, 2));
+        when(eligibilityRepository.findAllById(List.of(2L, 1L)))
+                .thenReturn(List.of(ScoutActivityEligibility.pending(2L, NOW)));
+
+        assertThatThrownBy(() -> service.listForAdmin(9L, null, 1, 20))
+                .isInstanceOfSatisfying(VisitorVerificationException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(VisitorVerificationErrorCode.SCOUT_ACTIVITY_ELIGIBILITY_NOT_FOUND));
+
+        verify(eligibilityRepository, never()).findById(any());
+    }
+
+    @Test
+    void skipsEligibilityLookupForEmptyPage() {
+        var pageable = PageRequest.of(2, 20,
+                Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("userId")));
+        when(profileRepository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(), pageable, 21));
+
+        var result = service.listForAdmin(9L, null, 3, 20);
+
+        assertThat(result.profiles()).isEmpty();
+        assertThat(result.page()).isEqualTo(3);
+        assertThat(result.totalCount()).isEqualTo(21);
+        assertThat(result.totalPages()).isEqualTo(2);
+        assertThat(result.hasNext()).isFalse();
+        verify(eligibilityRepository, never()).findAllById(any());
+        verify(eligibilityRepository, never()).findById(any());
     }
 
     /** 지정 ID의 활성·미정지 일반 계정을 만들어 신청자/심사 대상 조건을 제공. */

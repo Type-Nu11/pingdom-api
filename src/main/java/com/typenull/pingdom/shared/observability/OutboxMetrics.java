@@ -54,6 +54,10 @@ public class OutboxMetrics {
         counter(eventType, handler, "success").increment();
     }
 
+    public void recordLeaseEvent(String result) {
+        meterRegistry.counter("pingdom.outbox.lease", "result", result).increment();
+    }
+
     /** null 상태는 무시하고 FAILED는 최종 실패, 다른 상태는 retry로 집계. 상태 변경 자체는 처리 범위 외. */
     public void recordFailure(OutboxEventType eventType, String handler, OutboxEventStatus status) {
         if (status == null) {

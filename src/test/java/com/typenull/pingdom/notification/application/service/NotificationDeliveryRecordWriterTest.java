@@ -57,93 +57,54 @@ class NotificationDeliveryRecordWriterTest {
         );
     }
 
-    /**
-     * 이메일 성공 이력을 저장하면 수신자 해시가 원문 이메일을 포함하지 않는 64자리이고 성공 상태·시도 횟수 1을 기록하는지 검증.
-     */
     @Test
-    void hashesDeliveryRecipient() {
-        when(notificationDeliveryRepository.save(any(NotificationDelivery.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+    void hashesRecipientAndUsesAtomicEmailWriter() {
+        writer.record(emailRequest(NotificationDeliveryStatus.SUCCEEDED));
 
-        writer.record(new NotificationDeliveryRecordRequest(
-                NotificationDeliveryChannel.EMAIL,
-                NotificationDeliveryStatus.SUCCEEDED,
-                1L,
-                null,
-                null,
-                EVENT_ID,
-                "EMAIL_VERIFICATION_REQUESTED",
-                "user@example.com",
-                "message-id",
-                null,
-                null,
-                null,
-                false
-        ));
-
-        ArgumentCaptor<NotificationDelivery> captor = ArgumentCaptor.forClass(NotificationDelivery.class);
-        org.mockito.Mockito.verify(notificationDeliveryRepository).save(captor.capture());
-        NotificationDelivery delivery = captor.getValue();
-        assertThat(delivery.getRecipientHash()).hasSize(64);
-        assertThat(delivery.getRecipientHash()).doesNotContain("user@example.com");
-        assertThat(delivery.getStatus()).isEqualTo(NotificationDeliveryStatus.SUCCEEDED);
-        assertThat(delivery.getAttemptCount()).isEqualTo(1);
+        ArgumentCaptor<String> hash = ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(notificationDeliveryRepository).upsertEmailDelivery(
+                eq("SUCCEEDED"), eq(1L), eq(EVENT_ID), eq("EMAIL_VERIFICATION_REQUESTED"), hash.capture(),
+                eq("message-id"), org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(), eq(false), eq(2), eq(LocalDateTime.now(CLOCK)));
+        assertThat(hash.getValue()).hasSize(64).doesNotContain("user@example.com");
+        // 조회 경로도 동일한 EMAIL:recipient 키를 사용해야 성공 이력을 재사용할 수 있다.
+        writer.isEmailDeliveryTerminal(EVENT_ID, "user@example.com");
+        org.mockito.Mockito.verify(notificationDeliveryRepository)
+                .findDeliveryRecord(EVENT_ID, NotificationDeliveryChannel.EMAIL, hash.getValue());
+        org.mockito.Mockito.verify(notificationDeliveryRepository, org.mockito.Mockito.never()).save(any());
     }
 
-    /**
-     * 재시도 예약된 이메일의 두 번째 실패는 최대 시도 횟수에 도달해 FINAL_FAILED로 바뀌고 최신 실패 사유를 저장하는지 검증.
-     */
     @Test
-    void finalizesEmailFailureAtAttemptLimit() {
-        NotificationDelivery existing = NotificationDelivery.create(
-                NotificationDeliveryChannel.EMAIL,
-                1L,
-                null,
-                null,
-                EVENT_ID,
-                "EMAIL_VERIFICATION_REQUESTED",
-                "recipient-hash",
-                LocalDateTime.now(CLOCK)
-        );
-        existing.recordResult(
-                NotificationDeliveryStatus.RETRY_SCHEDULED,
-                1L,
-                null,
-                null,
-                "EMAIL_VERIFICATION_REQUESTED",
-                null,
-                "500",
-                "POSTMARK_SEND_FAILED",
-                "failed",
-                true,
-                1,
-                LocalDateTime.now(CLOCK)
-        );
+    void delegatesEmailRetryLimitToAtomicWriter() {
+        writer.record(emailRequest(NotificationDeliveryStatus.RETRY_SCHEDULED));
 
+        org.mockito.Mockito.verify(notificationDeliveryRepository).upsertEmailDelivery(
+                eq("RETRY_SCHEDULED"), eq(1L), eq(EVENT_ID), eq("EMAIL_VERIFICATION_REQUESTED"), anyString(),
+                eq("message-id"), org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(), eq(false), eq(2), eq(LocalDateTime.now(CLOCK)));
+    }
+
+    @Test
+    void recognizesSuccessAndStaleAsTerminalButRetriesOtherFailures() {
+        NotificationDelivery delivery = NotificationDelivery.create(NotificationDeliveryChannel.EMAIL,
+                1L, null, null, EVENT_ID, "EMAIL_VERIFICATION_REQUESTED", "hash", LocalDateTime.now(CLOCK));
         when(notificationDeliveryRepository.findDeliveryRecord(eq(EVENT_ID), eq(NotificationDeliveryChannel.EMAIL), anyString()))
-                .thenReturn(Optional.of(existing));
-        when(notificationDeliveryRepository.save(any(NotificationDelivery.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+                .thenReturn(Optional.of(delivery));
 
-        writer.record(new NotificationDeliveryRecordRequest(
-                NotificationDeliveryChannel.EMAIL,
-                NotificationDeliveryStatus.RETRY_SCHEDULED,
-                1L,
-                null,
-                null,
-                EVENT_ID,
-                "EMAIL_VERIFICATION_REQUESTED",
-                "user@example.com",
-                null,
-                "500",
-                "POSTMARK_SEND_FAILED",
-                "failed again",
-                true
-        ));
+        delivery.recordResult(NotificationDeliveryStatus.SUCCEEDED, 1L, null, null, "EMAIL_VERIFICATION_REQUESTED",
+                "message-id", null, null, null, false, 1, LocalDateTime.now(CLOCK));
+        assertThat(writer.isEmailDeliveryTerminal(EVENT_ID, "user@example.com")).isTrue();
+        delivery.recordResult(NotificationDeliveryStatus.FAILED, 1L, null, null, "EMAIL_VERIFICATION_REQUESTED",
+                null, null, NotificationDeliveryRecorder.ERROR_EMAIL_REQUEST_STALE, "stale", false, 1, LocalDateTime.now(CLOCK));
+        assertThat(writer.isEmailDeliveryTerminal(EVENT_ID, "user@example.com")).isTrue();
+        delivery.recordResult(NotificationDeliveryStatus.RETRY_SCHEDULED, 1L, null, null, "EMAIL_VERIFICATION_REQUESTED",
+                null, null, "SEND_FAILED", "failed", true, 1, LocalDateTime.now(CLOCK));
+        assertThat(writer.isEmailDeliveryTerminal(EVENT_ID, "user@example.com")).isFalse();
+    }
 
-        assertThat(existing.getStatus()).isEqualTo(NotificationDeliveryStatus.FINAL_FAILED);
-        assertThat(existing.getAttemptCount()).isEqualTo(2);
-        assertThat(existing.getFailureReason()).isEqualTo("failed again");
+    private NotificationDeliveryRecordRequest emailRequest(NotificationDeliveryStatus status) {
+        return new NotificationDeliveryRecordRequest(NotificationDeliveryChannel.EMAIL, status, 1L, null, null,
+                EVENT_ID, "EMAIL_VERIFICATION_REQUESTED", "user@example.com", "message-id", null, null, null, false);
     }
 
     /**

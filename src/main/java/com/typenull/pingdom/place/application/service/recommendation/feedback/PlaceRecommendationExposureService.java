@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.application.service.recommendation.feedback;
 
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotService;
+import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotWriteLock;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationVersionSnapshotService;
 
 import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommendationExposure;
@@ -26,6 +27,7 @@ public class PlaceRecommendationExposureService {
 
     private final PlaceRecommendationExposureRepository placeRecommendationExposureRepository;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
+    private final PlaceRecommendationSnapshotWriteLock snapshotWriteLock;
     private final PlaceRecommendationVersionSnapshotService placeRecommendationVersionSnapshotService;
 
     /**
@@ -64,6 +66,8 @@ public class PlaceRecommendationExposureService {
         if (placeIds.isEmpty()) {
             return;
         }
+
+        snapshotWriteLock.requirePlaces(placeIds);
 
         List<PlaceRecommendationExposure> exposures = new ArrayList<>(placeIds.size());
         int ranking = 1;

@@ -11,7 +11,17 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface MerchantPlaceInvitationRepository extends JpaRepository<MerchantPlaceInvitation, Long> {
-    boolean existsByPlaceIdAndInviteeUserIdAndStatus(Long placeId, Long inviteeUserId, MerchantPlaceInvitationStatus status);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select invitation from MerchantPlaceInvitation invitation
+            where invitation.placeId = :placeId and invitation.inviteeUserId = :inviteeUserId
+              and invitation.status = :status
+            """)
+    Optional<MerchantPlaceInvitation> findByPlaceIdAndInviteeUserIdAndStatusForUpdate(
+            @Param("placeId") Long placeId,
+            @Param("inviteeUserId") Long inviteeUserId,
+            @Param("status") MerchantPlaceInvitationStatus status);
+
     Optional<MerchantPlaceInvitation> findByIdAndPlaceId(Long id, Long placeId);
 
     List<MerchantPlaceInvitation> findAllByPlaceIdAndStatus(

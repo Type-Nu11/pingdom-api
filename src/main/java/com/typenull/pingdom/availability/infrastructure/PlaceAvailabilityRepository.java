@@ -17,6 +17,36 @@ import org.springframework.data.repository.query.Param;
  * 공개 목록은 종료 전·잔여량 양수 조건만 적용하므로 이미 시작한 슬롯도 포함 가능. 실제 예약의 시각·재고 검사는 도메인 책임.
  */
 public interface PlaceAvailabilityRepository extends JpaRepository<PlaceAvailability, Long> {
+    // availability alias와 :now를 사용하는 현재 점주 자격만 공유하며 슬롯별 조건은 각 조회에 둔다.
+    String RESERVABLE_MERCHANT_PREDICATE = """
+              and exists (
+                  select ownerPlace.placeId from MerchantOwnerPlace ownerPlace
+                  where ownerPlace.placeId = availability.placeId
+                    and ownerPlace.merchantOwnerUserId = availability.merchantOwnerUserId
+              )
+              and exists (
+                  select profile.userId from MerchantOwnerProfile profile
+                  where profile.userId = availability.merchantOwnerUserId
+                    and profile.status = com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus.ACTIVE
+              )
+              and exists (
+                  select verification.userId from MerchantVerification verification
+                  where verification.userId = availability.merchantOwnerUserId
+                    and verification.identityStatus = com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.APPROVED
+                    and verification.businessStatus = com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.APPROVED
+              )
+              and exists (
+                  select ownerUser.id from User ownerUser
+                  where ownerUser.id = availability.merchantOwnerUserId
+                    and ownerUser.role = com.typenull.pingdom.identity.domain.UserRole.MERCHANT_OWNER
+                    and ownerUser.status = com.typenull.pingdom.identity.domain.UserStatus.ACTIVE
+                    and (ownerUser.banned = false or (
+                        ownerUser.banType = com.typenull.pingdom.identity.domain.UserBanType.TEMPORARY
+                        and ownerUser.banExpiresAt <= :now
+                    ))
+              )
+            """;
+
     Optional<PlaceAvailability> findByIdAndMerchantOwnerUserId(Long id, Long ownerId);
 
     @Query("""
@@ -36,33 +66,8 @@ public interface PlaceAvailabilityRepository extends JpaRepository<PlaceAvailabi
             select availability from PlaceAvailability availability
             where availability.placeId = :placeId and availability.status = :status
               and availability.endsAt > :now and availability.remainingCapacity > 0
-              and exists (
-                  select ownerPlace.placeId from MerchantOwnerPlace ownerPlace
-                  where ownerPlace.placeId = availability.placeId
-                    and ownerPlace.merchantOwnerUserId = availability.merchantOwnerUserId
-              )
               and availability.bookingRetired = false
-              and exists (
-                  select profile.userId from MerchantOwnerProfile profile
-                  where profile.userId = availability.merchantOwnerUserId
-                    and profile.status = com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus.ACTIVE
-              )
-              and exists (
-                  select verification.userId from MerchantVerification verification
-                  where verification.userId = availability.merchantOwnerUserId
-                    and verification.identityStatus = com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.APPROVED
-                    and verification.businessStatus = com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.APPROVED
-              )
-              and exists (
-                  select ownerUser.id from User ownerUser
-                  where ownerUser.id = availability.merchantOwnerUserId
-                    and ownerUser.role = com.typenull.pingdom.identity.domain.UserRole.MERCHANT_OWNER
-                    and ownerUser.status = com.typenull.pingdom.identity.domain.UserStatus.ACTIVE
-                    and (ownerUser.banned = false or (
-                        ownerUser.banType = com.typenull.pingdom.identity.domain.UserBanType.TEMPORARY
-                        and ownerUser.banExpiresAt <= :now
-                    ))
-              )
+            """ + RESERVABLE_MERCHANT_PREDICATE + """
             order by availability.startsAt asc, availability.id asc
             """)
     List<PlaceAvailability> findPublicByPlaceId(@Param("placeId") Long placeId,
@@ -74,34 +79,8 @@ public interface PlaceAvailabilityRepository extends JpaRepository<PlaceAvailabi
               and availability.status = com.typenull.pingdom.availability.domain.AvailabilityStatus.ACTIVE
               and availability.endsAt > :now
               and availability.remainingCapacity > 0
-              and exists (
-                  select ownerPlace.placeId from MerchantOwnerPlace ownerPlace
-                  where ownerPlace.placeId = availability.placeId
-                    and ownerPlace.merchantOwnerUserId = availability.merchantOwnerUserId
-              )
               and availability.bookingRetired = false
-              and exists (
-                  select profile.userId from MerchantOwnerProfile profile
-                  where profile.userId = availability.merchantOwnerUserId
-                    and profile.status = com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus.ACTIVE
-              )
-              and exists (
-                  select verification.userId from MerchantVerification verification
-                  where verification.userId = availability.merchantOwnerUserId
-                    and verification.identityStatus = com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.APPROVED
-                    and verification.businessStatus = com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.APPROVED
-              )
-              and exists (
-                  select ownerUser.id from User ownerUser
-                  where ownerUser.id = availability.merchantOwnerUserId
-                    and ownerUser.role = com.typenull.pingdom.identity.domain.UserRole.MERCHANT_OWNER
-                    and ownerUser.status = com.typenull.pingdom.identity.domain.UserStatus.ACTIVE
-                    and (ownerUser.banned = false or (
-                        ownerUser.banType = com.typenull.pingdom.identity.domain.UserBanType.TEMPORARY
-                        and ownerUser.banExpiresAt <= :now
-                    ))
-              )
-            """)
+            """ + RESERVABLE_MERCHANT_PREDICATE)
     List<Long> findPlaceIdsWithReservableAvailability(
             @Param("placeIds") Collection<Long> placeIds,
             @Param("now") LocalDateTime now
@@ -115,33 +94,7 @@ public interface PlaceAvailabilityRepository extends JpaRepository<PlaceAvailabi
     @Query("""
             select availability from PlaceAvailability availability
             where availability.id = :id
-              and exists (
-                  select ownerPlace.placeId from MerchantOwnerPlace ownerPlace
-                  where ownerPlace.placeId = availability.placeId
-                    and ownerPlace.merchantOwnerUserId = availability.merchantOwnerUserId
-              )
               and availability.bookingRetired = false
-              and exists (
-                  select profile.userId from MerchantOwnerProfile profile
-                  where profile.userId = availability.merchantOwnerUserId
-                    and profile.status = com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus.ACTIVE
-              )
-              and exists (
-                  select verification.userId from MerchantVerification verification
-                  where verification.userId = availability.merchantOwnerUserId
-                    and verification.identityStatus = com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.APPROVED
-                    and verification.businessStatus = com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.APPROVED
-              )
-              and exists (
-                  select ownerUser.id from User ownerUser
-                  where ownerUser.id = availability.merchantOwnerUserId
-                    and ownerUser.role = com.typenull.pingdom.identity.domain.UserRole.MERCHANT_OWNER
-                    and ownerUser.status = com.typenull.pingdom.identity.domain.UserStatus.ACTIVE
-                    and (ownerUser.banned = false or (
-                        ownerUser.banType = com.typenull.pingdom.identity.domain.UserBanType.TEMPORARY
-                        and ownerUser.banExpiresAt <= :now
-                    ))
-              )
-            """)
+            """ + RESERVABLE_MERCHANT_PREDICATE)
     Optional<PlaceAvailability> findReservableByIdForUpdate(@Param("id") Long id, @Param("now") LocalDateTime now);
 }

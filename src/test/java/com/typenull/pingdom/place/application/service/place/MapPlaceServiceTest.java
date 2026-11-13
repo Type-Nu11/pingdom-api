@@ -58,7 +58,7 @@ class MapPlaceServiceTest {
                 .longitude(126.9780)
                 .registrant("merchant")
                 .build();
-        when(mapPlaceRepository.findById(10L)).thenReturn(Optional.of(place));
+        when(mapPlaceRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(place));
         when(merchantOwnerPlaceRepository.existsByPlaceIdAndMerchantOwnerUserId(10L, 7L)).thenReturn(true);
 
         mapPlaceService.deletePlace(10L, 7L);
@@ -88,7 +88,7 @@ class MapPlaceServiceTest {
                 .longitude(126.9780)
                 .registrant("merchant")
                 .build();
-        when(mapPlaceRepository.findById(10L)).thenReturn(Optional.of(place));
+        when(mapPlaceRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(place));
         when(merchantOwnerPlaceRepository.existsByPlaceIdAndMerchantOwnerUserId(10L, 7L)).thenReturn(false);
 
         assertThatThrownBy(() -> mapPlaceService.deletePlace(10L, 7L))

@@ -5,24 +5,34 @@ import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
 import com.typenull.pingdom.availability.domain.exception.AvailabilityException;
 import com.typenull.pingdom.boost.domain.exception.VerifiedBoostException;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
+import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
+import com.typenull.pingdom.identity.domain.exception.UsersErrorCode;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.api.dto.ValidationErrorResponse;
 import com.typenull.pingdom.shared.exception.CommonErrorCode;
 import com.typenull.pingdom.shared.exception.DomainException;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.observability.AuthMetrics;
+import com.typenull.pingdom.shared.web.RequestIdFilter;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -116,17 +126,17 @@ public class GlobalExceptionHandler {
                 .body(ValidationErrorResponse.of(errors));
     }
 
-    /** 예외 메시지의 알려진 제약명·테이블 문자열로 중복 오류를 분류. 매칭되지 않은 무결성 실패는 공통 500으로 반환. */
+    /** 사용자명은 실제 UNIQUE 제약으로, 나머지는 기존 매핑으로 분류하며 미확인 무결성 실패는 공통 500으로 반환. */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
             DataIntegrityViolationException exception
     ) {
+        if (isUsernameUniqueViolation(exception)) {
+            return errorResponse(AuthErrorCode.DUPLICATE_USERNAME);
+        }
         String message = exception.getMessage();
         if (message != null) {
             String normalizedMessage = message.toLowerCase();
-            if (normalizedMessage.contains("users_username_key")) {
-                return errorResponse(AuthErrorCode.DUPLICATE_USERNAME);
-            }
             if (normalizedMessage.contains("uk_oauth_accounts_provider_provider_id")) {
                 return errorResponse(AuthErrorCode.OAUTH_ACCOUNT_ALREADY_LINKED);
             }
@@ -139,6 +149,42 @@ public class GlobalExceptionHandler {
         }
 
         return errorResponse(CommonErrorCode.DATA_INTEGRITY_VIOLATION);
+    }
+
+    private boolean isUsernameUniqueViolation(Throwable exception) {
+        Set<Throwable> visited = new HashSet<>();
+        for (Throwable cause = exception; cause != null && visited.add(cause); cause = cause.getCause()) {
+            if (cause instanceof org.hibernate.exception.ConstraintViolationException violation
+                    && "23505".equals(violation.getSQLState())
+                    && "uk_users_username".equals(violation.getConstraintName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** User 쓰기의 flush·commit 충돌은 자동 재시도 없이 거절하고 다른 도메인의 기존 오류 계약은 유지. */
+    @ExceptionHandler({ObjectOptimisticLockingFailureException.class, OptimisticLockException.class})
+    public ResponseEntity<ErrorResponse> handleOptimisticLockException(RuntimeException exception) {
+        return handleUnexpectedException(exception);
+    }
+
+    private boolean isUserOptimisticConflict(Throwable exception) {
+        Set<Throwable> visited = new HashSet<>();
+        for (Throwable cause = exception; cause != null && visited.add(cause); cause = cause.getCause()) {
+            if (cause instanceof ObjectOptimisticLockingFailureException springException) {
+                Class<?> persistentClass = springException.getPersistentClass();
+                if ((persistentClass != null && User.class.isAssignableFrom(persistentClass))
+                        || User.class.getName().equals(springException.getPersistentClassName())) {
+                    return true;
+                }
+            }
+            // JPA 변환 예외는 클래스 메타데이터가 없어도 원인 예외에 충돌 엔티티를 보존한다.
+            if (cause instanceof OptimisticLockException jpaException && jpaException.getEntity() instanceof User) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** 요청한 HTTP 상태와 reason을 유지. reason이 null일 때만 공통 요청 실패 메시지로 대체. */
@@ -163,10 +209,32 @@ public class GlobalExceptionHandler {
         return errorResponse(CommonErrorCode.METHOD_NOT_ALLOWED);
     }
 
-    /** 처리되지 않은 예외의 클래스명만 로그에 남기고 내부 상세를 제외한 공통 500 응답을 반환. */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException exception) {
+        return ResponseEntity.status(CommonErrorCode.UNSUPPORTED_MEDIA_TYPE.getStatus())
+                .headers(exception.getHeaders())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(ErrorResponse.from(CommonErrorCode.UNSUPPORTED_MEDIA_TYPE));
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
+    public ResponseEntity<ErrorResponse> handleNotAcceptableMediaType(HttpMediaTypeNotAcceptableException exception) {
+        // 원래 Accept와 호환되지 않아 발생한 오류도 고정 JSON으로 반환해 다시 협상에 실패하지 않게 한다.
+        return ResponseEntity.status(CommonErrorCode.NOT_ACCEPTABLE.getStatus())
+                .headers(exception.getHeaders())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(ErrorResponse.from(CommonErrorCode.NOT_ACCEPTABLE));
+    }
+
+    /** commit wrapper의 User 충돌도 같은 409로 처리하고 나머지는 내부 상세를 제외한 공통 500 응답을 반환. */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpectedException(Exception exception) {
-        log.error("Unhandled exception type={}", exception.getClass().getName());
+        if (isUserOptimisticConflict(exception)) {
+            return errorResponse(UsersErrorCode.USER_CONCURRENT_MODIFICATION);
+        }
+        String requestId = MDC.get(RequestIdFilter.REQUEST_ID_MDC_KEY);
+        log.error("Unhandled exception requestId={} diagnostic={}",
+                requestId == null ? "-" : requestId, UnexpectedExceptionLogFormatter.format(exception));
         return errorResponse(CommonErrorCode.INTERNAL_SERVER_ERROR);
     }
 

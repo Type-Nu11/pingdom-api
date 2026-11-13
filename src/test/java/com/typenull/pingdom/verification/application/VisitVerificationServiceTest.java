@@ -8,6 +8,8 @@ import static org.mockito.Mockito.*;
 import com.typenull.pingdom.identity.domain.*;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
+import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.verification.api.dto.*;
 import com.typenull.pingdom.verification.domain.*;
@@ -19,6 +21,7 @@ import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.data.projection.SpelAwareProxyProjectionFactory;
 
 /** 체류 인증의 서버 시각 기반 완료·이탈·관측 공백과 세션별 정책 확정을 검증. */
 class VisitVerificationServiceTest {
@@ -229,8 +232,10 @@ class VisitVerificationServiceTest {
                 LocalDate.ofInstant(STARTED_AT, ZoneId.of("Asia/Seoul")), STARTED_AT, STARTED_AT, 15.0,
                 1000.0, Duration.ofSeconds(30), Duration.ofMinutes(5));
         ReflectionTestUtils.setField(existing, "id", 11L);
-        when(sessionRepository.findAllByTouristUserIdAndVerificationDateAndStatusInOrderByLastVerifiedAtDesc(
-                eq(1L), any(LocalDate.class), anyCollection())).thenReturn(List.of(existing));
+        var recovery = recoveryCandidate(existing);
+        when(sessionRepository.findForegroundRecoveryBatch(
+                eq(1L), any(LocalDate.class), anyCollection(), any(), any(), any())).thenReturn(List.of(recovery));
+        when(sessionRepository.findByIdAndTouristUserIdForUpdate(11L, 1L)).thenReturn(Optional.of(existing));
 
         VisitVerificationSessionResponse response = service.startForeground(1L,
                 new ForegroundVisitVerificationStartRequest(35.1801, 128.1078, 10.0, clock.instant()));
@@ -250,9 +255,13 @@ class VisitVerificationServiceTest {
         VisitVerificationSession stale = VisitVerificationSession.start(1L, 2L,
                 LocalDate.ofInstant(STARTED_AT, ZoneId.of("Asia/Seoul")), STARTED_AT, STARTED_AT, 15.0,
                 1000.0, Duration.ofSeconds(30), Duration.ofMinutes(5));
+        ReflectionTestUtils.setField(stale, "id", 11L);
         MapPlaceRepository.NearbyVisitPlace candidate = nearbyPlace(2L, 10.0);
-        when(sessionRepository.findAllByTouristUserIdAndVerificationDateAndStatusInOrderByLastVerifiedAtDesc(
-                eq(1L), any(LocalDate.class), anyCollection())).thenReturn(List.of(stale));
+        var recovery = recoveryCandidate(stale);
+        when(sessionRepository.findForegroundRecoveryBatch(
+                eq(1L), any(LocalDate.class), anyCollection(), any(), any(), any())).thenReturn(List.of(recovery));
+        when(sessionRepository.expireForegroundPrefix(eq(1L), any(), eq(List.of(11L)), anyCollection(),
+                eq(VisitVerificationSessionStatus.EXPIRED), any(), any())).thenReturn(1);
         when(placeRepository.findNearbyPlacesForVisitVerification(anyDouble(), anyDouble(), eq(1000.0), any()))
                 .thenReturn(List.of(candidate));
         clock.advance(Duration.ofMinutes(5));
@@ -260,8 +269,22 @@ class VisitVerificationServiceTest {
         VisitVerificationSessionResponse response = service.startForeground(1L,
                 new ForegroundVisitVerificationStartRequest(35.1801, 128.1078, 10.0, clock.instant()));
 
-        assertThat(stale.getStatus()).isEqualTo(VisitVerificationSessionStatus.EXPIRED);
+        verify(sessionRepository).expireForegroundPrefix(eq(1L), any(), eq(List.of(11L)), anyCollection(),
+                eq(VisitVerificationSessionStatus.EXPIRED), eq(clock.instant()),
+                eq(clock.instant().minusSeconds(15)));
         assertThat(response.status()).isEqualTo(VisitVerificationSessionStatus.STARTED);
+    }
+
+    private VisitVerificationSessionRepository.ForegroundRecoveryCandidate recoveryCandidate(VisitVerificationSession session) {
+        return new SpelAwareProxyProjectionFactory().createProjection(
+                VisitVerificationSessionRepository.ForegroundRecoveryCandidate.class, Map.ofEntries(
+                        Map.entry("id", session.getId()), Map.entry("placeId", session.getPlaceId()),
+                        Map.entry("status", session.getStatus()), Map.entry("expiresAt", session.getExpiresAt()),
+                        Map.entry("lastVerifiedAt", session.getLastVerifiedAt()),
+                        Map.entry("requiredRadiusMeters", session.getRequiredRadiusMeters()),
+                        Map.entry("operatingStatus", PlaceOperatingStatus.OPERATING),
+                        Map.entry("discoveryStatus", PlaceDiscoveryStatus.VISIBLE),
+                        Map.entry("latitude", 35.1801), Map.entry("longitude", 128.1078)));
     }
 
     /** 장소 ID와 거리만 반환하는 주변 장소 projection mock을 생성. */

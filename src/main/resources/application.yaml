@@ -176,6 +176,8 @@ outbox:
   base-backoff: PT10S
   max-backoff: PT10M
   processing-timeout: PT5M
+  heartbeat-interval: PT30S
+  max-execution-time: PT30M
   retention: P7D
   poll-delay: PT5S
   initial-delay: PT5S
@@ -290,6 +292,15 @@ abuse:
       limit: ${ROUTE_QUERY_IP_LIMIT:100}
       window: ${ROUTE_QUERY_IP_WINDOW:PT1M}
 
+voice-ai:
+  retention:
+    cleanup-enabled: true
+    session-batch-size: 10
+    replay-batch-size: 100
+    max-batches-per-run: 10
+    cleanup-delay: PT1H
+    cleanup-initial-delay: PT1H
+
 gemini:
   enabled: ${GEMINI_ENABLED:false}
   api-key: ${GEMINI_API_KEY:}
@@ -366,6 +377,10 @@ place:
       cache-ttl: ${NAVER_MAP_REGION_CACHE_TTL:10m}
       cache-max-entries: ${NAVER_MAP_REGION_CACHE_MAX_ENTRIES:10000}
   recommendation:
+    exposure:
+      worker-concurrency: ${RECOMMENDATION_EXPOSURE_WORKER_CONCURRENCY:1}
+      queue-capacity: ${RECOMMENDATION_EXPOSURE_QUEUE_CAPACITY:40}
+      shutdown-await-seconds: ${RECOMMENDATION_EXPOSURE_SHUTDOWN_AWAIT_SECONDS:30}
     verified-boost:
       score: ${VERIFIED_BOOST_SCORE:0.08}
     default-version: place-rec-v1
@@ -462,6 +477,23 @@ verification:
     cleanup-batch-size: 10
     cleanup-enabled: true
     cleanup-delay: PT24H
+    cleanup-initial-delay: PT1H
+  visit-evidence-orphan:
+    # 추적 orphan은 기본 정리하며 immutable versionId가 없는 객체만 보류합니다. 활성 증빙의 30일 계약은 유지합니다.
+    cleanup-enabled: true
+    upload-timeout: PT2M
+    batch-size: 50
+    recheck-delay: PT24H
+    cleanup-delay: PT1H
+    cleanup-initial-delay: PT1H
+
+identity:
+  profile-image-storage:
+    cleanup-enabled: true
+    upload-timeout: PT2M
+    batch-size: 50
+    recheck-delay: PT24H
+    cleanup-delay: PT1H
     cleanup-initial-delay: PT1H
 
 # 관리자 지도 전체 마커 표시 한도. 쿼리 timeout과 별개이며 초기 정책값은 100이다.

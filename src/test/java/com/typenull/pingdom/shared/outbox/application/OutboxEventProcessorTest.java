@@ -1,19 +1,24 @@
 package com.typenull.pingdom.shared.outbox.application;
 
-import com.typenull.pingdom.shared.outbox.application.OutboxEventStateService.OutboxEventSnapshot;
-
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.typenull.pingdom.shared.outbox.application.OutboxEventStateService.OutboxEventSnapshot;
 import com.typenull.pingdom.shared.observability.OutboxMetrics;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventStatus;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
+import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,102 +27,94 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class OutboxEventProcessorTest {
-
-    private static final String EVENT_ID = "event-id";
-
-    @Mock
-    private OutboxEventStateService stateService;
-
-    @Mock
-    private OutboxEventHandler handler;
-
-    @Mock
-    private OutboxMetrics outboxMetrics;
-
+    private static final OutboxClaim CLAIM = new OutboxClaim("event-id", "original-token");
+    @Mock private OutboxEventStateService stateService;
+    @Mock private OutboxEventHandler handler;
+    @Mock private OutboxMetrics metrics;
+    @Mock private ScheduledExecutorService scheduler;
+    @Mock private ScheduledFuture<?> future;
     private OutboxEventProcessor processor;
 
-    /**
-     * 이메일 인증 이벤트를 지원하는 핸들러와 상태·메트릭 대역으로 processor를 구성.
-     */
     @BeforeEach
     void setUp() {
         when(handler.supportedType()).thenReturn(OutboxEventType.EMAIL_VERIFICATION_REQUESTED);
-        processor = new OutboxEventProcessor(stateService, List.of(handler), outboxMetrics);
+        doReturn(future).when(scheduler).scheduleWithFixedDelay(any(), anyLong(), anyLong(), any());
+        OutboxProperties properties = new OutboxProperties(20, 2, 40, 100, 5,
+                Duration.ofSeconds(10), Duration.ofMinutes(10), Duration.ofMinutes(5), Duration.ofDays(7));
+        OutboxLeaseManager leases = new OutboxLeaseManager(stateService, properties, scheduler, metrics, () -> 0L);
+        processor = new OutboxEventProcessor(stateService, List.of(handler), metrics, leases);
     }
 
-    /**
-     * PROCESSING snapshot의 payload를 핸들러가 처리한 뒤 성공 상태 갱신과 이벤트 타입별 성공 메트릭이 호출되는지 검증.
-     */
     @Test
-    void successfulHandlerMarksEventSucceeded() {
-        when(stateService.findProcessingEvent(EVENT_ID)).thenReturn(snapshot());
+    void countsSuccessOnlyWhenOriginalClaimCompletes() {
+        when(stateService.findProcessingEvent(CLAIM)).thenReturn(snapshot());
+        when(stateService.markSucceeded(CLAIM)).thenReturn(true);
 
-        processor.process(EVENT_ID);
+        processor.process(CLAIM);
 
-        verify(handler).handle(EVENT_ID, "{}");
-        verify(stateService).markSucceeded(EVENT_ID);
-        verify(outboxMetrics).recordSuccess(eq(OutboxEventType.EMAIL_VERIFICATION_REQUESTED), any());
+        verify(handler).handle(CLAIM.eventId(), "{}");
+        verify(metrics).recordSuccess(eq(OutboxEventType.EMAIL_VERIFICATION_REQUESTED), any());
+        verify(future, atLeastOnce()).cancel(false);
     }
 
-    /**
-     * 핸들러의 임시 예외를 상태 서비스에 전달하고 반환된 RETRY 상태를 실패 메트릭에 기록하는지 검증.
-     */
     @Test
-    void temporaryFailureMarksEventForRetry() {
-        when(stateService.findProcessingEvent(EVENT_ID)).thenReturn(snapshot());
-        doThrow(new IllegalStateException("temporary")).when(handler).handle(EVENT_ID, "{}");
-        when(stateService.markFailed(eq(EVENT_ID), any(IllegalStateException.class)))
-                .thenReturn(OutboxEventStatus.RETRY);
+    void lateSuccessIsNotCountedAsSuccess() {
+        when(stateService.findProcessingEvent(CLAIM)).thenReturn(snapshot());
+        when(stateService.markSucceeded(CLAIM)).thenReturn(false);
 
-        processor.process(EVENT_ID);
+        processor.process(CLAIM);
 
-        verify(stateService).markFailed(eq(EVENT_ID), any(IllegalStateException.class));
-        verify(outboxMetrics).recordFailure(eq(OutboxEventType.EMAIL_VERIFICATION_REQUESTED), any(), eq(OutboxEventStatus.RETRY));
+        verify(metrics, never()).recordSuccess(any(), any());
+        verify(metrics).recordLeaseEvent("completion_rejected");
     }
 
-    /**
-     * 첫 핸들러 호출이 실패하고 두 번째가 성공하면 총 두 번 처리하고 최종 성공 갱신을 호출하는지 검증.
-     */
     @Test
-    void succeedsAfterTemporaryHandlerFailure() {
-        when(stateService.findProcessingEvent(EVENT_ID)).thenReturn(snapshot());
-        doThrow(new IllegalStateException("temporary"))
-                .doNothing()
-                .when(handler)
-                .handle(EVENT_ID, "{}");
-        when(stateService.markFailed(eq(EVENT_ID), any(IllegalStateException.class)))
-                .thenReturn(OutboxEventStatus.RETRY);
+    void handlerFailureCountsOnlyAppliedRetry() {
+        when(stateService.findProcessingEvent(CLAIM)).thenReturn(snapshot());
+        doThrow(new IllegalStateException("temporary")).when(handler).handle(CLAIM.eventId(), "{}");
+        when(stateService.markFailed(eq(CLAIM), any())).thenReturn(OutboxEventStatus.RETRY);
 
-        processor.process(EVENT_ID);
-        processor.process(EVENT_ID);
+        processor.process(CLAIM);
 
-        verify(handler, times(2)).handle(EVENT_ID, "{}");
-        verify(stateService).markSucceeded(EVENT_ID);
+        verify(metrics).recordFailure(eq(OutboxEventType.EMAIL_VERIFICATION_REQUESTED), any(),
+                eq(OutboxEventStatus.RETRY));
     }
 
-    /**
-     * 상태 서비스가 처리 가능한 snapshot을 반환하지 않으면 핸들러를 실행하지 않아 완료된 이벤트의 중복 처리를 방지하는지 검증.
-     */
     @Test
-    void skipsMissingProcessingSnapshot() {
-        when(stateService.findProcessingEvent(EVENT_ID)).thenReturn(null);
+    void lateFailureIsNotCountedAsBusinessFailure() {
+        when(stateService.findProcessingEvent(CLAIM)).thenReturn(snapshot());
+        doThrow(new IllegalStateException("late")).when(handler).handle(CLAIM.eventId(), "{}");
 
-        processor.process(EVENT_ID);
+        processor.process(CLAIM);
+
+        verify(metrics, never()).recordFailure(any(), any(), any());
+        verify(metrics).recordLeaseEvent("failure_rejected");
+    }
+
+    @Test
+    void missingOwnershipSkipsHandler() {
+        processor.process(CLAIM);
 
         verify(handler, never()).handle(any(), any());
+        verify(metrics).recordLeaseEvent("execution_skipped");
     }
 
-    /**
-     * 이메일 인증 타입·빈 JSON payload·사용자 집계·시도 0회를 가진 처리 입력 snapshot을 제공.
-     */
+    @Test
+    void heartbeatRegistrationRejectionReturnsUnstartedClaim() {
+        reset(scheduler);
+        doThrow(new java.util.concurrent.RejectedExecutionException("shutdown"))
+                .when(scheduler).scheduleWithFixedDelay(any(), anyLong(), anyLong(), any());
+
+        processor.process(CLAIM);
+
+        verify(stateService).releaseClaim(CLAIM);
+        verify(stateService, never()).markFailed(any(), any());
+        verify(handler, never()).handle(any(), any());
+        verify(metrics).recordLeaseEvent("registration_rejected");
+    }
+
     private OutboxEventSnapshot snapshot() {
-        return new OutboxEventSnapshot(
-                EVENT_ID,
-                OutboxEventType.EMAIL_VERIFICATION_REQUESTED,
-                "{}",
-                "USER",
-                "1",
-                0
-        );
+        return new OutboxEventSnapshot(CLAIM.eventId(), OutboxEventType.EMAIL_VERIFICATION_REQUESTED,
+                "{}", "USER", "1", 0);
     }
 }

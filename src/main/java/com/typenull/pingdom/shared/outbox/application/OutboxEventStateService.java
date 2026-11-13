@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * handler 처리와 분리된 트랜잭션에서 이벤트 상태를 조회·변경하고 수동 재시도 결과를 제공.
- * 상태 조건과 낙관적 잠금은 있으나 worker별 lease 소유 토큰은 검사 대상에서 제외.
+ * 토큰과 DB 시각의 유효 lease를 함께 검사하여 이전 선점의 결과를 거절한다.
  */
 @Service
 @RequiredArgsConstructor
@@ -22,41 +22,55 @@ public class OutboxEventStateService {
     private final OutboxBackoffPolicy backoffPolicy;
     private final Clock outboxClock;
 
-    /** PROCESSING 상태만 읽기 스냅샷으로 반환하며 없거나 다른 상태이면 null. */
     @Transactional(readOnly = true)
-    public OutboxEventSnapshot findProcessingEvent(String eventId) {
-        return outboxEventRepository.findById(eventId)
-                .filter(event -> event.getStatus() == OutboxEventStatus.PROCESSING)
-                .map(OutboxEventSnapshot::from)
-                .orElse(null);
+    public OutboxEventSnapshot findProcessingEvent(OutboxClaim claim) {
+        return outboxEventRepository.findOwnedProcessingEvent(claim.eventId(), claim.claimToken())
+                .map(OutboxEventSnapshot::from).orElse(null);
     }
 
-    /** 현재 행이 있으면 성공 전이를 요청. 도메인은 PROCESSING 외 상태의 호출을 무시. */
-    @Transactional
-    public void markSucceeded(String eventId) {
-        outboxEventRepository.findById(eventId)
-                .ifPresent(event -> event.succeed(LocalDateTime.now(outboxClock)));
+    @Transactional(timeout = 5)
+    public boolean markSucceeded(OutboxClaim claim) {
+        return ownedForUpdate(claim) != null
+                && outboxEventRepository.completeClaim(claim.eventId(), claim.claimToken()) == 1;
     }
 
-    /**
-     * 현재 PROCESSING인 이벤트만 실패 횟수와 다음 시각을 갱신.
-     * 행이 없거나 다른 상태이면 null을 반환하고 기존 실패 내용 유지.
-     */
-    @Transactional
-    public OutboxEventStatus markFailed(String eventId, Throwable failure) {
-        OutboxEvent event = outboxEventRepository.findById(eventId).orElse(null);
-        if (event == null || event.getStatus() != OutboxEventStatus.PROCESSING) {
+    @Transactional(timeout = 5)
+    public OutboxEventStatus markFailed(OutboxClaim claim, Throwable failure) {
+        OutboxEvent event = ownedForUpdate(claim);
+        if (event == null) {
             return null;
         }
+        int nextAttempt = event.getAttemptCount() + 1;
+        String error = failureMessage(failure);
+        int changed = outboxEventRepository.failClaim(claim.eventId(), claim.claimToken(),
+                properties.maxAttempts(), backoffPolicy.calculateDelay(nextAttempt).toMillis(),
+                error.substring(0, Math.min(error.length(), 2000)));
+        return changed == 0 ? null
+                : nextAttempt >= properties.maxAttempts() ? OutboxEventStatus.FAILED : OutboxEventStatus.RETRY;
+    }
 
-        LocalDateTime now = LocalDateTime.now(outboxClock);
-        event.fail(
-                now,
-                properties.maxAttempts(),
-                now.plus(backoffPolicy.calculateDelay(event.getAttemptCount() + 1)),
-                failureMessage(failure)
-        );
-        return event.getStatus();
+    @Transactional(timeout = 5)
+    public boolean renewClaim(OutboxClaim claim) {
+        return ownedForUpdate(claim) != null
+                && outboxEventRepository.renewClaim(claim.eventId(), claim.claimToken(),
+                properties.processingTimeout().toMillis(), properties.maxExecutionTime().toMillis()) == 1;
+    }
+
+    @Transactional(timeout = 5)
+    public boolean releaseClaim(OutboxClaim claim) {
+        return ownedForUpdate(claim) != null
+                && outboxEventRepository.releaseClaim(claim.eventId(), claim.claimToken()) == 1;
+    }
+
+    private OutboxEvent ownedForUpdate(OutboxClaim claim) {
+        OutboxEvent event = outboxEventRepository.findByEventIdForUpdate(claim.eventId()).orElse(null);
+        // 잠금 대기 중 lease가 만료될 수 있으므로 잠금을 얻은 후 DB 시각으로 재확인한다.
+        if (event == null || event.getStatus() != OutboxEventStatus.PROCESSING
+                || !claim.claimToken().equals(event.getClaimToken()) || event.getLeaseUntil() == null
+                || !event.getLeaseUntil().isAfter(outboxEventRepository.databaseNow())) {
+            return null;
+        }
+        return event;
     }
 
     /**

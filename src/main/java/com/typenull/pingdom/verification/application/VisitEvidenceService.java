@@ -11,43 +11,51 @@ import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 체크인 소유권과 파일 검증을 거쳐 증빙 이미지의 S3 저장 및 DB 메타데이터 저장을 조율.
  * DB 트랜잭션은 별도 persistence 서비스가 담당하며 S3 작업은 원자성 보장 범위 외.
- * 저장 실패 시 업로드 객체의 삭제를 시도하지만, 정리 실패 복구는 제공 범위 외.
+ * 소유 key는 업로드 전 기록하며 실패한 미참조 객체는 14일 유예 후 별도 정리.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class VisitEvidenceService {
-    private static final String S3_PREFIX = "visit-evidence";
-
     private final VisitEvidencePersistenceService persistenceService;
     private final VisitEvidenceFileValidator fileValidator;
     private final VisitEvidenceProperties properties;
     private final S3ObjectStorage objectStorage;
     private final Clock clock;
+    private final VisitEvidenceUploadIntentService intents;
+    private final VisitEvidenceOrphanProperties orphanProperties;
 
     /**
      * 본인 체크인에 검증·재인코딩한 이미지를 업로드하고 보관 기한을 포함한 메타데이터를 반환.
-     * 소유권 또는 파일 검증 실패 시 S3 업로드를 시작하지 않으며, 저장 오류는 보상 처리 후 다시 전달.
+     * 소유권 또는 파일 검증 실패 시 S3 업로드를 시작하지 않으며, 저장 오류는 orphan 추적 상태를 기록한 후 다시 전달.
      */
+    @Transactional(propagation = Propagation.NEVER)
     public VisitEvidenceResponse upload(Long userId, Long checkInId, MultipartFile file) {
         persistenceService.requireOwnedCheckIn(userId, checkInId);
         ValidatedVisitEvidenceFile validated = fileValidator.validate(file);
-        S3PutResult uploaded = upload(validated);
-        Instant now = clock.instant();
+        var upload = intents.prepare(userId, checkInId, validated.extension());
         try {
-            VisitEvidence saved = persistenceService.save(userId, checkInId, uploaded.key(),
+            objectStorage.putAtKey(validated.bytes(), validated.contentType(), upload.key(), orphanProperties.uploadTimeout());
+            Instant now = clock.instant();
+            VisitEvidence saved = intents.complete(upload.intentId(), userId, checkInId,
                     validated.originalFilename(), validated.contentType(), validated.bytes().length,
                     now, now.plus(properties.retention()));
             return VisitEvidenceResponse.from(saved);
         } catch (RuntimeException exception) {
-            // S3는 DB 트랜잭션에 참여하지 않으므로 이미 업로드한 객체를 별도로 정리.
-            // 삭제도 실패할 수 있어 완전한 원자성을 보장하지 않으며, 최초 오류를 유지.
-            cleanupUploadedObject(uploaded.key());
+            try { intents.abandon(upload.intentId()); }
+            catch (RuntimeException cleanupFailure) {
+                // DB 장애 중에도 선등록 key는 남으며 deadline 경과 후 다시 판정합니다.
+                log.warn("증빙 업로드 실패 상태 기록에 실패했습니다. intentId={}", upload.intentId(), cleanupFailure);
+            }
+            if (exception instanceof S3StorageException)
+                throw new VisitorVerificationException(VisitorVerificationErrorCode.VISIT_EVIDENCE_STORAGE_UNAVAILABLE);
             throw exception;
         }
     }
@@ -67,27 +75,6 @@ public class VisitEvidenceService {
             return new VisitEvidenceDownload(objectStorage.getBytes(evidence.getS3Key()), evidence.getContentType());
         } catch (S3StorageException exception) {
             throw new VisitorVerificationException(VisitorVerificationErrorCode.VISIT_EVIDENCE_STORAGE_UNAVAILABLE);
-        }
-    }
-
-    /** 검증된 이미지에 서버 파일명을 사용해 업로드하고 S3 오류를 도메인 오류로 변환. */
-    private S3PutResult upload(ValidatedVisitEvidenceFile file) {
-        try {
-            return objectStorage.put(file.bytes(), "evidence." + file.extension(), file.contentType(), S3_PREFIX);
-        } catch (S3StorageException exception) {
-            throw new VisitorVerificationException(VisitorVerificationErrorCode.VISIT_EVIDENCE_STORAGE_UNAVAILABLE);
-        }
-    }
-
-    /**
-     * 저장 실패로 남은 S3 객체의 삭제를 시도.
-     * 삭제 중 발생한 RuntimeException은 key와 함께 기록하고 삼켜 호출자의 최초 실패를 보존.
-     */
-    private void cleanupUploadedObject(String key) {
-        try {
-            objectStorage.delete(key);
-        } catch (RuntimeException exception) {
-            log.warn("증빙 DB 저장 실패 후 S3 객체 정리에 실패했습니다. key={}", key, exception);
         }
     }
 
